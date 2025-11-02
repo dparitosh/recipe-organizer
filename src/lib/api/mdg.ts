@@ -13,10 +13,24 @@ const MDG_CONFIG = {
 }
 
 export class MDGClient {
-  private mockMode: boolean = true
+  private mockMode: boolean
 
-  constructor(mockMode: boolean = true) {
+  constructor(mockMode: boolean = !MDG_CONFIG.apiKey || MDG_CONFIG.apiKey === 'mock-key') {
     this.mockMode = mockMode
+    if (this.mockMode) {
+      console.log('⚠️ MDG Client: Running in mock mode (no API key configured)')
+    } else {
+      console.log('✓ MDG Client: Configured for real API calls')
+    }
+  }
+
+  setMockMode(enabled: boolean) {
+    this.mockMode = enabled
+    console.log(`MDG Client: Mock mode ${enabled ? 'enabled' : 'disabled'}`)
+  }
+
+  isMockMode(): boolean {
+    return this.mockMode
   }
 
   async getMasterData(materialNumber: string): Promise<MDGMaterial> {
@@ -315,4 +329,4 @@ export interface MaterialSearchFilters {
   plant?: string
 }
 
-export const mdgClient = new MDGClient(true)
+export const mdgClient = new MDGClient()

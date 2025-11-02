@@ -8,6 +8,23 @@ The Formulation Graph Studio now has **full backend integration** with real serv
 - **SAP MDG** - Master Data Governance for material management
 - **PLM** - Product Lifecycle Management for specifications
 
+## Quick Start
+
+### For Users: Connecting to Real Services
+
+**📖 See [CONNECTING_BACKEND_SERVICES.md](./CONNECTING_BACKEND_SERVICES.md) for a complete user guide on connecting to real backend services.**
+
+The comprehensive guide includes:
+- Step-by-step configuration for each service
+- Connection testing procedures
+- Troubleshooting common issues
+- Security best practices
+- Environment variable setup
+
+### For Developers: Architecture Overview
+
+Continue reading below for the technical architecture and API documentation.
+
 ## Architecture
 
 ### Integration Manager (`/src/lib/managers/integration-manager.ts`)

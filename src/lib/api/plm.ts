@@ -11,10 +11,24 @@ const PLM_CONFIG = {
 }
 
 export class PLMClient {
-  private mockMode: boolean = true
+  private mockMode: boolean
 
-  constructor(mockMode: boolean = true) {
+  constructor(mockMode: boolean = !PLM_CONFIG.apiKey || PLM_CONFIG.apiKey === 'mock-key') {
     this.mockMode = mockMode
+    if (this.mockMode) {
+      console.log('⚠️ PLM Client: Running in mock mode (no API key configured)')
+    } else {
+      console.log('✓ PLM Client: Configured for real API calls')
+    }
+  }
+
+  setMockMode(enabled: boolean) {
+    this.mockMode = enabled
+    console.log(`PLM Client: Mock mode ${enabled ? 'enabled' : 'disabled'}`)
+  }
+
+  isMockMode(): boolean {
+    return this.mockMode
   }
 
   async searchMaterials(query: string): Promise<PLMMaterial[]> {
@@ -322,4 +336,4 @@ export class PLMClient {
   }
 }
 
-export const plmClient = new PLMClient(true)
+export const plmClient = new PLMClient()

@@ -12,8 +12,7 @@ import { FormulationGraph } from '@/components/graph/FormulationGraph'
 import { RelationshipGraphViewer } from '@/components/graph/RelationshipGraphViewer'
 import { IntegrationPanel } from '@/components/integrations/IntegrationPanel'
 import { BOMConfigurator } from '@/components/bom/BOMConfigurator'
-import { Neo4jSettings } from '@/components/Neo4jSettings'
-import { ConnectionTester } from '@/components/ConnectionTester'
+import { BackendConfigPanel } from '@/components/integrations/BackendConfigPanel'
 import { APITester } from '@/components/APITester'
 import { Formulation, createEmptyFormulation } from '@/lib/schemas/formulation'
 import { BOM, createEmptyBOM } from '@/lib/schemas/bom'
@@ -180,28 +179,11 @@ function App() {
                   <Gear size={18} weight="bold" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Neo4j Settings & Connection Testing</DialogTitle>
+                  <DialogTitle>Backend Services Configuration</DialogTitle>
                 </DialogHeader>
-                <Tabs defaultValue="settings" className="mt-4">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="settings">
-                      <Database size={16} className="mr-2" weight="bold" />
-                      Settings
-                    </TabsTrigger>
-                    <TabsTrigger value="testing">
-                      <Lightning size={16} className="mr-2" weight="bold" />
-                      Connection Tests
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="settings">
-                    <Neo4jSettings />
-                  </TabsContent>
-                  <TabsContent value="testing">
-                    <ConnectionTester />
-                  </TabsContent>
-                </Tabs>
+                <BackendConfigPanel />
               </DialogContent>
             </Dialog>
             <Button onClick={handleCreateFormulation} className="gap-2">
