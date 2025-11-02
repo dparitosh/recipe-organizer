@@ -50,7 +50,7 @@ export function SettingsView({ backendUrl, onBackendUrlChange }) {
           <div className="space-y-3 text-sm">
             <div className="p-3 bg-muted rounded-lg">
               <h4 className="font-semibold mb-1">Frontend</h4>
-              <p className="text-muted-foreground">React 19 + JSX + Tailwind CSS v4</p>
+              <p className="text-muted-foreground">React 19 + JavaScript + Tailwind CSS v4</p>
             </div>
             <div className="p-3 bg-muted rounded-lg">
               <h4 className="font-semibold mb-1">Backend</h4>
