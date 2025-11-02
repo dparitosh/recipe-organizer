@@ -63,8 +63,8 @@ interface RelationshipGraphViewerProps {
   height?: string
 }
 
-type NodeType = 'Ingredient' | 'Recipe' | 'MasterRecipe' | 'ManufacturingRecipe' | 'Plant' | 'SalesOrder'
-type EdgeType = 'uses' | 'derived_from' | 'produces' | 'CONTAINS' | 'REQUIRES'
+type NodeType = 'Ingredient' | 'Recipe' | 'MasterRecipe' | 'ManufacturingRecipe' | 'Plant' | 'SalesOrder' | 'Formulation' | 'Food' | 'Nutrient' | 'FoodCategory' | 'Process'
+type EdgeType = 'uses' | 'derived_from' | 'produces' | 'CONTAINS' | 'REQUIRES' | 'USES_INGREDIENT' | 'DERIVED_FROM' | 'PRODUCES' | 'BELONGS_TO_CATEGORY' | 'CONTAINS_NUTRIENT' | 'REQUIRES_PROCESS'
 type LayoutType = 'hierarchical' | 'force' | 'circular' | 'concentric' | 'grid'
 
 const NODE_TYPE_CONFIG: Record<NodeType, { shape: string; color: string; icon: any; size: number }> = {
@@ -75,6 +75,12 @@ const NODE_TYPE_CONFIG: Record<NodeType, { shape: string; color: string; icon: a
     size: 60
   },
   Recipe: { 
+    shape: 'roundrectangle', 
+    color: 'oklch(0.65 0.18 145)', 
+    icon: Square,
+    size: 80
+  },
+  Formulation: { 
     shape: 'roundrectangle', 
     color: 'oklch(0.65 0.18 145)', 
     icon: Square,
@@ -103,15 +109,46 @@ const NODE_TYPE_CONFIG: Record<NodeType, { shape: string; color: string; icon: a
     color: 'oklch(0.70 0.18 50)', 
     icon: Tag,
     size: 65
+  },
+  Food: { 
+    shape: 'ellipse', 
+    color: 'oklch(0.60 0.16 250)', 
+    icon: Circle,
+    size: 60
+  },
+  Nutrient: { 
+    shape: 'ellipse', 
+    color: 'oklch(0.55 0.14 120)', 
+    icon: Circle,
+    size: 50
+  },
+  FoodCategory: { 
+    shape: 'ellipse', 
+    color: 'oklch(0.58 0.12 180)', 
+    icon: Circle,
+    size: 55
+  },
+  Process: { 
+    shape: 'diamond', 
+    color: 'oklch(0.63 0.15 280)', 
+    icon: Gear,
+    size: 65
   }
 }
 
 const EDGE_TYPE_CONFIG: Record<string, { color: string; style: string; width: number }> = {
   uses: { color: 'oklch(0.65 0.18 145)', style: 'solid', width: 2 },
+  USES: { color: 'oklch(0.65 0.18 145)', style: 'solid', width: 2 },
+  USES_INGREDIENT: { color: 'oklch(0.65 0.18 145)', style: 'solid', width: 2 },
   derived_from: { color: 'oklch(0.60 0.16 250)', style: 'dashed', width: 2 },
+  DERIVED_FROM: { color: 'oklch(0.60 0.16 250)', style: 'dashed', width: 2 },
   produces: { color: 'oklch(0.70 0.18 50)', style: 'solid', width: 3 },
+  PRODUCES: { color: 'oklch(0.70 0.18 50)', style: 'solid', width: 3 },
   CONTAINS: { color: 'oklch(0.65 0.18 145)', style: 'solid', width: 2 },
-  REQUIRES: { color: 'oklch(0.55 0.14 300)', style: 'dotted', width: 2 }
+  CONTAINS_NUTRIENT: { color: 'oklch(0.55 0.14 120)', style: 'solid', width: 1.5 },
+  REQUIRES: { color: 'oklch(0.55 0.14 300)', style: 'dotted', width: 2 },
+  REQUIRES_PROCESS: { color: 'oklch(0.63 0.15 280)', style: 'dotted', width: 2 },
+  BELONGS_TO_CATEGORY: { color: 'oklch(0.58 0.12 180)', style: 'dashed', width: 1.5 }
 }
 
 export function RelationshipGraphViewer({
@@ -308,16 +345,21 @@ export function RelationshipGraphViewer({
 
     const nodesToAdd = data.nodes.map(node => {
       const nodeType = node.labels[0] as NodeType
-      const config = NODE_TYPE_CONFIG[nodeType]
+      const config = NODE_TYPE_CONFIG[nodeType] || {
+        shape: 'ellipse',
+        color: 'oklch(0.60 0.15 200)',
+        icon: Circle,
+        size: 60
+      }
       
       return {
         group: 'nodes' as const,
         data: {
           id: node.id,
-          label: node.properties.name || node.properties.id || node.id,
+          label: node.properties.name || node.properties.description || node.properties.id || node.id,
           nodeType: nodeType,
-          selectedColor: config?.color || 'oklch(0.65 0.18 145)',
-          highlightColor: config?.color?.replace(/0\.\d+/, '0.75') || 'oklch(0.75 0.18 145)',
+          selectedColor: config.color,
+          highlightColor: config.color.replace(/oklch\(([\d.]+)/, 'oklch(0.75'),
           ...node.properties
         }
       }
