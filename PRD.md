@@ -143,6 +143,30 @@ An enterprise-grade Food & Beverage formulation management platform that integra
 - **Progression**: Search USDA FDC → Select food item → Link to ingredient → Import nutrients → Calculate formulation nutritionals → Generate nutrition facts
 - **Success criteria**: Accurate nutrient data, automatic calculations, serving size conversions
 
+### REST API Endpoints (NEW)
+- **Functionality**: Comprehensive REST API for BOM and recipe management with validation, testing interface, and complete documentation
+- **Purpose**: Enable programmatic access to formulation, manufacturing, and sales order operations with robust validation and calculation logging
+- **Trigger**: Navigate to "API Testing" tab or make direct API calls
+- **Progression**: 
+  - **API Categories**: Formulation endpoints (create, scale, validate-yield), Manufacturing endpoints (generate, calculate-yield), Sales Order endpoints (derive, validate-order), Validation endpoints (unit-of-measure, yield-percentage, byproduct-logic)
+  - **Endpoint Selection**: Choose from 9 predefined endpoints organized by category (Formulation, Manufacturing, Sales Order, Validation)
+  - **Request Configuration**: View endpoint details (method, path, description) → Edit request body JSON → Execute request
+  - **Response Handling**: View formatted response with success/error status → See execution time and warnings → Copy or download response JSON
+  - **Validation**: Built-in validation for yield % (0-100%, thresholds at 60% and 80%), UoM (mass/volume/count units), byproduct mass balance (input = output + byproduct ± 0.01)
+  - **Calculation Logging**: All calculations create audit logs with input parameters, output results, validation results, and execution metrics
+- **Success criteria**: 
+  - 9 functional endpoints across 4 categories
+  - Request/response testing interface with syntax highlighting
+  - Real-time validation with severity indicators (info/warning/error)
+  - Comprehensive API documentation (API_DOCUMENTATION.md)
+  - Copy and download response capabilities
+  - Execution time tracking
+  - Warning display for non-critical issues
+  - JSON format enforcement
+  - Entity schemas for MaterialMaster, MasterRecipe, ManufacturingRecipe, SalesOrder, CalculationLog
+  - Validation rules: yield % (60%/80% thresholds), UoM compatibility, byproduct mass balance
+  - Compatible JSON responses for React frontend
+
 ## Edge Case Handling
 
 - **Empty Formulation** - Show empty state with guidance to add ingredients
