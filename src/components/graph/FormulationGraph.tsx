@@ -66,19 +66,37 @@ export function FormulationGraph({
       }
     }))
 
-    const edgesToAdd = data.relationships.map(rel => ({
-      group: 'edges' as const,
-      data: {
-        id: rel.id,
-        source: rel.startNode,
-        target: rel.endNode,
-        type: rel.type,
-        label: rel.properties.label,
-        ...rel.properties
-      }
-    }))
+    cy.add(nodesToAdd)
 
-    cy.add([...nodesToAdd, ...edgesToAdd])
+    const nodeIds = new Set(data.nodes.map(n => n.id))
+    
+    const edgesToAdd = data.relationships
+      .filter(rel => {
+        const hasSource = nodeIds.has(rel.startNode)
+        const hasTarget = nodeIds.has(rel.endNode)
+        
+        if (!hasSource || !hasTarget) {
+          console.warn(`Skipping edge ${rel.id}: source=${rel.startNode} exists=${hasSource}, target=${rel.endNode} exists=${hasTarget}`)
+          return false
+        }
+        
+        return true
+      })
+      .map(rel => ({
+        group: 'edges' as const,
+        data: {
+          id: rel.id,
+          source: rel.startNode,
+          target: rel.endNode,
+          type: rel.type,
+          label: rel.properties.label,
+          ...rel.properties
+        }
+      }))
+
+    if (edgesToAdd.length > 0) {
+      cy.add(edgesToAdd)
+    }
 
     applyLayout(cy, layout)
   }, [data, isReady, layout])
