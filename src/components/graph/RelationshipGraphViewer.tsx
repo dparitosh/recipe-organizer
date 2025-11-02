@@ -306,12 +306,12 @@ export function RelationshipGraphViewer({
     const cy = cyRef.current
     cy.elements().remove()
 
-    data.nodes.forEach(node => {
+    const nodesToAdd = data.nodes.map(node => {
       const nodeType = node.labels[0] as NodeType
       const config = NODE_TYPE_CONFIG[nodeType]
       
-      cy.add({
-        group: 'nodes',
+      return {
+        group: 'nodes' as const,
         data: {
           id: node.id,
           label: node.properties.name || node.properties.id || node.id,
@@ -320,22 +320,22 @@ export function RelationshipGraphViewer({
           highlightColor: config?.color?.replace(/0\.\d+/, '0.75') || 'oklch(0.75 0.18 145)',
           ...node.properties
         }
-      })
+      }
     })
 
-    data.relationships.forEach(rel => {
-      cy.add({
-        group: 'edges',
-        data: {
-          id: rel.id,
-          source: rel.startNode,
-          target: rel.endNode,
-          edgeType: rel.type,
-          label: rel.properties.label || '',
-          ...rel.properties
-        }
-      })
-    })
+    const edgesToAdd = data.relationships.map(rel => ({
+      group: 'edges' as const,
+      data: {
+        id: rel.id,
+        source: rel.startNode,
+        target: rel.endNode,
+        edgeType: rel.type,
+        label: rel.properties.label || '',
+        ...rel.properties
+      }
+    }))
+
+    cy.add([...nodesToAdd, ...edgesToAdd])
 
     applyLayoutInternal(layout)
     applyFilters()

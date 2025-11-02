@@ -55,32 +55,30 @@ export function FormulationGraph({
     const cy = cyRef.current
     cy.elements().remove()
 
-    data.nodes.forEach(node => {
-      cy.add({
-        group: 'nodes',
-        data: {
-          id: node.id,
-          label: node.properties.name || node.properties.description || node.id,
-          type: node.labels[0]?.toLowerCase() || 'default',
-          selectedColor: 'oklch(0.70 0.18 50)',
-          ...node.properties
-        }
-      })
-    })
+    const nodesToAdd = data.nodes.map(node => ({
+      group: 'nodes' as const,
+      data: {
+        id: node.id,
+        label: node.properties.name || node.properties.description || node.id,
+        type: node.labels[0]?.toLowerCase() || 'default',
+        selectedColor: 'oklch(0.70 0.18 50)',
+        ...node.properties
+      }
+    }))
 
-    data.relationships.forEach(rel => {
-      cy.add({
-        group: 'edges',
-        data: {
-          id: rel.id,
-          source: rel.startNode,
-          target: rel.endNode,
-          type: rel.type,
-          label: rel.properties.label,
-          ...rel.properties
-        }
-      })
-    })
+    const edgesToAdd = data.relationships.map(rel => ({
+      group: 'edges' as const,
+      data: {
+        id: rel.id,
+        source: rel.startNode,
+        target: rel.endNode,
+        type: rel.type,
+        label: rel.properties.label,
+        ...rel.properties
+      }
+    }))
+
+    cy.add([...nodesToAdd, ...edgesToAdd])
 
     applyLayout(cy, layout)
   }, [data, isReady, layout])
