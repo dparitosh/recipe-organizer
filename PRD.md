@@ -1,14 +1,32 @@
 # Formulation Graph Studio - Product Requirements Document
 
-An enterprise-grade Food & Beverage formulation management platform that integrates PLM (Product Lifecycle Management), SAP MDG (Master Data Governance), Neo4j graph databases, and USDA FDC nutritional data to provide comprehensive recipe development, BOM configuration, and cost/yield optimization.
+An enterprise-grade Food & Beverage formulation management platform that integrates PLM (Product Lifecycle Management), SAP MDG (Master Data Governance), Neo4j graph databases, and USDA FDC nutritional data to provide comprehensive recipe development, BOM configuration, and cost/yield optimization with fresh data ingestion capabilities.
 
 **Experience Qualities**:
 1. **Professional** - Enterprise-level tools adhering to TCS brand standards with production-ready integrations and calculations suitable for F&B manufacturing
-2. **Trustworthy** - Clear, accessible interface following TCS design language that conveys reliability and corporate excellence
-3. **Integrated** - Seamless connections to external systems (Neo4j, PLM, SAP MDG) with real-time data synchronization
+2. **Trustworthy** - Clear, accessible interface following TCS design language that conveys reliability and corporate excellence with clear database management workflows
+3. **Integrated** - Seamless connections to external systems (Neo4j, PLM, SAP MDG) with real-time data synchronization and fresh schema initialization
 
 **Complexity Level**: Complex Application (advanced functionality, accounts)
-  - Multi-system integration with Neo4j graph database, PLM for material master data, SAP MDG for enterprise data governance, plus advanced calculation engines for yield, cost, scaling, and byproduct optimization
+  - Multi-system integration with Neo4j graph database, PLM for material master data, SAP MDG for enterprise data governance, plus advanced calculation engines for yield, cost, scaling, and byproduct optimization, with comprehensive data ingestion from USDA FDC API
+
+## Recent Updates (Fresh Schema & Data Ingestion)
+
+### Neo4j Schema Management
+- **Clear Schema Functionality**: Added ability to delete all nodes and relationships from Neo4j database
+- **Location**: Backend Services Configuration → Neo4j tab → Danger Zone section
+- **Safety**: Requires active connection (not mock mode) and user confirmation before execution
+- **Purpose**: Enables fresh start for data ingestion and testing without residual data
+
+### Enhanced Data Loading
+- **Sample Data Loader**: Updated with clear warning that loading sample data will clear existing database first
+- **Visual Feedback**: Added alert banner explaining fresh start approach
+- **FDC Ingestion**: Search and import USDA FoodData Central data with full nutritional information
+- **Workflow**: Clear Schema → Ingest Fresh Data → Validate in Relationships Graph
+
+### Error Resolution
+- **TypeScript Compliance**: Fixed ErrorFallback component with proper type definitions
+- **Type Safety**: Added ErrorFallbackProps interface for error and resetErrorBoundary parameters
 
 ## Essential Features
 

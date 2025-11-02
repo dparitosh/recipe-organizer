@@ -196,6 +196,33 @@ export class Neo4jManager {
     return this.query(cypher, { limit: NEO4J_CONSTANTS.DEFAULT_QUERY_LIMIT })
   }
 
+  async clearSchema(): Promise<void> {
+    if (this.mockMode) {
+      throw new Error('Cannot clear schema in mock mode')
+    }
+
+    try {
+      await this.query('MATCH (n) DETACH DELETE n')
+    } catch (error) {
+      console.error('✗ Neo4j Manager: Failed to clear schema', error)
+      throw error
+    }
+  }
+
+  async getNodeCount(): Promise<number> {
+    if (this.mockMode) {
+      return this.mockData?.nodes.length || 0
+    }
+
+    try {
+      const result = await this.query('MATCH (n) RETURN count(n) as count')
+      return result.metadata?.recordCount || 0
+    } catch (error) {
+      console.error('✗ Neo4j Manager: Failed to get node count', error)
+      return 0
+    }
+  }
+
   private executeMockQuery(cypher: string, parameters?: Record<string, any>): Promise<Neo4jResult> {
     const mockNodes: Neo4jGraphNode[] = [
       {

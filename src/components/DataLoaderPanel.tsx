@@ -77,6 +77,16 @@ export function DataLoaderPanel({ onDataLoaded }: DataLoaderPanelProps) {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        <Alert className="border-primary/30 bg-primary/5">
+          <Warning className="h-4 w-4 text-primary" weight="bold" />
+          <AlertDescription>
+            <p className="text-sm font-semibold text-primary mb-1">Fresh Start</p>
+            <p className="text-xs text-muted-foreground">
+              Loading sample data will clear all existing data from the database and populate it with comprehensive demo datasets. This is ideal for fresh ingestion and testing.
+            </p>
+          </AlertDescription>
+        </Alert>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="border-2 border-primary/20 bg-primary/5">
             <CardContent className="pt-6">

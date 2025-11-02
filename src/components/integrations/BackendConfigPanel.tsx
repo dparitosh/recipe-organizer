@@ -90,6 +90,8 @@ export function BackendConfigPanel() {
     mdg: 0
   })
 
+  const [clearingSchema, setClearingSchema] = useState(false)
+
   useEffect(() => {
     neo4jManager.setMockMode(neo4jMockMode ?? true)
     plmClient.setMockMode(plmMockMode ?? true)
@@ -206,6 +208,32 @@ export function BackendConfigPanel() {
   const saveMdgConfig = () => {
     setMdgConfig(localMdgConfig)
     toast.success('SAP MDG configuration saved')
+  }
+
+  const handleClearSchema = async () => {
+    if (neo4jMockMode) {
+      toast.error('Cannot clear schema in mock mode. Connect to a real Neo4j instance first.')
+      return
+    }
+
+    if (!neo4jManager.isConnected()) {
+      toast.error('Not connected to Neo4j. Please connect first.')
+      return
+    }
+
+    if (!confirm('Are you sure you want to delete ALL nodes and relationships from the database? This action cannot be undone.')) {
+      return
+    }
+
+    setClearingSchema(true)
+    try {
+      await neo4jManager.clearSchema()
+      toast.success('Schema cleared successfully. Database is now empty.')
+    } catch (error) {
+      toast.error('Failed to clear schema: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    } finally {
+      setClearingSchema(false)
+    }
   }
 
   const getStatusBadge = (status: string, latency?: number) => {
@@ -376,6 +404,39 @@ export function BackendConfigPanel() {
                   Save Config
                 </Button>
               </div>
+
+              <Separator />
+
+              <Alert className="border-destructive/50 bg-destructive/5">
+                <Warning className="h-4 w-4 text-destructive" weight="bold" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-destructive">Danger Zone</p>
+                    <p className="text-xs text-muted-foreground">
+                      Clear all nodes and relationships from the database. This is useful for starting fresh with new data ingestion.
+                    </p>
+                    <Button 
+                      onClick={handleClearSchema} 
+                      disabled={clearingSchema || neo4jMockMode || !neo4jManager.isConnected()}
+                      variant="destructive"
+                      size="sm"
+                      className="w-full"
+                    >
+                      {clearingSchema ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          Clearing Schema...
+                        </>
+                      ) : (
+                        <>
+                          <Database size={16} className="mr-2" weight="bold" />
+                          Clear Schema (Delete All Data)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
             </CardContent>
           </Card>
         </TabsContent>
