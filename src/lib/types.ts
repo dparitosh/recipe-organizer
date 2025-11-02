@@ -58,4 +58,6 @@ export interface SearchResult {
   description: string
   dataType: string
   foodCategory?: string
+  brandOwner?: string
+  brandName?: string
 }

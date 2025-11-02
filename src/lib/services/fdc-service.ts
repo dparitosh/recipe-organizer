@@ -27,7 +27,10 @@ export class FDCService {
   private config: FDCConfig
 
   constructor(config?: FDCConfig) {
-    this.config = config || { apiKey: FDC_CONSTANTS.DEFAULT_API_KEY, cacheInNeo4j: true }
+    this.config = config || { 
+      apiKey: 'axHdO7CFrKh2wBPBSHKRaASp9m8lanCIaDY5W9ya', 
+      cacheInNeo4j: true 
+    }
   }
 
   setApiKey(apiKey: string) {

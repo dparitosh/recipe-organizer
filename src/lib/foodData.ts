@@ -1,7 +1,7 @@
 import { FoodData, SearchResult } from './types'
 import { FDC_CONSTANTS } from './constants'
 
-let FDC_API_KEY: string = FDC_CONSTANTS.DEFAULT_API_KEY
+let FDC_API_KEY: string = 'axHdO7CFrKh2wBPBSHKRaASp9m8lanCIaDY5W9ya'
 
 export function setFDCApiKey(apiKey: string) {
   FDC_API_KEY = apiKey
