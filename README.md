@@ -2,6 +2,8 @@
 
 An enterprise-grade Food & Beverage formulation management platform with integrated PLM, SAP MDG, Neo4j graph relationships, and **AI-powered natural language query assistant**.
 
+> ⚠️ **Cleanup Status:** Phase 1 cleanup is 50% complete. Dark mode CSS has been removed. Duplicate .jsx files need to be removed manually. See [CLEANUP_STATUS.md](./CLEANUP_STATUS.md) for details.
+
 ## 🚀 Features
 
 - ✨ **NEW: AI Assistant** - Natural language query interface powered by GPT-4 for intelligent formulation analysis, graph exploration, and actionable recommendations
@@ -67,6 +69,7 @@ To connect to your enterprise systems:
 - **[PRD.md](./PRD.md)** - Product requirements and design decisions
 
 ### Maintenance & Deployment
+- **[CLEANUP_STATUS.md](./CLEANUP_STATUS.md)** - ⚠️ **Current cleanup status and pending actions**
 - **[CLEANUP_ACTIONS.md](./CLEANUP_ACTIONS.md)** - Code cleanup and optimization guide
 - **[CLEANUP_COMPLETE.md](./CLEANUP_COMPLETE.md)** - Cleanup completion report and instructions
 - **[SECURITY.md](./SECURITY.md)** - Security best practices

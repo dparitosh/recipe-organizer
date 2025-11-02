@@ -4,6 +4,8 @@
 
 This checklist ensures all cleanup actions are completed before production deployment.
 
+> ⚠️ **Current Status:** Phase 1 cleanup is 50% complete. Dark mode CSS has been removed. Duplicate .jsx files still need to be removed.
+
 ---
 
 ## ⚡ Quick Start
@@ -21,7 +23,18 @@ npm run dev
 
 **Time Required:** 30 minutes  
 **Risk Level:** Low  
-**Impact:** High (code quality improvement)
+**Impact:** High (code quality improvement)  
+**Status:** ⚠️ Manual action required
+
+---
+
+## 📋 Cleanup Progress
+
+### Already Completed ✅
+- [x] **Dark Mode CSS Removal** - Removed unused `.dark` theme block from `src/main.css` (33 lines removed)
+
+### Pending Manual Action ⚠️
+- [ ] **Remove Duplicate .jsx Files** - Execute cleanup script to remove 15 duplicate files
 
 ---
 
