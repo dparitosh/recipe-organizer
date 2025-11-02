@@ -1,166 +1,230 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Recipe, RecipeFormData } from '@/lib/types'
-import { RecipeCard } from '@/components/RecipeCard'
-import { RecipeView } from '@/components/RecipeView'
-import { RecipeForm } from '@/components/RecipeForm'
+import { Node, Edge, GraphData, ViewTransform } from '@/lib/types'
+import { GraphCanvas } from '@/components/GraphCanvas'
+import { NodeEditor } from '@/components/NodeEditor'
 import { EmptyState } from '@/components/EmptyState'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Toolbar } from '@/components/Toolbar'
 import { Toaster } from '@/components/ui/sonner'
-import { Plus, CookingPot } from '@phosphor-icons/react'
+import { Graph } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
-type View = 'list' | 'view' | 'add' | 'edit'
+const NODE_COLORS = [
+  'oklch(0.68 0.18 25)',
+  'oklch(0.62 0.24 295)', 
+  'oklch(0.75 0.20 130)',
+  'oklch(0.70 0.18 50)',
+  'oklch(0.65 0.20 260)',
+  'oklch(0.72 0.18 340)',
+]
 
 function App() {
-  const [recipes, setRecipes] = useKV<Recipe[]>('recipes', [])
-  const [currentView, setCurrentView] = useState<View>('list')
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [graphData, setGraphData] = useKV<GraphData>('graph-data', { nodes: [], edges: [] })
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [isCreatingEdge, setIsCreatingEdge] = useState(false)
+  const [viewTransform, setViewTransform] = useState<ViewTransform>({
+    x: 400,
+    y: 300,
+    scale: 1,
+  })
 
-  const handleAddRecipe = (data: RecipeFormData) => {
-    const newRecipe: Recipe = {
-      ...data,
-      id: Date.now().toString(),
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+  const nodes = graphData?.nodes || []
+  const edges = graphData?.edges || []
+  const selectedNode = nodes.find(n => n.id === selectedNodeId)
+
+  const addNode = (x?: number, y?: number) => {
+    const newNode: Node = {
+      id: `node-${Date.now()}`,
+      x: x ?? 400,
+      y: y ?? 300,
+      label: `Node ${nodes.length + 1}`,
+      color: NODE_COLORS[nodes.length % NODE_COLORS.length],
     }
-    
-    setRecipes((current) => [...(current || []), newRecipe])
-    setCurrentView('list')
-    toast.success('Recipe added successfully!')
+
+    setGraphData((current) => ({
+      nodes: [...(current?.nodes || []), newNode],
+      edges: current?.edges || [],
+    }))
+
+    setSelectedNodeId(newNode.id)
+    toast.success('Node added')
   }
 
-  const handleEditRecipe = (data: RecipeFormData) => {
-    if (!selectedRecipe) return
+  const updateNode = (nodeId: string, updates: Partial<Node>) => {
+    setGraphData((current) => ({
+      nodes: (current?.nodes || []).map((node) =>
+        node.id === nodeId ? { ...node, ...updates } : node
+      ),
+      edges: current?.edges || [],
+    }))
+  }
 
-    setRecipes((current) =>
-      (current || []).map((recipe) =>
-        recipe.id === selectedRecipe.id
-          ? { ...recipe, ...data, updatedAt: Date.now() }
-          : recipe
-      )
+  const deleteNode = (nodeId: string) => {
+    setGraphData((current) => ({
+      nodes: (current?.nodes || []).filter((node) => node.id !== nodeId),
+      edges: (current?.edges || []).filter(
+        (edge) => edge.source !== nodeId && edge.target !== nodeId
+      ),
+    }))
+    setSelectedNodeId(null)
+    toast.success('Node deleted')
+  }
+
+  const moveNode = (nodeId: string, x: number, y: number) => {
+    updateNode(nodeId, { x, y })
+  }
+
+  const createEdge = (sourceId: string, targetId: string) => {
+    const edgeExists = edges.some(
+      (edge) => edge.source === sourceId && edge.target === targetId
     )
-    
-    setCurrentView('view')
-    setSelectedRecipe({ ...selectedRecipe, ...data, updatedAt: Date.now() })
-    toast.success('Recipe updated successfully!')
+
+    if (edgeExists) {
+      toast.error('Edge already exists')
+      return
+    }
+
+    const newEdge: Edge = {
+      id: `edge-${Date.now()}`,
+      source: sourceId,
+      target: targetId,
+    }
+
+    setGraphData((current) => ({
+      nodes: current?.nodes || [],
+      edges: [...(current?.edges || []), newEdge],
+    }))
+
+    toast.success('Edge created')
   }
 
-  const handleDeleteRecipe = () => {
-    if (!selectedRecipe) return
-
-    setRecipes((current) => (current || []).filter((recipe) => recipe.id !== selectedRecipe.id))
-    setShowDeleteDialog(false)
-    setSelectedRecipe(null)
-    setCurrentView('list')
-    toast.success('Recipe deleted')
+  const clearGraph = () => {
+    setGraphData({ nodes: [], edges: [] })
+    setSelectedNodeId(null)
+    toast.success('Graph cleared')
   }
 
-  const handleViewRecipe = (recipe: Recipe) => {
-    setSelectedRecipe(recipe)
-    setCurrentView('view')
+  const fitView = () => {
+    if (nodes.length === 0) {
+      setViewTransform({ x: 400, y: 300, scale: 1 })
+      return
+    }
+
+    const xs = nodes.map(n => n.x)
+    const ys = nodes.map(n => n.y)
+    const minX = Math.min(...xs)
+    const maxX = Math.max(...xs)
+    const minY = Math.min(...ys)
+    const maxY = Math.max(...ys)
+
+    const width = maxX - minX + 200
+    const height = maxY - minY + 200
+    const centerX = (minX + maxX) / 2
+    const centerY = (minY + maxY) / 2
+
+    const scaleX = window.innerWidth / width
+    const scaleY = (window.innerHeight - 100) / height
+    const scale = Math.min(scaleX, scaleY, 1.5)
+
+    setViewTransform({
+      x: window.innerWidth / 2 - centerX * scale,
+      y: (window.innerHeight - 50) / 2 - centerY * scale,
+      scale,
+    })
+
+    toast.success('View fitted')
   }
 
-  const handleBackToList = () => {
-    setSelectedRecipe(null)
-    setCurrentView('list')
+  const zoomIn = () => {
+    setViewTransform((current) => ({
+      ...current,
+      scale: Math.min(5, current.scale * 1.2),
+    }))
   }
 
-  const recipeList = recipes || []
+  const zoomOut = () => {
+    setViewTransform((current) => ({
+      ...current,
+      scale: Math.max(0.1, current.scale / 1.2),
+    }))
+  }
+
+  const exportGraph = () => {
+    const dataStr = JSON.stringify(graphData, null, 2)
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
+    const exportFileDefaultName = `graph-${Date.now()}.json`
+
+    const linkElement = document.createElement('a')
+    linkElement.setAttribute('href', dataUri)
+    linkElement.setAttribute('download', exportFileDefaultName)
+    linkElement.click()
+
+    toast.success('Graph exported')
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' && selectedNodeId) {
+        deleteNode(selectedNodeId)
+      } else if (e.key === 'Escape') {
+        setSelectedNodeId(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedNodeId])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background">
       <Toaster position="top-center" />
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CookingPot className="text-primary" size={32} weight="duotone" />
-            <h1 className="text-3xl font-bold">Recipe Keeper</h1>
-          </div>
-          {currentView === 'list' && recipeList.length > 0 && (
-            <Button onClick={() => setCurrentView('add')}>
-              <Plus className="mr-2" size={20} />
-              Add Recipe
-            </Button>
-          )}
+      
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+        <div className="px-4 py-3 flex items-center gap-3">
+          <Graph className="text-primary" size={28} weight="duotone" />
+          <h1 className="text-2xl font-bold">Graph Visualizer</h1>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {currentView === 'list' && (
-          <>
-            {recipeList.length === 0 ? (
-              <EmptyState onAddRecipe={() => setCurrentView('add')} />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {recipeList.map((recipe) => (
-                  <RecipeCard
-                    key={recipe.id}
-                    recipe={recipe}
-                    onClick={() => handleViewRecipe(recipe)}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
+      <Toolbar
+        onAddNode={() => addNode()}
+        onClearGraph={clearGraph}
+        onFitView={fitView}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onExport={exportGraph}
+        nodeCount={nodes.length}
+        edgeCount={edges.length}
+      />
 
-        {currentView === 'view' && selectedRecipe && (
-          <RecipeView
-            recipe={selectedRecipe}
-            onEdit={() => setCurrentView('edit')}
-            onDelete={() => setShowDeleteDialog(true)}
-            onBack={handleBackToList}
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 relative">
+          <GraphCanvas
+            nodes={nodes}
+            edges={edges}
+            selectedNodeId={selectedNodeId}
+            onNodeSelect={setSelectedNodeId}
+            onNodeMove={moveNode}
+            onNodeDoubleClick={addNode}
+            onEdgeCreate={createEdge}
+            isCreatingEdge={isCreatingEdge}
+            setIsCreatingEdge={setIsCreatingEdge}
+            viewTransform={viewTransform}
+            onViewTransformChange={setViewTransform}
           />
-        )}
-      </main>
+          {nodes.length === 0 && <EmptyState onAddNode={() => addNode()} />}
+        </div>
 
-      <Dialog open={currentView === 'add'} onOpenChange={(open) => !open && setCurrentView('list')}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add New Recipe</DialogTitle>
-          </DialogHeader>
-          <RecipeForm
-            onSave={handleAddRecipe}
-            onCancel={() => setCurrentView('list')}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={currentView === 'edit'} onOpenChange={(open) => !open && setCurrentView('view')}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Recipe</DialogTitle>
-          </DialogHeader>
-          {selectedRecipe && (
-            <RecipeForm
-              initialData={selectedRecipe}
-              onSave={handleEditRecipe}
-              onCancel={() => setCurrentView('view')}
+        {selectedNode && (
+          <div className="w-80 border-l border-border bg-card/30 backdrop-blur-sm p-4 overflow-y-auto">
+            <NodeEditor
+              node={selectedNode}
+              onUpdate={updateNode}
+              onDelete={deleteNode}
             />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Recipe?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{selectedRecipe?.title}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteRecipe} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

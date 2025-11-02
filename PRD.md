@@ -1,137 +1,151 @@
 # Planning Guide
 
-A personal digital cookbook for storing, organizing, and discovering your favorite recipes with beautiful presentation and effortless management.
+An interactive graph visualization tool for creating, exploring, and manipulating network diagrams with nodes and edges in real-time.
 
 **Experience Qualities**:
-1. **Intuitive** - Finding and adding recipes should feel as natural as flipping through a well-organized cookbook
-2. **Elegant** - Visual design evokes the warmth and sophistication of a curated kitchen, making cooking feel inspiring
-3. **Efficient** - Quick access to ingredients and instructions while cooking, with minimal friction between steps
+1. **Fluid** - Dragging nodes and creating connections should feel smooth and responsive, like working with physical objects
+2. **Exploratory** - The interface encourages experimentation and discovery through intuitive interactions
+3. **Powerful** - Despite simplicity, users can create complex network structures effortlessly
 
 **Complexity Level**: Light Application (multiple features with basic state)
-  - Core features include recipe creation, editing, viewing, and organization with persistent storage but no complex user accounts or advanced filtering
+  - Core features include node creation, edge connections, drag interactions, and graph manipulation with persistent storage
 
 ## Essential Features
 
-### Recipe Creation
-- **Functionality**: Users can create new recipes with title, description, ingredients list, and step-by-step instructions
-- **Purpose**: Enables users to build their personal digital cookbook
-- **Trigger**: Click "Add Recipe" button from main view
-- **Progression**: Click Add Recipe → Fill in recipe details form → Add ingredients one by one → Add instruction steps → Save → View new recipe in collection
-- **Success criteria**: Recipe persists in storage, appears in recipe list, all data displays correctly
+### Node Creation
+- **Functionality**: Users can add nodes to the canvas by clicking an "Add Node" button or double-clicking the canvas
+- **Purpose**: Build the foundation of network graphs
+- **Trigger**: Click add button or double-click canvas
+- **Progression**: Click Add Node → Node appears at center/cursor → Can immediately drag to position → Click to select/edit label
+- **Success criteria**: Nodes appear instantly, are draggable, persist after page reload
 
-### Recipe Viewing
-- **Functionality**: Display full recipe with organized ingredients and numbered instructions
-- **Purpose**: Provides clear, readable format for cooking
-- **Trigger**: Click on recipe card from main collection
-- **Progression**: Browse recipes → Click recipe card → View full details with ingredients and instructions → Return to collection or edit
-- **Success criteria**: All recipe data displays clearly, easy to read while cooking, smooth navigation
+### Node Connections
+- **Functionality**: Create directed or undirected edges between nodes by dragging from one node to another
+- **Purpose**: Visualize relationships and connections in networks
+- **Trigger**: Click and drag from source node to target node
+- **Progression**: Click node → Drag toward another node → Temporary line follows cursor → Release on target node → Edge created
+- **Success criteria**: Edges draw smoothly, follow node positions when dragging, support multiple edges between same nodes
 
-### Recipe Editing
-- **Functionality**: Modify existing recipes including title, ingredients, and instructions
-- **Purpose**: Allows users to refine recipes over time
-- **Trigger**: Click edit button on recipe detail view
-- **Progression**: View recipe → Click edit → Modify any field → Save changes → See updated recipe
-- **Success criteria**: Changes persist, UI updates immediately, no data loss
+### Interactive Dragging
+- **Functionality**: Click and drag nodes to reposition them on canvas
+- **Purpose**: Arrange graph layout manually for clarity and aesthetics
+- **Trigger**: Mouse down on node, then drag
+- **Progression**: Hover node → Cursor changes → Drag node → Connected edges follow in real-time → Release to set position
+- **Success criteria**: Smooth 60fps dragging, edges update dynamically, positions persist
 
-### Recipe Deletion
-- **Functionality**: Remove recipes from collection
-- **Purpose**: Manage and curate recipe collection
-- **Trigger**: Click delete button with confirmation
-- **Progression**: View recipe → Click delete → Confirm deletion → Return to collection without deleted recipe
-- **Success criteria**: Recipe removed from storage, UI updates, action is reversible via confirmation dialog
+### Node Selection & Editing
+- **Functionality**: Select nodes to edit labels, change colors, or delete
+- **Purpose**: Customize graph appearance and node data
+- **Trigger**: Click on node to select
+- **Progression**: Click node → Node highlights → Edit panel appears → Change label/color → Update reflects immediately
+- **Success criteria**: Clear selection state, instant updates, keyboard support for label editing
 
-### Recipe Organization
-- **Functionality**: Browse all recipes in a card-based grid layout
-- **Purpose**: Quick visual scanning and access to entire collection
-- **Trigger**: Default landing view
-- **Progression**: Open app → See all recipes as cards → Click to view details or add new
-- **Success criteria**: Recipes display in clean grid, responsive layout, empty state guides new users
+### Graph Manipulation
+- **Functionality**: Pan and zoom the entire canvas, delete nodes/edges, clear graph
+- **Purpose**: Navigate large graphs and manage overall structure
+- **Trigger**: Mouse wheel for zoom, middle-click drag for pan, delete key for removal
+- **Progression**: Zoom in/out → Graph scales smoothly → Pan → View translates → Select and delete → Element removed with connected edges
+- **Success criteria**: Smooth zoom/pan, intuitive controls, confirmation for destructive actions
+
+### Export & Persistence
+- **Functionality**: Automatically save graph state, export as JSON or image
+- **Purpose**: Preserve work and share visualizations
+- **Trigger**: Auto-save on changes, manual export button
+- **Progression**: Create graph → Changes auto-save → Click export → Choose format → Download file
+- **Success criteria**: No data loss, graph loads exactly as saved, export formats work correctly
 
 ## Edge Case Handling
 
-- **Empty State** - Show welcoming illustration and "Add Your First Recipe" prompt when no recipes exist
-- **Long Ingredient Lists** - Scrollable area with clear visual separation between ingredients
-- **Complex Instructions** - Step numbers with generous spacing for readability during cooking
-- **Missing Data** - Graceful handling of optional fields (e.g., description can be blank)
-- **Deletion Protection** - Confirmation dialog prevents accidental recipe loss
+- **Empty Canvas** - Show helpful overlay with instructions: "Double-click to add nodes" and visual hints
+- **Overlapping Nodes** - Allow overlap but show z-index on selection, provide alignment tools
+- **Self-loops** - Support edges from node to itself with curved arc
+- **Multiple Edges** - Draw parallel edges with slight offset curves
+- **Large Graphs** - Performance optimization for 100+ nodes, virtualization if needed
+- **Zoom Limits** - Constrain zoom between 0.1x and 5x to prevent disorientation
 
 ## Design Direction
 
-The design should feel warm, elegant, and culinary-inspired—evoking the experience of a premium cookbook with generous whitespace, beautiful typography, and subtle interactions. A minimal, content-focused interface that lets recipes shine while providing intuitive organization tools.
+The design should feel technical yet approachable—reminiscent of network diagrams and data visualization tools but with modern polish. Clean canvas with subtle grid, vibrant nodes that pop against neutral background, and smooth physics-inspired interactions that feel alive.
 
 ## Color Selection
 
-Custom palette inspired by natural kitchen materials and ingredients—warm terracotta, sage green, and cream tones that feel organic and inviting.
+Custom palette with high-contrast nodes against neutral background—vibrant accent colors for nodes, dark mode-friendly with clear visual hierarchy.
 
-- **Primary Color**: Warm Terracotta (oklch(0.62 0.14 35)) - Evokes earthenware and warmth of cooking, used for primary actions and focal points
-- **Secondary Colors**: Soft Sage (oklch(0.75 0.05 145)) for subtle backgrounds and cards, Warm Cream (oklch(0.96 0.02 85)) for page background
-- **Accent Color**: Deep Olive (oklch(0.45 0.08 140)) for active states, important CTAs, and emphasis on key cooking steps
+- **Primary Color**: Electric Blue (oklch(0.58 0.22 250)) - Main action color for add/create buttons, active states
+- **Secondary Colors**: Soft Slate (oklch(0.35 0.02 250)) for UI chrome, Canvas Gray (oklch(0.25 0.01 250)) for background
+- **Accent Color**: Vibrant Cyan (oklch(0.72 0.15 195)) for selected nodes, highlighted edges, interactive elements
+- **Node Palette**: Array of distinct colors - Coral (oklch(0.68 0.18 25)), Violet (oklch(0.62 0.24 295)), Lime (oklch(0.75 0.20 130)), Orange (oklch(0.70 0.18 50))
 - **Foreground/Background Pairings**: 
-  - Background (Warm Cream oklch(0.96 0.02 85)): Dark Charcoal text (oklch(0.25 0.01 35)) - Ratio 12.1:1 ✓
-  - Card (White oklch(1 0 0)): Dark Charcoal text (oklch(0.25 0.01 35)) - Ratio 15.2:1 ✓
-  - Primary (Terracotta oklch(0.62 0.14 35)): White text (oklch(1 0 0)) - Ratio 5.2:1 ✓
-  - Secondary (Soft Sage oklch(0.75 0.05 145)): Dark Charcoal text (oklch(0.25 0.01 35)) - Ratio 9.8:1 ✓
-  - Accent (Deep Olive oklch(0.45 0.08 140)): White text (oklch(1 0 0)) - Ratio 7.1:1 ✓
-  - Muted (Light Sage oklch(0.88 0.03 145)): Medium Charcoal text (oklch(0.45 0.01 35)) - Ratio 5.5:1 ✓
+  - Background (Canvas Gray oklch(0.25 0.01 250)): Light text (oklch(0.90 0.02 250)) - Ratio 11.5:1 ✓
+  - Card (Dark Slate oklch(0.30 0.02 250)): Light text (oklch(0.90 0.02 250)) - Ratio 9.2:1 ✓
+  - Primary (Electric Blue oklch(0.58 0.22 250)): White text (oklch(1 0 0)) - Ratio 5.8:1 ✓
+  - Accent (Vibrant Cyan oklch(0.72 0.15 195)): Dark text (oklch(0.20 0.01 250)) - Ratio 8.9:1 ✓
+  - Node (Various bright colors): White text for labels (oklch(1 0 0)) - All ratios 4.5:1+ ✓
 
 ## Font Selection
 
-Typography should balance sophistication with readability—a refined serif for recipe titles that adds personality, paired with a clean sans-serif for ingredients and instructions that ensures clarity during cooking.
+Typography should be clean, technical, and highly legible—a modern sans-serif that works well at small sizes for node labels while maintaining clarity in UI elements.
 
 - **Typographic Hierarchy**:
-  - H1 (App Title): Playfair Display Bold/32px/tight tracking for elegant header
-  - H2 (Recipe Title): Playfair Display SemiBold/28px/normal tracking for recipe names
-  - H3 (Section Headers): Inter SemiBold/18px/wide tracking for "Ingredients" and "Instructions"
-  - Body (Ingredients/Steps): Inter Regular/16px/relaxed line-height (1.6) for easy scanning
-  - Caption (Metadata): Inter Medium/14px/normal for recipe counts and timestamps
+  - H1 (App Title): Inter Bold/24px/tight tracking for header
+  - H2 (Panel Titles): Inter SemiBold/16px/normal tracking for sidebar sections
+  - Body (Labels/UI): Inter Medium/14px/normal line-height for controls and node labels
+  - Caption (Stats): Inter Regular/12px/tabular numbers for node counts and coordinates
+  - Node Labels: Inter SemiBold/13px/centered for text on nodes
 
 ## Animations
 
-Subtle, purposeful animations that feel like pages turning in a cookbook—smooth card reveals, gentle transitions between views, and satisfying micro-interactions on buttons without distracting from content.
+Smooth, physics-based animations that make the graph feel alive—elastic node dragging, spring-based edge animations, and subtle micro-interactions on hover without sacrificing performance.
 
-- **Purposeful Meaning**: Gentle spring animations on cards communicate tactile, physical quality; smooth page transitions maintain spatial context
-- **Hierarchy of Movement**: Recipe cards get subtle hover lift (4px); modal dialogs slide up gracefully; ingredient checkboxes have satisfying check animation
+- **Purposeful Meaning**: Spring physics on drag creates natural, satisfying movement; edges animate smoothly when nodes move; selection pulses subtly to draw attention
+- **Hierarchy of Movement**: Node dragging is immediate (0ms delay); edge updates are synchronized; UI transitions are quick (150ms); zoom/pan are frame-synced
 
 ## Component Selection
 
 - **Components**: 
-  - Card (recipe preview cards with hover effects, custom shadow and border radius)
-  - Dialog (full-screen recipe view and edit form, centered with backdrop)
-  - Button (primary terracotta for add/save, ghost for cancel, destructive for delete)
-  - Input (recipe title and ingredient fields, clean borders)
-  - Textarea (description and instruction steps, generous padding)
-  - AlertDialog (delete confirmation with clear messaging)
-  - ScrollArea (for long ingredient lists and instructions)
-  - Badge (optional: for recipe categories or tags in future)
+  - Custom Canvas Component (SVG or Canvas-based for graph rendering)
+  - Button (primary for add node, ghost for tools, destructive for delete)
+  - Card (sidebar panels for controls and selected node properties)
+  - Input (node label editing, inline and in panel)
+  - Popover (color picker for node colors)
+  - Tabs (switch between directed/undirected mode, different layouts)
+  - Separator (divide tool sections)
+  - DropdownMenu (export options, view settings)
+  - AlertDialog (confirm clear graph, delete multiple nodes)
   
 - **Customizations**: 
-  - Custom recipe card component with image placeholder area
-  - Ingredient list with checkbox styling for cooking mode
-  - Numbered instruction steps with larger numbers and spacing
-  - Empty state illustration component
+  - Custom SVG-based graph renderer with D3.js force simulation
+  - Interactive node component with hover states and drag handles
+  - Edge rendering with arrow markers for directed graphs
+  - Minimap component for navigation in large graphs
+  - Toolbar component with icon buttons for graph operations
   
 - **States**: 
-  - Buttons: Terracotta primary with subtle shadow, lighter on hover, pressed state with scale
-  - Input fields: Sage border default, accent border on focus, smooth transitions
-  - Cards: Elevated shadow on hover, scale(1.02) transform, smooth spring animation
+  - Nodes: Default (white border), Hover (glow effect), Selected (thick cyan border), Dragging (reduced opacity)
+  - Edges: Default (gray), Hover (thicker + brighter), Selected (cyan), Creating (dashed animated line)
+  - Canvas: Default (subtle grid), Panning (cursor changes), Empty (helper overlay)
   
 - **Icon Selection**: 
-  - Plus (add recipe)
-  - Pencil (edit recipe)
-  - Trash (delete recipe)
-  - X (close dialogs)
-  - ChefHat or CookingPot (empty state and branding)
-  - ArrowLeft (back navigation)
+  - Plus (add node)
+  - Circle (node type selector)
+  - ArrowsOutSimple (expand/fit to view)
+  - Export (download graph)
+  - Trash (delete selected)
+  - MagnifyingGlassMinus/Plus (zoom controls)
+  - Graph (app icon)
+  - HandGrabbing (pan mode)
   
 - **Spacing**: 
-  - Cards: p-6 with gap-4 for grid (responsive)
-  - Forms: gap-6 between fields, gap-4 within field groups
-  - Recipe view: p-8 on desktop, p-6 on mobile
-  - Ingredients/steps: gap-3 for easy visual scanning
+  - Canvas: Full viewport minus header/sidebar
+  - Sidebar: w-80 on desktop, full-width drawer on mobile
+  - Toolbar: gap-2 for icon buttons, p-2 container
+  - Nodes: 60px diameter default, 8px padding for labels
+  - Grid: 20px spacing, 1px strokes
   
 - **Mobile**: 
-  - Single column card layout on mobile (grid-cols-1)
-  - Tablet gets 2 columns (md:grid-cols-2)
-  - Desktop gets 3 columns (lg:grid-cols-3)
-  - Full-screen dialogs on mobile with sticky header
-  - Bottom action buttons on mobile forms, top-right on desktop
+  - Touch-friendly node dragging with larger hit areas
+  - Bottom sheet for properties instead of sidebar
+  - Simplified toolbar with essential tools only
+  - Pinch-to-zoom gesture support
+  - Double-tap to add nodes
+  - Long-press for context menu

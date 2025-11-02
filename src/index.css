@@ -10,42 +10,38 @@
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
   }
-  
-  h1, h2 {
-    font-family: 'Playfair Display', serif;
-  }
 }
 
 :root {
-  --background: oklch(0.96 0.02 85);
-  --foreground: oklch(0.25 0.01 35);
+  --background: oklch(0.25 0.01 250);
+  --foreground: oklch(0.90 0.02 250);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.01 35);
+  --card: oklch(0.30 0.02 250);
+  --card-foreground: oklch(0.90 0.02 250);
   
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.01 35);
+  --popover: oklch(0.30 0.02 250);
+  --popover-foreground: oklch(0.90 0.02 250);
 
-  --primary: oklch(0.62 0.14 35);
+  --primary: oklch(0.58 0.22 250);
   --primary-foreground: oklch(1 0 0);
 
-  --secondary: oklch(0.75 0.05 145);
-  --secondary-foreground: oklch(0.25 0.01 35);
+  --secondary: oklch(0.35 0.02 250);
+  --secondary-foreground: oklch(0.90 0.02 250);
 
-  --muted: oklch(0.88 0.03 145);
-  --muted-foreground: oklch(0.45 0.01 35);
+  --muted: oklch(0.35 0.02 250);
+  --muted-foreground: oklch(0.65 0.02 250);
 
-  --accent: oklch(0.45 0.08 140);
-  --accent-foreground: oklch(1 0 0);
+  --accent: oklch(0.72 0.15 195);
+  --accent-foreground: oklch(0.20 0.01 250);
 
-  --destructive: oklch(0.55 0.22 25);
+  --destructive: oklch(0.60 0.24 25);
   --destructive-foreground: oklch(1 0 0);
 
-  --border: oklch(0.88 0.02 85);
-  --input: oklch(0.75 0.05 145);
-  --ring: oklch(0.45 0.08 140);
+  --border: oklch(0.40 0.02 250);
+  --input: oklch(0.40 0.02 250);
+  --ring: oklch(0.72 0.15 195);
 
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 }
 
 @theme {

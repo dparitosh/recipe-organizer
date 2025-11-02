@@ -1,11 +1,24 @@
-export interface Recipe {
+export interface Node {
   id: string
-  title: string
-  description: string
-  ingredients: string[]
-  instructions: string[]
-  createdAt: number
-  updatedAt: number
+  x: number
+  y: number
+  label: string
+  color: string
 }
 
-export type RecipeFormData = Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>
+export interface Edge {
+  id: string
+  source: string
+  target: string
+}
+
+export interface GraphData {
+  nodes: Node[]
+  edges: Edge[]
+}
+
+export interface ViewTransform {
+  x: number
+  y: number
+  scale: number
+}
