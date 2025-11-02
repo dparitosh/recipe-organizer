@@ -1,9 +1,10 @@
 # Formulation Graph Studio
 
-An enterprise-grade Food & Beverage formulation management platform with integrated PLM, SAP MDG, and Neo4j graph relationships.
+An enterprise-grade Food & Beverage formulation management platform with integrated PLM, SAP MDG, Neo4j graph relationships, and **AI-powered natural language query assistant**.
 
 ## 🚀 Features
 
+- ✨ **NEW: AI Assistant** - Natural language query interface powered by GPT-4 for intelligent formulation analysis, graph exploration, and actionable recommendations
 - **Formulation Management** - Create, edit, and version control F&B formulations
 - **BOM Configuration** - Generate Bills of Materials with process steps and cost calculations
 - **Graph Visualization** - Interactive relationship graphs powered by Neo4j
@@ -13,6 +14,19 @@ An enterprise-grade Food & Beverage formulation management platform with integra
   - **SAP MDG** - Master Data Governance for material master data
 - **GenAI Integration** - Natural language queries and intelligent insights
 - **Mock Mode** - Development-ready with realistic sample data (no backend required)
+
+## 🤖 AI Assistant Capabilities
+
+The AI Assistant enables you to:
+
+- **Ask Natural Language Questions**: "Show all recipes using mango concentrate with yield < 90%"
+- **Get Cost Insights**: "Suggest low-cost substitutes for vanilla extract"
+- **Analyze Trends**: "Summarize yield loss trends for Q4"
+- **Explore Relationships**: "Show relationships between master recipes and plants"
+- **Receive Recommendations**: Intelligent suggestions for cost optimization, yield improvement, and substitution
+- **Query Graph Data**: Automatic Cypher generation from natural language using Neo4j embeddings
+
+**📖 Complete AI documentation:** [AI_ASSISTANT_GUIDE.md](./AI_ASSISTANT_GUIDE.md) | [Quick Reference](./AI_ASSISTANT_QUICK_REFERENCE.md)
 
 ## 🎯 Quick Start
 
@@ -40,6 +54,8 @@ To connect to your enterprise systems:
 
 ## 📚 Documentation
 
+- **[AI_ASSISTANT_GUIDE.md](./AI_ASSISTANT_GUIDE.md)** - AI Assistant complete documentation
+- **[AI_ASSISTANT_QUICK_REFERENCE.md](./AI_ASSISTANT_QUICK_REFERENCE.md)** - AI Assistant quick reference
 - **[CONNECTING_BACKEND_SERVICES.md](./CONNECTING_BACKEND_SERVICES.md)** - User guide for backend configuration
 - **[BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md)** - Technical architecture and API documentation
 - **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - REST API reference

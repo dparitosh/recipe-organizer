@@ -167,6 +167,38 @@ An enterprise-grade Food & Beverage formulation management platform that integra
   - Validation rules: yield % (60%/80% thresholds), UoM compatibility, byproduct mass balance
   - Compatible JSON responses for React frontend
 
+### AI Assistant (NEW)
+- **Functionality**: Natural language AI assistant powered by GPT-4 for querying formulations, analyzing graph data, and generating intelligent recommendations
+- **Purpose**: Enable users to ask questions in natural language, retrieve insights from Neo4j graph embeddings, and receive actionable recommendations for optimization
+- **Trigger**: Navigate to "AI Assistant" tab or use suggested queries
+- **Progression**: 
+  - **Natural Language Query**: Enter question in plain English (e.g., "Show all recipes using mango concentrate with yield < 90%") → AI analyzes query intent and entities → Generates appropriate Cypher query if graph data needed → Executes against Neo4j or local formulation data
+  - **Intelligent Response**: AI synthesizes answer from multiple sources (formulations, graph data, calculations) → Provides clear, quantitative answer with specific references → Displays execution time and confidence score → Shows data sources used
+  - **Node Highlights**: Extracts relevant nodes from graph results → Ranks by relevance to query → Displays node type, name, properties, and relevance percentage → Limited to top 10 most relevant nodes
+  - **Relationship Summaries**: Analyzes relationship patterns in results → Groups by relationship type (CONTAINS, USES, DERIVED_FROM, etc.) → Counts occurrences → Provides human-readable descriptions → Shows example relationships with source/target
+  - **Recommendations**: Generates actionable recommendations based on query and data → Types: cost_optimization, yield_improvement, substitution, process_optimization, quality_enhancement → Each includes impact level (high/medium/low), description, actionable flag → Sorted by impact and relevance
+  - **Suggested Queries**: Provides 8 pre-built example queries covering common use cases → Click to execute immediately → Examples: ingredient substitution, cost analysis, yield trends, relationship exploration
+  - **Query History**: Maintains last 10 queries with responses → Click to re-execute previous query → Shows execution time and confidence for each
+  - **Graph Context Retrieval**: Uses GenAI client to convert natural language to Cypher → Executes against Neo4j when connected → Falls back to local formulation data when disconnected → Includes graph schema context for accurate query generation
+- **Success criteria**: 
+  - Natural language understanding for formulation-related queries
+  - Accurate Cypher generation for graph database queries (85%+ confidence)
+  - Multi-source data synthesis (formulations + graph + calculations)
+  - Clear, quantitative answers with specific data references
+  - Relevant node highlights with calculated relevance scores
+  - Relationship summaries with counts and examples
+  - 5+ actionable recommendations per query when applicable
+  - 8 suggested queries covering key use cases
+  - Query history with re-execution capability
+  - Response copy functionality
+  - Execution time display (typically <3s)
+  - Confidence scoring for reliability indication
+  - Data source attribution
+  - Generated Cypher query visibility (expandable)
+  - Graceful fallback when Neo4j unavailable
+  - Integration with existing formulation and graph data
+  - Responsive UI with proper loading states
+
 ## Edge Case Handling
 
 - **Empty Formulation** - Show empty state with guidance to add ingredients
@@ -291,6 +323,12 @@ Professional, purposeful animations that reinforce TCS's commitment to quality a
   - Eye/EyeSlash (Password visibility toggle)
   - CheckCircle (Connection success)
   - Warning (Connection failure, validation issues)
+  - Sparkle (AI Assistant, GenAI features)
+  - Brain (AI reasoning, intelligence)
+  - Lightning (Fast processing, powered by)
+  - Copy (Copy to clipboard)
+  - ArrowRight (Navigation, suggestions)
+  - TrendUp/TrendDown/Equals (Impact indicators)
 
 - **Spacing**:
   - Main layout: 6-column grid with 24px gap
