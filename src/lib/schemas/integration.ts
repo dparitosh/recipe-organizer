@@ -143,7 +143,10 @@ export const RELATIONSHIP_TYPES = {
   ALTERNATIVE: 'ALTERNATIVE',
   SUPPLIES: 'SUPPLIES',
   PRODUCES: 'PRODUCES',
-  SIMILAR_TO: 'SIMILAR_TO'
+  SIMILAR_TO: 'SIMILAR_TO',
+  USES: 'uses',
+  derived_from: 'derived_from',
+  produces: 'produces'
 } as const
 
 export const NODE_LABELS = {
@@ -153,5 +156,10 @@ export const NODE_LABELS = {
   PROCESS: 'Process',
   EQUIPMENT: 'Equipment',
   SUPPLIER: 'Supplier',
-  PRODUCT: 'Product'
+  PRODUCT: 'Product',
+  RECIPE: 'Recipe',
+  MASTER_RECIPE: 'MasterRecipe',
+  MANUFACTURING_RECIPE: 'ManufacturingRecipe',
+  PLANT: 'Plant',
+  SALES_ORDER: 'SalesOrder'
 } as const

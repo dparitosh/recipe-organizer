@@ -65,6 +65,38 @@ An enterprise-grade Food & Beverage formulation management platform that integra
 - **Progression**: Generate/load graph data → Display nodes (formulations, ingredients, nutrients, processes) with color coding → Show relationships (CONTAINS, DERIVED_FROM, ENRICHES, ALTERNATIVE) → Interactive pan/zoom → Select nodes for details → Apply different layouts (hierarchical, force-directed, circular)
 - **Success criteria**: Clear visual hierarchy, responsive interactions, multiple layout algorithms, export as image/JSON
 
+### Relationship Graph Viewer (ENHANCED)
+- **Functionality**: Comprehensive Cytoscape-based interactive graph visualization for recipe, material, plant, and order relationships with advanced filtering, search, and lineage tracking
+- **Purpose**: Enterprise-level visualization of complex multi-entity relationships (Ingredients, Recipes, Master Recipes, Manufacturing Recipes, Plants, Sales Orders) with real-time filtering and lineage path highlighting
+- **Trigger**: Navigate to "Relationships" tab or click "View Relationship Graph" from welcome screen
+- **Progression**: 
+  - **Initial Load**: Click "Load Graph Data" → Query Neo4j for relationship data → Display comprehensive graph with 6 node types and 3 edge types → Automatic hierarchical layout
+  - **Node Types**: Ingredient (circle), Recipe (rounded rectangle), MasterRecipe (hexagon), ManufacturingRecipe (rounded hexagon/cog), Plant (diamond/pin), SalesOrder (tag) - each with distinct colors and shapes
+  - **Edge Types**: uses (solid green), derived_from (dashed blue), produces (solid orange) with distinct visual styles
+  - **Search**: Type in search bar → Real-time highlighting of matching nodes → Dimmed non-matching nodes → Clear button to reset
+  - **Filtering**: Open filter panel → Select node type filter (Ingredient/Recipe/etc.) → Select edge type filter (uses/derived_from/produces) → Apply multiple filters → Clear all filters button
+  - **Layout Options**: Choose from 5 layouts (Hierarchical, Force-Directed, Circular, Concentric, Grid) → Smooth animated transition between layouts
+  - **Node Selection**: Click node → Right panel displays full node details and properties → Automatic lineage path highlighting (predecessors + successors) → Lineage path list in info panel → Visual highlighting with distinct colors → Click background to deselect and clear highlights
+  - **Zoom/Pan**: Mouse wheel to zoom (0.2x to 4x) → Drag to pan → Zoom in/out buttons → Fit to view button
+  - **Tooltips**: Hover over node → Instant tooltip with node name and type → Follows mouse cursor
+  - **Info Panel**: Node Info tab shows selected node properties, type badge, lineage path → Legend tab shows all node types with icons and colors, edge types with line styles, interaction guide
+  - **Export**: Export current view as PNG image (2x resolution) → Export graph data as JSON
+- **Success criteria**: 
+  - All 6 node types render with correct shapes and colors
+  - All 3 edge types display with proper styling (solid/dashed/dotted)
+  - Search highlights nodes in real-time with dimming effect
+  - Filters work independently and in combination
+  - Lineage highlighting shows full predecessor/successor chain
+  - Right panel displays complete node metadata
+  - Smooth layout transitions (500ms animation)
+  - Zoom range 0.2x-4x with smooth animations
+  - Tooltips appear instantly on hover with correct positioning
+  - Legend shows all node/edge types accurately
+  - PNG export captures full graph at high resolution
+  - JSON export includes all nodes, edges, and metadata
+  - Responsive design: 2-column on desktop (graph + panel), stacked on mobile
+  - Performance: Handles 200+ nodes smoothly with 60fps interactions
+
 ### Neo4j Integration
 - **Functionality**: Query and visualize graph relationships from Neo4j database
 - **Purpose**: Leverage graph database for complex relationship queries and pathfinding
@@ -122,6 +154,11 @@ Custom palette optimized for data visualization with accessible contrast and sem
   - Nutrient: Orange (oklch(0.70 0.18 50))
   - Process: Purple (oklch(0.55 0.14 300))
   - Supplier: Teal (oklch(0.68 0.12 180))
+  - Recipe: Green (oklch(0.65 0.18 145))
+  - MasterRecipe: Lime (oklch(0.68 0.18 85))
+  - ManufacturingRecipe: Magenta (oklch(0.62 0.16 320))
+  - Plant: Teal (oklch(0.64 0.14 160))
+  - SalesOrder: Orange (oklch(0.70 0.18 50))
 - **Status Colors**:
   - Success/Active: Green (oklch(0.65 0.18 145))
   - Warning: Orange (oklch(0.70 0.18 50))
@@ -192,6 +229,18 @@ Purposeful, professional animations that guide attention without distracting fro
   - CloudArrowDown (sync/import)
   - Percent (percentage display)
   - ChartBar (analytics)
+  - Circle (Ingredient nodes)
+  - Square (Recipe nodes)
+  - Hexagon (MasterRecipe nodes)
+  - Gear (ManufacturingRecipe nodes)
+  - MapPin (Plant nodes)
+  - Tag (SalesOrder nodes)
+  - GitBranch (Relationships tab)
+  - Path (Lineage path indicator)
+  - FunnelSimple (Filter toggle)
+  - ArrowsIn/ArrowsOut (Zoom controls)
+  - Camera (Fit to view)
+  - DownloadSimple (Export functions)
 
 - **Spacing**:
   - Main layout: 6-column grid with 24px gap

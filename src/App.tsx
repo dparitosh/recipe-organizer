@@ -4,10 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Toaster } from '@/components/ui/sonner'
-import { Flask, Graph, Calculator, Database, Plus, Cube } from '@phosphor-icons/react'
+import { Flask, Graph, Calculator, Database, Plus, Cube, GitBranch } from '@phosphor-icons/react'
 import { FormulationEditor } from '@/components/formulation/FormulationEditor'
 import { CalculationPanel } from '@/components/formulation/CalculationPanel'
 import { FormulationGraph } from '@/components/graph/FormulationGraph'
+import { RelationshipGraphViewer } from '@/components/graph/RelationshipGraphViewer'
 import { IntegrationPanel } from '@/components/integrations/IntegrationPanel'
 import { BOMConfigurator } from '@/components/bom/BOMConfigurator'
 import { Formulation, createEmptyFormulation } from '@/lib/schemas/formulation'
@@ -20,8 +21,9 @@ function App() {
   const [boms, setBOMs] = useKV<BOM[]>('boms', [])
   const [activeFormulationId, setActiveFormulationId] = useState<string | null>(null)
   const [activeBOMId, setActiveBOMId] = useState<string | null>(null)
-  const [activeView, setActiveView] = useState<'formulation' | 'bom'>('formulation')
+  const [activeView, setActiveView] = useState<'formulation' | 'bom' | 'relationships'>('formulation')
   const [graphData, setGraphData] = useState<any>(null)
+  const [relationshipGraphData, setRelationshipGraphData] = useState<any>(null)
   const [graphLayout, setGraphLayout] = useState<'hierarchical' | 'force' | 'circular'>('hierarchical')
 
   const activeFormulation = (formulations || []).find(f => f.id === activeFormulationId) || null
@@ -129,6 +131,17 @@ function App() {
     toast.success('Graph generated from formulation')
   }
 
+  const handleLoadRelationshipGraph = async () => {
+    try {
+      const result = await neo4jClient.getRelationshipGraph()
+      setRelationshipGraphData(result)
+      toast.success('Relationship graph loaded')
+    } catch (error) {
+      toast.error('Failed to load relationship graph')
+      console.error(error)
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Toaster position="top-center" />
@@ -160,61 +173,64 @@ function App() {
       </header>
 
       <main className="flex-1 p-6">
-        {(formulations || []).length === 0 ? (
-          <Card className="p-12 text-center">
-            <Flask className="mx-auto mb-4 text-muted-foreground" size={64} weight="duotone" />
-            <h2 className="text-2xl font-semibold mb-2">Welcome to Formulation Graph Studio</h2>
-            <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-              Create, manage, and visualize Food & Beverage formulations with integrated PLM, SAP MDG,
-              and Neo4j graph relationships. Calculate yields, costs, and optimize your recipes.
-            </p>
-            <Button onClick={handleCreateFormulation} size="lg" className="gap-2">
-              <Plus size={20} />
-              Create Your First Formulation
-            </Button>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            <Card className="p-4">
-              <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'formulation' | 'bom')}>
-                <div className="flex items-center gap-4 mb-4">
-                  <TabsList>
-                    <TabsTrigger value="formulation" className="gap-2">
-                      <Flask size={16} />
-                      Formulation
-                    </TabsTrigger>
-                    <TabsTrigger value="bom" className="gap-2">
-                      <Cube size={16} />
-                      BOM Configurator
-                    </TabsTrigger>
-                  </TabsList>
+        <div className="space-y-6">
+          <Card className="p-4">
+            <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'formulation' | 'bom' | 'relationships')}>
+              <div className="flex items-center gap-4 mb-4">
+                <TabsList>
+                  <TabsTrigger value="formulation" className="gap-2">
+                    <Flask size={16} />
+                    Formulation
+                  </TabsTrigger>
+                  <TabsTrigger value="bom" className="gap-2">
+                    <Cube size={16} />
+                    BOM Configurator
+                  </TabsTrigger>
+                  <TabsTrigger value="relationships" className="gap-2">
+                    <GitBranch size={16} />
+                    Relationships
+                  </TabsTrigger>
+                </TabsList>
 
-                  <div className="flex-1 flex gap-2 overflow-x-auto">
-                    {activeView === 'formulation' && (formulations || []).map((f) => (
-                      <Button
-                        key={f.id}
-                        size="sm"
-                        variant={f.id === activeFormulationId ? 'default' : 'outline'}
-                        onClick={() => setActiveFormulationId(f.id)}
-                      >
-                        {f.name}
-                      </Button>
-                    ))}
-                    {activeView === 'bom' && (boms || []).map((b) => (
-                      <Button
-                        key={b.id}
-                        size="sm"
-                        variant={b.id === activeBOMId ? 'default' : 'outline'}
-                        onClick={() => setActiveBOMId(b.id)}
-                      >
-                        {b.name}
-                      </Button>
-                    ))}
-                  </div>
+                <div className="flex-1 flex gap-2 overflow-x-auto">
+                  {activeView === 'formulation' && (formulations || []).map((f) => (
+                    <Button
+                      key={f.id}
+                      size="sm"
+                      variant={f.id === activeFormulationId ? 'default' : 'outline'}
+                      onClick={() => setActiveFormulationId(f.id)}
+                    >
+                      {f.name}
+                    </Button>
+                  ))}
+                  {activeView === 'bom' && (boms || []).map((b) => (
+                    <Button
+                      key={b.id}
+                      size="sm"
+                      variant={b.id === activeBOMId ? 'default' : 'outline'}
+                      onClick={() => setActiveBOMId(b.id)}
+                    >
+                      {b.name}
+                    </Button>
+                  ))}
                 </div>
+              </div>
 
-                <TabsContent value="formulation" className="mt-0">
-                  {activeFormulation ? (
+              <TabsContent value="formulation" className="mt-0">
+                {(formulations || []).length === 0 ? (
+                  <Card className="p-12 text-center">
+                    <Flask className="mx-auto mb-4 text-muted-foreground" size={64} weight="duotone" />
+                    <h2 className="text-2xl font-semibold mb-2">Welcome to Formulation Graph Studio</h2>
+                    <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
+                      Create, manage, and visualize Food & Beverage formulations with integrated PLM, SAP MDG,
+                      and Neo4j graph relationships. Calculate yields, costs, and optimize your recipes.
+                    </p>
+                    <Button onClick={handleCreateFormulation} size="lg" className="gap-2">
+                      <Plus size={20} />
+                      Create Your First Formulation
+                    </Button>
+                  </Card>
+                ) : activeFormulation ? (
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                       <div className="xl:col-span-2 space-y-6">
                         <FormulationEditor
@@ -317,7 +333,8 @@ function App() {
                       <Flask className="mx-auto mb-4 text-muted-foreground" size={48} weight="duotone" />
                       <p className="text-muted-foreground">Select a formulation to edit</p>
                     </Card>
-                  )}
+                  )
+                }
                 </TabsContent>
 
                 <TabsContent value="bom" className="mt-0">
@@ -342,10 +359,21 @@ function App() {
                     </Card>
                   )}
                 </TabsContent>
+
+                <TabsContent value="relationships" className="mt-0">
+                  <RelationshipGraphViewer
+                    data={relationshipGraphData}
+                    onRefresh={handleLoadRelationshipGraph}
+                    onNodeSelect={(node) => {
+                      if (node) {
+                        console.log('Selected node:', node)
+                      }
+                    }}
+                  />
+                </TabsContent>
               </Tabs>
             </Card>
           </div>
-        )}
       </main>
 
       <footer className="border-t border-border bg-card/30 py-4">
