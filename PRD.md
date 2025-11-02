@@ -1,163 +1,190 @@
-# Planning Guide
+# Formulation Graph Studio - Product Requirements Document
 
-An interactive food data explorer that visualizes relationships between foods, nutrients, and ingredients using USDA FDC (Food Data Central) API data as a dynamic network graph.
+An enterprise-grade Food & Beverage formulation management platform that integrates PLM (Product Lifecycle Management), SAP MDG (Master Data Governance), Neo4j graph databases, and USDA FDC nutritional data to provide comprehensive recipe development, BOM configuration, and cost/yield optimization.
 
 **Experience Qualities**:
-1. **Discoverable** - Users can explore nutritional data and food relationships through intuitive visual connections
-2. **Informative** - Rich data visualization makes complex nutritional information accessible and understandable
-3. **Interactive** - Search, filter, and navigate through thousands of foods with real-time API integration
+1. **Professional** - Enterprise-level tools with production-ready integrations and calculations suitable for F&B manufacturing
+2. **Analytical** - Data-driven insights through yield calculations, cost analysis, and graph visualizations of ingredient relationships
+3. **Integrated** - Seamless connections to external systems (Neo4j, PLM, SAP MDG) with real-time data synchronization
 
-**Complexity Level**: Light Application (multiple features with basic state)
-  - Core features include food search via USDA API, nutritional data visualization, relationship mapping, and interactive graph exploration with persistent favorites
+**Complexity Level**: Complex Application (advanced functionality, accounts)
+  - Multi-system integration with Neo4j graph database, PLM for material master data, SAP MDG for enterprise data governance, plus advanced calculation engines for yield, cost, scaling, and byproduct optimization
 
 ## Essential Features
 
-### Food Search Integration
-- **Functionality**: Search USDA FDC database for foods, ingredients, and branded products
-- **Purpose**: Access comprehensive nutritional data from authoritative government source
-- **Trigger**: Type in search field
-- **Progression**: Enter search term → API call to FDC → Results display → Select food → Node added to graph with nutrition data
-- **Success criteria**: Fast search results (<1s), clear food descriptions, automatic data enrichment
+### Formulation Management
+- **Functionality**: Create, edit, and manage F&B formulations with ingredients, percentages, and metadata
+- **Purpose**: Central repository for all product recipes with version control and approval workflows
+- **Trigger**: Click "New Formulation" or select existing formulation
+- **Progression**: Create formulation → Add ingredients with quantities/percentages → Set function (base, flavor, preservative) → Validate total equals 100% → Save
+- **Success criteria**: All ingredients sum to 100%, formulation persists across sessions, multi-version support
 
-### Food Node Visualization
-- **Functionality**: Display foods as nodes with color-coded categories (fruits, proteins, grains, etc.)
-- **Purpose**: Create visual representation of foods being compared or analyzed
-- **Trigger**: Select food from search results
-- **Progression**: Click food → Node appears on canvas → Shows food name and key metrics → Can drag to reposition → Click for detailed view
-- **Success criteria**: Nodes clearly labeled, color indicates food category, instant detail access
+### BOM Configuration
+- **Functionality**: Define Bill of Materials with components, process steps, suppliers, and lead times
+- **Purpose**: Connect formulations to production requirements and procurement planning
+- **Trigger**: Select formulation and open BOM configurator
+- **Progression**: Create BOM → Add components by phase (procurement/production/packaging) → Define process steps with duration → Calculate total cost and lead time → Export
+- **Success criteria**: Complete BOM with costs, process steps sequenced correctly, lead times calculated
 
-### Nutrient Comparison
-- **Functionality**: Compare nutritional profiles between multiple foods by connecting them with relationship edges
-- **Purpose**: Understand nutritional similarities, alternatives, and make informed food choices
-- **Trigger**: Select multiple food nodes
-- **Progression**: Select foods → Click compare → Edges show relationships → Tooltip shows nutrient differences → Side panel displays detailed comparison
-- **Success criteria**: Clear visual encoding of similarity, detailed nutrient breakdown, multiple foods supported
+### Calculation Engine Suite
+- **Functionality**: Real-time yield, cost, scaling, and byproduct calculations
+- **Purpose**: Financial and production planning with what-if analysis
+- **Trigger**: Select formulation and open calculation panel
+- **Progression**: 
+  - **Yield**: Input process parameters (loss %, moisture %, evaporation) → Calculate theoretical vs actual yield → View loss breakdown → Identify optimization opportunities
+  - **Cost**: Input overhead, labor, energy rates → Calculate total cost and per-unit cost → Analyze margin and profitability → View cost breakdown
+  - **Scaling**: Enter target quantity and unit → Calculate scale factor → Generate scaled ingredient list → Maintain percentage ratios
+  - **Byproduct**: Analyze process waste streams → Categorize (waste/recyclable/saleable/hazardous) → Calculate recovery value → Get optimization recommendations
+- **Success criteria**: Accurate calculations, real-time updates, warnings for inefficiencies, export results
 
-### Detailed Nutrition Panel
-- **Functionality**: View complete nutritional information from FDC including macros, vitamins, minerals
-- **Purpose**: Access comprehensive data for meal planning, dietary tracking, or research
-- **Trigger**: Click on food node
-- **Progression**: Click node → Side panel opens → Display calories, macros, micronutrients → Show serving sizes → Link to FDC source
-- **Success criteria**: All FDC data fields displayed, formatted clearly, serving size conversions
+### Graph Visualization (Cytoscape)
+- **Functionality**: Interactive network graph showing formulation-ingredient-nutrient relationships
+- **Purpose**: Visual exploration of complex ingredient dependencies and alternatives
+- **Trigger**: Click "Generate Graph" or "Load from Neo4j"
+- **Progression**: Generate/load graph data → Display nodes (formulations, ingredients, nutrients, processes) with color coding → Show relationships (CONTAINS, DERIVED_FROM, ENRICHES, ALTERNATIVE) → Interactive pan/zoom → Select nodes for details → Apply different layouts (hierarchical, force-directed, circular)
+- **Success criteria**: Clear visual hierarchy, responsive interactions, multiple layout algorithms, export as image/JSON
 
-### Graph Persistence & Favorites
-- **Functionality**: Save favorite food comparisons and searches for quick access
-- **Purpose**: Build personal library of commonly compared foods or meal plans
-- **Trigger**: Click favorite/save button
-- **Progression**: Create food graph → Click save → Name comparison → Access from favorites list → Load instantly
-- **Success criteria**: Graphs persist between sessions, quick load times, easy management
+### Neo4j Integration
+- **Functionality**: Query and visualize graph relationships from Neo4j database
+- **Purpose**: Leverage graph database for complex relationship queries and pathfinding
+- **Trigger**: Enter Cypher query and execute
+- **Progression**: Write Cypher query → Execute against Neo4j → Display nodes and relationships → Show execution metadata → Export results
+- **Success criteria**: Valid Cypher execution, clear result display, error handling, mock mode for development
 
-### Export & Share
-- **Functionality**: Export nutritional comparisons as JSON or generate shareable links
-- **Purpose**: Share meal plans, research data, or nutritional analyses
-- **Trigger**: Click export button
-- **Progression**: Create comparison → Click export → Choose format → Download/copy link
-- **Success criteria**: Valid export formats, includes all FDC attribution, shareable links work
+### PLM Integration
+- **Functionality**: Search and sync material master data from PLM system
+- **Purpose**: Access specifications, regulatory info, supplier data for ingredients
+- **Trigger**: Search PLM materials by keyword
+- **Progression**: Enter search term → Query PLM API → Display materials with specs → View certifications, allergens, supplier info → Import to formulation
+- **Success criteria**: Fast search, complete material data, regulatory compliance indicators, mock data available
+
+### SAP MDG Integration
+- **Functionality**: Access SAP Master Data Governance for enterprise material management
+- **Purpose**: Ensure formulations align with SAP material master, costing, and procurement data
+- **Trigger**: Search SAP MDG materials
+- **Progression**: Search by material number/description → View MDG material details (plant, storage, valuation class, cost) → Validate material → Sync to/from SAP → Handle errors gracefully
+- **Success criteria**: Complete MDG material view, cost data synchronized, validation before sync, batch operations
+
+### FDC Nutritional Data
+- **Functionality**: Link ingredients to USDA FDC database for nutritional analysis
+- **Purpose**: Automatic nutritional profiling and compliance with labeling requirements
+- **Trigger**: Add ingredient with FDC ID or search FDC
+- **Progression**: Search USDA FDC → Select food item → Link to ingredient → Import nutrients → Calculate formulation nutritionals → Generate nutrition facts
+- **Success criteria**: Accurate nutrient data, automatic calculations, serving size conversions
 
 ## Edge Case Handling
 
-- **Empty Canvas** - Show welcome state with search prompt: "Search for foods to begin" with example queries
-- **No Search Results** - Clear messaging when food not found, suggest alternatives or broader terms
-- **API Rate Limits** - Cache recent searches, graceful degradation with helpful message
-- **Missing Nutrient Data** - Handle incomplete FDC records, show "N/A" for missing nutrients
-- **Large Food Lists** - Pagination for search results, limit graph to 20 nodes with warning
-- **Slow Network** - Loading states for API calls, skeleton screens for nutrient panels
-- **Invalid FDC IDs** - Error handling for corrupted data or deprecated food entries
+- **Empty Formulation** - Show empty state with guidance to add ingredients
+- **Percentage Not 100%** - Warning badge showing current total, prevent approval if not valid
+- **Missing Cost Data** - Calculate with available data, show warnings for missing costs
+- **API Failures** - Graceful degradation to mock data, retry logic, clear error messages
+- **Large Formulations** - Pagination for ingredient lists, virtual scrolling for performance
+- **Concurrent Edits** - Last-write-wins with timestamp tracking, future: optimistic locking
+- **Invalid Cypher** - Syntax error display, example queries provided
+- **Network Timeouts** - Loading states, timeout after 30s, retry button
+- **Unit Conversions** - Handle kg/g/lb/oz and L/ml/gal conversions automatically
 
 ## Design Direction
 
-The design should feel scientific yet accessible—reminiscent of nutrition labels and food science visualizations but with modern web app polish. Clean interface prioritizing data clarity, color-coded food categories, and information-dense panels that don't overwhelm.
+The design should feel like an enterprise software platform—professional, data-dense but organized, with clear information hierarchy. Think SAP meets modern web apps: serious business tools with contemporary UX patterns. Dark theme emphasizes data visualization, reduces eye strain for long work sessions.
 
 ## Color Selection
 
-Custom palette inspired by food groups and nutrition labels—category-based color coding with scientific credibility and clear data hierarchy.
+Custom palette optimized for data visualization with accessible contrast and semantic color coding for different node types and statuses.
 
-- **Primary Color**: Fresh Green (oklch(0.65 0.18 145)) - Main action color representing health and nutrition
-- **Secondary Colors**: Soft Gray (oklch(0.35 0.02 250)) for UI chrome, Light Background (oklch(0.25 0.01 250))
-- **Accent Color**: Vibrant Orange (oklch(0.70 0.18 50)) for selected foods, data highlights, comparison indicators
-- **Food Category Colors**: 
-  - Fruits: Berry Red (oklch(0.62 0.22 15))
-  - Vegetables: Garden Green (oklch(0.68 0.20 140))
-  - Proteins: Salmon Pink (oklch(0.65 0.16 25))
-  - Grains: Wheat Gold (oklch(0.72 0.15 70))
-  - Dairy: Cream White (oklch(0.85 0.05 85))
-  - Fats/Oils: Butter Yellow (oklch(0.78 0.16 90))
-- **Foreground/Background Pairings**: 
-  - Background (Dark Gray oklch(0.25 0.01 250)): Light text (oklch(0.90 0.02 250)) - Ratio 11.5:1 ✓
-  - Card (Soft Dark oklch(0.30 0.02 250)): Light text (oklch(0.90 0.02 250)) - Ratio 9.2:1 ✓
-  - Primary (Fresh Green oklch(0.65 0.18 145)): White text (oklch(1 0 0)) - Ratio 5.2:1 ✓
-  - Accent (Vibrant Orange oklch(0.70 0.18 50)): White text (oklch(1 0 0)) - Ratio 4.7:1 ✓
-  - Category Colors: White text for all (oklch(1 0 0)) - All ratios 4.5:1+ ✓
+- **Primary Color**: Green (oklch(0.65 0.18 145)) - Represents growth, formulation, approved status
+- **Secondary Colors**: Deep Blue-Gray (oklch(0.35 0.02 250)) for UI chrome, Dark Background (oklch(0.25 0.01 250))
+- **Accent Color**: Orange (oklch(0.70 0.18 50)) - Highlights, warnings, selected states, CTA buttons
+- **Node Type Colors**:
+  - Formulation: Green (oklch(0.65 0.18 145))
+  - Ingredient: Blue (oklch(0.60 0.16 250))
+  - Nutrient: Orange (oklch(0.70 0.18 50))
+  - Process: Purple (oklch(0.55 0.14 300))
+  - Supplier: Teal (oklch(0.68 0.12 180))
+- **Status Colors**:
+  - Success/Active: Green (oklch(0.65 0.18 145))
+  - Warning: Orange (oklch(0.70 0.18 50))
+  - Error/Inactive: Red (oklch(0.60 0.24 25))
+  - Draft: Gray (oklch(0.50 0.02 250))
+- **Foreground/Background Pairings**:
+  - Background (oklch(0.25 0.01 250)): Light text (oklch(0.90 0.02 250)) - Ratio 11.5:1 ✓
+  - Card (oklch(0.30 0.02 250)): Light text (oklch(0.90 0.02 250)) - Ratio 9.2:1 ✓
+  - Primary (oklch(0.65 0.18 145)): White text (oklch(1 0 0)) - Ratio 5.2:1 ✓
+  - Accent (oklch(0.70 0.18 50)): White text (oklch(1 0 0)) - Ratio 4.7:1 ✓
 
 ## Font Selection
 
-Typography should prioritize data legibility and scientific precision—tabular figures for nutrients, clear hierarchy for complex information.
+Typography emphasizes readability of technical data, tabular numbers for financial/nutritional values, and clear hierarchy for complex interfaces.
 
 - **Typographic Hierarchy**:
-  - H1 (App Title): Inter Bold/26px/tight tracking - "Food Data Explorer"
-  - H2 (Food Names): Inter SemiBold/18px/normal tracking in detail panels
-  - H3 (Section Headers): Inter SemiBold/14px/uppercase/wide tracking - "MACRONUTRIENTS"
-  - Body (UI/Labels): Inter Regular/14px/normal line-height for descriptions
-  - Data (Nutrient Values): Inter Medium/13px/tabular-nums for nutritional data
-  - Caption (Metadata): Inter Regular/12px for FDC IDs, serving sizes
-  - Node Labels: Inter SemiBold/12px/centered for food names on canvas
+  - H1 (App Title): Inter Bold/24px/tight tracking - "Formulation Graph Studio"
+  - H2 (Section Headers): Inter SemiBold/18px/normal tracking - "Calculation Engine"
+  - H3 (Subsections): Inter SemiBold/14px/normal tracking - "Ingredients", "Process Steps"
+  - Body (Labels): Inter Regular/14px/1.5 line-height for form labels and descriptions
+  - Data (Values): Inter Medium/14px/tabular-nums for costs, percentages, quantities
+  - Code (IDs/Queries): JetBrains Mono/13px for material IDs, Cypher queries
+  - Caption: Inter Regular/12px for metadata, timestamps, system status
 
 ## Animations
 
-Subtle, purposeful animations that guide attention to data updates and search results—smooth transitions for panel reveals and gentle feedback for interactions.
+Purposeful, professional animations that guide attention without distracting from complex data workflows.
 
-- **Purposeful Meaning**: Search results fade in smoothly; nutrient panels slide in from right; comparison highlights pulse gently; loading states prevent jarring flashes
-- **Hierarchy of Movement**: Food node additions are immediate; panel transitions are 200ms; hover effects are instant; API loading shows progressive indicators
+- **Purposeful Meaning**: Tab transitions slide content, calculation results fade in, graph layouts animate smoothly over 500ms, loading states prevent blank flashes
+- **Hierarchy of Movement**: Critical data updates (cost calculations) are immediate; UI transitions are 200ms; graph layouts animate for spatial continuity; hovering over nodes shows subtle scale transform
 
 ## Component Selection
 
-- **Components**: 
-  - Custom Canvas Component (SVG-based for food node visualization)
-  - Input (search field with autocomplete for FDC API)
-  - Button (primary for search, ghost for clear, icon buttons for zoom)
-  - Card (food detail panels, nutrient breakdowns, search results)
-  - ScrollArea (long nutrient lists, search results)
-  - Tabs (switch between Nutrients/Ingredients/Alternatives)
-  - Separator (divide nutrient categories)
-  - Badge (food categories, serving sizes, data source labels)
-  - Skeleton (loading states for API calls)
-  - Tooltip (show nutrient full names, explanations)
-  
-- **Customizations**: 
-  - Food node component with category color coding
-  - Nutrient comparison table with visual bars
-  - Search results list with FDC metadata
-  - Nutrition fact panel styled like FDA labels
-  - Category filter chips for food groups
-  
-- **States**: 
-  - Food Nodes: Default (category color), Hover (border glow), Selected (thick orange border), Loading (skeleton)
-  - Search Input: Empty (placeholder), Typing (loading icon), Results (dropdown), Error (red border)
-  - Nutrient Panel: Loading (skeletons), Loaded (full data), Empty (no data message)
-  - Comparison Edges: Similar (green), Different (red), Neutral (gray)
-  
-- **Icon Selection**: 
+- **Components**:
+  - Card (formulation editor, calculation panels, material listings)
+  - Tabs (switch between calculations/integrations, yield/cost/scale views)
+  - Input (quantities, percentages, search queries, numeric parameters)
+  - Select (ingredient function, formulation status, unit selection)
+  - Button (primary actions, icon buttons for add/remove)
+  - Badge (status indicators, percentage totals, validation states)
+  - ScrollArea (long ingredient lists, search results, query results)
+  - Separator (divide sections within cards)
+  - Textarea (Cypher queries, notes)
+  - Custom: FormulationGraph (Cytoscape integration), CalculationPanel (multi-tab calculator)
+
+- **Customizations**:
+  - Cytoscape graph component with custom node styling per type
+  - Ingredient list with inline editing and drag-to-reorder
+  - Calculation result cards with breakdown visualizations
+  - Integration panels with tabbed API interfaces
+  - Node type legend for graph visualization
+
+- **States**:
+  - Formulation Status: Draft (gray), Review (yellow), Approved (green), Archived (muted)
+  - Calculations: Idle, Calculating (spinner), Success (green badge), Warning (orange text), Error (red)
+  - Graph Nodes: Default (category color), Hovered (border glow), Selected (thick border + highlight), Active (pulse animation)
+  - API Connections: Connected (green dot), Disconnected (red dot), Loading (animated)
+  - Validation: Valid (check icon), Invalid (error text), Warning (warning icon)
+
+- **Icon Selection**:
+  - Flask (formulation/chemistry)
+  - Graph (network visualization)
+  - Calculator (calculations)
+  - Database (Neo4j, integrations)
+  - Plus/Trash (add/remove)
   - MagnifyingGlass (search)
-  - Apple/Carrot/Fish (food category icons)
-  - ArrowsOutSimple (fit view)
-  - Export (download data)
-  - Trash (remove food node)
-  - Star (favorite/bookmark)
-  - ChartBar (nutrient comparison)
-  - Info (FDC metadata)
-  
-- **Spacing**: 
-  - Search Bar: Full width, h-12, px-4 with icon
-  - Canvas: Full viewport minus header (h-14) and search bar (h-16)
-  - Detail Panel: w-96 on desktop, full-width sheet on mobile, p-6
-  - Food Nodes: 80px diameter, 12px internal padding
-  - Nutrient Rows: py-2, gap-4 between label and value
-  - Search Results: py-3 per item, max-h-96 scrollable
-  
-- **Mobile**: 
-  - Bottom sheet for food details instead of side panel
-  - Search bar sticky at top
-  - Touch-friendly 44px minimum tap targets
-  - Swipe to dismiss detail panels
-  - Simplified nutrient display (macros only by default)
-  - Horizontal scroll for nutrient comparison tables
+  - Scales (scaling operations)
+  - CloudArrowDown (sync/import)
+  - Percent (percentage display)
+  - ChartBar (analytics)
+
+- **Spacing**:
+  - Main layout: 6-column grid with 24px gap
+  - Cards: p-6 internal padding, rounded-lg borders
+  - Form fields: gap-4 between related inputs, gap-6 between sections
+  - Ingredient rows: py-3 per item, gap-3 between columns
+  - Graph container: h-[500px] with rounded-lg border
+  - Sidebar panels: w-96 fixed width on desktop, full-width on mobile
+
+- **Mobile**:
+  - Stack layout: formulation editor → graph → calculations in vertical scroll
+  - Collapsible ingredient list with expand/collapse
+  - Bottom sheet for calculation results
+  - Simplified graph with touch gestures (pinch-zoom, pan)
+  - Hide integration panel by default, accessible via modal
+  - Larger tap targets (44px minimum) for all interactive elements
+  - Horizontal scroll for wide tables (BOM components)

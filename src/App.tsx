@@ -1,270 +1,277 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { FoodNode, Edge, GraphData, ViewTransform, SearchResult } from '@/lib/types'
-import { searchFoods, getFoodDetails, getFoodCategory, getCategoryColor, calculateNutrientSimilarity } from '@/lib/foodData'
-import { GraphCanvas } from '@/components/GraphCanvas'
-import { FoodDetailPanel } from '@/components/FoodDetailPanel'
-import { SearchBar } from '@/components/SearchBar'
-import { EmptyState } from '@/components/EmptyState'
-import { Toolbar } from '@/components/Toolbar'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Toaster } from '@/components/ui/sonner'
-import { AppleLogo } from '@phosphor-icons/react'
+import { Flask, Graph, Calculator, Database, Plus } from '@phosphor-icons/react'
+import { FormulationEditor } from '@/components/formulation/FormulationEditor'
+import { CalculationPanel } from '@/components/formulation/CalculationPanel'
+import { FormulationGraph } from '@/components/graph/FormulationGraph'
+import { IntegrationPanel } from '@/components/integrations/IntegrationPanel'
+import { Formulation, createEmptyFormulation } from '@/lib/schemas/formulation'
+import { neo4jClient } from '@/lib/api/neo4j'
 import { toast } from 'sonner'
 
 function App() {
-  const [graphData, setGraphData] = useKV<GraphData>('food-graph-data', { nodes: [], edges: [] })
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [viewTransform, setViewTransform] = useState<ViewTransform>({
-    x: 400,
-    y: 300,
-    scale: 1,
-  })
+  const [formulations, setFormulations] = useKV<Formulation[]>('formulations', [])
+  const [activeFormulationId, setActiveFormulationId] = useState<string | null>(null)
+  const [graphData, setGraphData] = useState<any>(null)
+  const [graphLayout, setGraphLayout] = useState<'hierarchical' | 'force' | 'circular'>('hierarchical')
 
-  const nodes = graphData?.nodes || []
-  const edges = graphData?.edges || []
-  const selectedNode = nodes.find(n => n.id === selectedNodeId)
+  const activeFormulation = (formulations || []).find(f => f.id === activeFormulationId) || null
 
-  const handleSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([])
-      return
-    }
-
-    setIsSearching(true)
-    try {
-      const results = await searchFoods(query, 15)
-      setSearchResults(results)
-    } catch (error) {
-      toast.error('Failed to search foods')
-      setSearchResults([])
-    } finally {
-      setIsSearching(false)
-    }
+  const handleCreateFormulation = async () => {
+    const user = await (window as any).spark.user()
+    const newFormulation = createEmptyFormulation(user.login)
+    setFormulations(current => [...(current || []), newFormulation])
+    setActiveFormulationId(newFormulation.id)
+    toast.success('New formulation created')
   }
 
-  const addFoodNode = async (result: SearchResult, x?: number, y?: number) => {
-    const existingNode = nodes.find(n => n.foodData.fdcId === result.fdcId)
-    if (existingNode) {
-      setSelectedNodeId(existingNode.id)
-      toast.info('Food already added to graph')
-      return
-    }
-
-    const foodData = await getFoodDetails(result.fdcId)
-    if (!foodData) {
-      toast.error('Failed to load food details')
-      return
-    }
-
-    const category = getFoodCategory(foodData.description, foodData.foodCategory)
-    const newNode: FoodNode = {
-      id: `food-${Date.now()}`,
-      x: x ?? 400,
-      y: y ?? 300,
-      foodData,
-      category,
-      color: getCategoryColor(category),
-    }
-
-    setGraphData((current) => ({
-      nodes: [...(current?.nodes || []), newNode],
-      edges: current?.edges || [],
-    }))
-
-    setSelectedNodeId(newNode.id)
-    setSearchResults([])
-    toast.success(`Added ${foodData.description}`)
-  }
-
-  const deleteNode = (nodeId: string) => {
-    setGraphData((current) => ({
-      nodes: (current?.nodes || []).filter((node) => node.id !== nodeId),
-      edges: (current?.edges || []).filter(
-        (edge) => edge.source !== nodeId && edge.target !== nodeId
-      ),
-    }))
-    setSelectedNodeId(null)
-    toast.success('Food removed')
-  }
-
-  const moveNode = (nodeId: string, x: number, y: number) => {
-    setGraphData((current) => ({
-      nodes: (current?.nodes || []).map((node) =>
-        node.id === nodeId ? { ...node, x, y } : node
-      ),
-      edges: current?.edges || [],
-    }))
-  }
-
-  const compareNodes = (node1Id: string, node2Id: string) => {
-    const node1 = nodes.find(n => n.id === node1Id)
-    const node2 = nodes.find(n => n.id === node2Id)
-    
-    if (!node1 || !node2) return
-
-    const edgeExists = edges.some(
-      (edge) => 
-        (edge.source === node1Id && edge.target === node2Id) ||
-        (edge.source === node2Id && edge.target === node1Id)
+  const handleUpdateFormulation = (updated: Formulation) => {
+    setFormulations(current =>
+      (current || []).map(f => f.id === updated.id ? updated : f)
     )
+  }
 
-    if (edgeExists) {
-      toast.info('Comparison already exists')
+  const handleLoadGraphData = async () => {
+    if (!activeFormulation) {
+      toast.error('No active formulation')
       return
     }
 
-    const similarity = calculateNutrientSimilarity(node1.foodData, node2.foodData)
+    try {
+      const result = await neo4jClient.getFormulationGraph(activeFormulation.id)
+      setGraphData(result)
+      toast.success('Graph data loaded')
+    } catch (error) {
+      toast.error('Failed to load graph data')
+      console.error(error)
+    }
+  }
 
-    const newEdge: Edge = {
-      id: `edge-${Date.now()}`,
-      source: node1Id,
-      target: node2Id,
-      similarity,
+  const handleGenerateMockGraph = () => {
+    if (!activeFormulation) {
+      toast.error('No active formulation')
+      return
     }
 
-    setGraphData((current) => ({
-      nodes: current?.nodes || [],
-      edges: [...(current?.edges || []), newEdge],
+    const mockNodes = [
+      {
+        id: activeFormulation.id,
+        labels: ['Formulation'],
+        properties: {
+          name: activeFormulation.name,
+          version: activeFormulation.version,
+          type: activeFormulation.type
+        }
+      },
+      ...activeFormulation.ingredients.map((ing, idx) => ({
+        id: ing.id,
+        labels: ['Ingredient'],
+        properties: {
+          name: ing.name,
+          quantity: ing.quantity,
+          percentage: ing.percentage,
+          function: ing.function
+        }
+      }))
+    ]
+
+    const mockRelationships = activeFormulation.ingredients.map((ing, idx) => ({
+      id: `rel-${idx}`,
+      type: 'CONTAINS',
+      startNode: activeFormulation.id,
+      endNode: ing.id,
+      properties: {
+        percentage: ing.percentage
+      }
     }))
 
-    toast.success(`Comparison added (${Math.round(similarity * 100)}% similar)`)
-  }
-
-  const clearGraph = () => {
-    setGraphData({ nodes: [], edges: [] })
-    setSelectedNodeId(null)
-    toast.success('Graph cleared')
-  }
-
-  const fitView = () => {
-    if (nodes.length === 0) {
-      setViewTransform({ x: 400, y: 300, scale: 1 })
-      return
-    }
-
-    const xs = nodes.map(n => n.x)
-    const ys = nodes.map(n => n.y)
-    const minX = Math.min(...xs)
-    const maxX = Math.max(...xs)
-    const minY = Math.min(...ys)
-    const maxY = Math.max(...ys)
-
-    const width = maxX - minX + 300
-    const height = maxY - minY + 300
-    const centerX = (minX + maxX) / 2
-    const centerY = (minY + maxY) / 2
-
-    const scaleX = window.innerWidth / width
-    const scaleY = (window.innerHeight - 150) / height
-    const scale = Math.min(scaleX, scaleY, 1.5)
-
-    setViewTransform({
-      x: window.innerWidth / 2 - centerX * scale,
-      y: (window.innerHeight - 100) / 2 - centerY * scale,
-      scale,
+    setGraphData({
+      nodes: mockNodes,
+      relationships: mockRelationships,
+      metadata: {
+        executionTime: 10,
+        recordCount: mockNodes.length
+      }
     })
 
-    toast.success('View fitted')
+    toast.success('Graph generated from formulation')
   }
-
-  const zoomIn = () => {
-    setViewTransform((current) => ({
-      ...current,
-      scale: Math.min(3, current.scale * 1.2),
-    }))
-  }
-
-  const zoomOut = () => {
-    setViewTransform((current) => ({
-      ...current,
-      scale: Math.max(0.3, current.scale / 1.2),
-    }))
-  }
-
-  const exportGraph = () => {
-    const dataStr = JSON.stringify(graphData, null, 2)
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
-    const exportFileDefaultName = `food-comparison-${Date.now()}.json`
-
-    const linkElement = document.createElement('a')
-    linkElement.setAttribute('href', dataUri)
-    linkElement.setAttribute('download', exportFileDefaultName)
-    linkElement.click()
-
-    toast.success('Data exported')
-  }
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' && selectedNodeId) {
-        deleteNode(selectedNodeId)
-      } else if (e.key === 'Escape') {
-        setSelectedNodeId(null)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedNodeId])
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <Toaster position="top-center" />
       
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="px-6 py-4 flex items-center gap-3">
-          <AppleLogo className="text-primary" size={32} weight="duotone" />
-          <h1 className="text-2xl font-bold tracking-tight">Food Data Explorer</h1>
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Flask className="text-primary" size={32} weight="duotone" />
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Formulation Graph Studio</h1>
+              <p className="text-sm text-muted-foreground">
+                Enterprise F&B Formulation Management & BOM Configuration
+              </p>
+            </div>
+          </div>
+          <Button onClick={handleCreateFormulation} className="gap-2">
+            <Plus size={18} />
+            New Formulation
+          </Button>
         </div>
       </header>
 
-      <div className="border-b border-border bg-card/30 backdrop-blur-sm px-6 py-4">
-        <SearchBar 
-          onSearch={handleSearch}
-          onSelectResult={addFoodNode}
-          results={searchResults}
-          isSearching={isSearching}
-        />
-      </div>
+      <main className="flex-1 p-6">
+        {(formulations || []).length === 0 ? (
+          <Card className="p-12 text-center">
+            <Flask className="mx-auto mb-4 text-muted-foreground" size={64} weight="duotone" />
+            <h2 className="text-2xl font-semibold mb-2">Welcome to Formulation Graph Studio</h2>
+            <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
+              Create, manage, and visualize Food & Beverage formulations with integrated PLM, SAP MDG,
+              and Neo4j graph relationships. Calculate yields, costs, and optimize your recipes.
+            </p>
+            <Button onClick={handleCreateFormulation} size="lg" className="gap-2">
+              <Plus size={20} />
+              Create Your First Formulation
+            </Button>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2 space-y-6">
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-semibold">Formulations</h3>
+                  <div className="flex-1 flex gap-2 overflow-x-auto">
+                    {(formulations || []).map((f) => (
+                      <Button
+                        key={f.id}
+                        size="sm"
+                        variant={f.id === activeFormulationId ? 'default' : 'outline'}
+                        onClick={() => setActiveFormulationId(f.id)}
+                      >
+                        {f.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </Card>
 
-      <Toolbar
-        onClearGraph={clearGraph}
-        onFitView={fitView}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onExport={exportGraph}
-        foodCount={nodes.length}
-        comparisonCount={edges.length}
-      />
+              {activeFormulation && (
+                <>
+                  <FormulationEditor
+                    formulation={activeFormulation}
+                    onChange={handleUpdateFormulation}
+                  />
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 relative">
-          <GraphCanvas
-            nodes={nodes}
-            edges={edges}
-            selectedNodeId={selectedNodeId}
-            onNodeSelect={setSelectedNodeId}
-            onNodeMove={moveNode}
-            onCompare={compareNodes}
-            viewTransform={viewTransform}
-            onViewTransformChange={setViewTransform}
-          />
-          {nodes.length === 0 && <EmptyState />}
-        </div>
+                  <Card className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Graph size={24} />
+                        <h3 className="font-semibold">Relationship Graph</h3>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleGenerateMockGraph}
+                        >
+                          Generate Graph
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleLoadGraphData}
+                        >
+                          <Database size={16} className="mr-1" />
+                          Load from Neo4j
+                        </Button>
+                        <select
+                          className="px-3 py-1 text-sm border rounded-md"
+                          value={graphLayout}
+                          onChange={(e) => setGraphLayout(e.target.value as any)}
+                        >
+                          <option value="hierarchical">Hierarchical</option>
+                          <option value="force">Force-Directed</option>
+                          <option value="circular">Circular</option>
+                        </select>
+                      </div>
+                    </div>
+                    <FormulationGraph
+                      data={graphData}
+                      layout={graphLayout}
+                      height="500px"
+                      onNodeSelect={(nodeId) => toast.info(`Selected: ${nodeId}`)}
+                    />
+                  </Card>
+                </>
+              )}
+            </div>
 
-        {selectedNode && (
-          <div className="w-96 border-l border-border bg-card/30 backdrop-blur-sm overflow-y-auto">
-            <FoodDetailPanel
-              node={selectedNode}
-              allNodes={nodes}
-              onDelete={deleteNode}
-              onCompare={compareNodes}
-            />
+            <div className="space-y-6">
+              <Tabs defaultValue="calculations">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="calculations">
+                    <Calculator size={16} className="mr-1" />
+                    Calculations
+                  </TabsTrigger>
+                  <TabsTrigger value="integrations">
+                    <Database size={16} className="mr-1" />
+                    Integrations
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="calculations">
+                  {activeFormulation ? (
+                    <CalculationPanel
+                      formulation={activeFormulation}
+                      onScaledFormulation={handleUpdateFormulation}
+                    />
+                  ) : (
+                    <Card className="p-8 text-center">
+                      <Calculator className="mx-auto mb-2 text-muted-foreground" size={48} />
+                      <p className="text-muted-foreground">Select a formulation to calculate</p>
+                    </Card>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="integrations">
+                  <IntegrationPanel />
+                </TabsContent>
+              </Tabs>
+
+              <Card className="p-6 bg-secondary/20">
+                <h3 className="font-semibold mb-3 text-sm">System Status</h3>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Neo4j:</span>
+                    <span className="text-green-500 font-semibold">Connected (Mock)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">PLM:</span>
+                    <span className="text-green-500 font-semibold">Connected (Mock)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">SAP MDG:</span>
+                    <span className="text-green-500 font-semibold">Connected (Mock)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">FDC API:</span>
+                    <span className="text-green-500 font-semibold">Available</span>
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
         )}
-      </div>
+      </main>
+
+      <footer className="border-t border-border bg-card/30 py-4">
+        <div className="px-6 text-center text-sm text-muted-foreground">
+          Formulation Graph Studio • Enterprise F&B Management Platform
+        </div>
+      </footer>
     </div>
   )
 }
