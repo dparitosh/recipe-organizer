@@ -20,9 +20,9 @@ export class Neo4jClient {
   private mockMode: boolean = true
   private driver: Driver | null = null
   private config: Neo4jConnectionConfig = {
-    uri: 'neo4j+s://2cccd05b.databases.neo4j.io',
-    username: 'neo4j',
-    password: 'tcs12345',
+    uri: '',
+    username: '',
+    password: '',
     database: 'neo4j'
   }
 

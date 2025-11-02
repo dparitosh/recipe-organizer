@@ -178,9 +178,9 @@ function App() {
                   <Gear size={18} weight="bold" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-3xl">
                 <DialogHeader>
-                  <DialogTitle>Settings</DialogTitle>
+                  <DialogTitle>Neo4j Database Settings</DialogTitle>
                 </DialogHeader>
                 <Neo4jSettings />
               </DialogContent>
