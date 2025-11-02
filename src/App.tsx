@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Toaster } from '@/components/ui/sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Flask, Graph, Calculator, Database, Plus, Cube, GitBranch, Gear } from '@phosphor-icons/react'
+import { Flask, Graph, Calculator, Database, Plus, Cube, GitBranch, Gear, Lightning } from '@phosphor-icons/react'
 import { FormulationEditor } from '@/components/formulation/FormulationEditor'
 import { CalculationPanel } from '@/components/formulation/CalculationPanel'
 import { FormulationGraph } from '@/components/graph/FormulationGraph'
@@ -13,9 +13,10 @@ import { RelationshipGraphViewer } from '@/components/graph/RelationshipGraphVie
 import { IntegrationPanel } from '@/components/integrations/IntegrationPanel'
 import { BOMConfigurator } from '@/components/bom/BOMConfigurator'
 import { Neo4jSettings } from '@/components/Neo4jSettings'
+import { ConnectionTester } from '@/components/ConnectionTester'
 import { Formulation, createEmptyFormulation } from '@/lib/schemas/formulation'
 import { BOM, createEmptyBOM } from '@/lib/schemas/bom'
-import { neo4jClient } from '@/lib/api/neo4j'
+import { neo4jManager } from '@/lib/managers/neo4j-manager'
 import { createMockNeo4jAPI } from '@/lib/api/neo4j-api'
 import { toast } from 'sonner'
 
@@ -81,7 +82,7 @@ function App() {
     }
 
     try {
-      const result = await neo4jClient.getFormulationGraph(activeFormulation.id)
+      const result = await neo4jManager.getFormulationGraph(activeFormulation.id)
       setGraphData(result)
       toast.success('Graph data loaded')
     } catch (error) {
@@ -142,7 +143,7 @@ function App() {
 
   const handleLoadRelationshipGraph = async () => {
     try {
-      const result = await neo4jClient.getRelationshipGraph()
+      const result = await neo4jManager.getRelationshipGraph()
       setRelationshipGraphData(result)
       toast.success('Relationship graph loaded')
     } catch (error) {
@@ -178,11 +179,28 @@ function App() {
                   <Gear size={18} weight="bold" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-3xl">
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Neo4j Database Settings</DialogTitle>
+                  <DialogTitle>Neo4j Settings & Connection Testing</DialogTitle>
                 </DialogHeader>
-                <Neo4jSettings />
+                <Tabs defaultValue="settings" className="mt-4">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="settings">
+                      <Database size={16} className="mr-2" weight="bold" />
+                      Settings
+                    </TabsTrigger>
+                    <TabsTrigger value="testing">
+                      <Lightning size={16} className="mr-2" weight="bold" />
+                      Connection Tests
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="settings">
+                    <Neo4jSettings />
+                  </TabsContent>
+                  <TabsContent value="testing">
+                    <ConnectionTester />
+                  </TabsContent>
+                </Tabs>
               </DialogContent>
             </Dialog>
             <Button onClick={handleCreateFormulation} className="gap-2">
@@ -339,17 +357,17 @@ function App() {
                           <div className="space-y-2 text-xs">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Neo4j:</span>
-                              <span className={`font-semibold ${neo4jClient.isMockMode() ? 'text-yellow-600' : neo4jClient.isConnected() ? 'text-green-600' : 'text-red-600'}`}>
-                                {neo4jClient.isMockMode() ? 'Mock Mode' : neo4jClient.isConnected() ? 'Connected' : 'Disconnected'}
+                              <span className={`font-semibold ${neo4jManager.isMockMode() ? 'text-yellow-600' : neo4jManager.isConnected() ? 'text-green-600' : 'text-red-600'}`}>
+                                {neo4jManager.isMockMode() ? 'Mock Mode' : neo4jManager.isConnected() ? 'Connected' : 'Disconnected'}
                               </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Database:</span>
-                              <span className="font-semibold text-foreground">{neo4jClient.getConfig().database}</span>
+                              <span className="font-semibold text-foreground">{neo4jManager.getConnectionStatus().config?.database || 'neo4j'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">URI:</span>
-                              <span className="font-semibold text-foreground text-[10px] truncate max-w-[180px]">{neo4jClient.getConfig().uri}</span>
+                              <span className="font-semibold text-foreground text-[10px] truncate max-w-[180px]">{neo4jManager.getConnectionStatus().config?.uri || '(not configured)'}</span>
                             </div>
                           </div>
                         </Card>

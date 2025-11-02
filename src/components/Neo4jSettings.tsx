@@ -8,10 +8,11 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Database, CheckCircle, XCircle, Info, Eye, EyeSlash, Warning, Lightning } from '@phosphor-icons/react'
-import { neo4jClient, Neo4jConnectionConfig } from '@/lib/api/neo4j'
+import { neo4jManager } from '@/lib/managers/neo4j-manager'
+import { Neo4jDriverConfig } from '@/lib/drivers/neo4j-driver'
 import { toast } from 'sonner'
 
-const DEFAULT_CONFIG: Neo4jConnectionConfig = {
+const DEFAULT_CONFIG: Neo4jDriverConfig = {
   uri: '',
   username: '',
   password: '',
@@ -19,10 +20,10 @@ const DEFAULT_CONFIG: Neo4jConnectionConfig = {
 }
 
 export function Neo4jSettings() {
-  const [savedConfig, setSavedConfig] = useKV<Neo4jConnectionConfig>('neo4j-config', DEFAULT_CONFIG)
+  const [savedConfig, setSavedConfig] = useKV<Neo4jDriverConfig>('neo4j-config', DEFAULT_CONFIG)
   
   const [useMockMode, setUseMockMode] = useKV<boolean>('neo4j-mock-mode', true)
-  const [config, setConfig] = useState<Neo4jConnectionConfig>(savedConfig || DEFAULT_CONFIG)
+  const [config, setConfig] = useState<Neo4jDriverConfig>(savedConfig || DEFAULT_CONFIG)
   const [testing, setTesting] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'failed'>('unknown')
   const [connectionError, setConnectionError] = useState<string>('')
@@ -34,7 +35,7 @@ export function Neo4jSettings() {
   }>({})
 
   useEffect(() => {
-    neo4jClient.setMockMode(useMockMode ?? true)
+    neo4jManager.setMockMode(useMockMode ?? true)
   }, [useMockMode])
 
   const handleTestConnection = async () => {
@@ -51,28 +52,26 @@ export function Neo4jSettings() {
     const startTime = Date.now()
 
     try {
-      await neo4jClient.setConfig(config)
-      neo4jClient.setMockMode(false)
-      
-      const isConnected = await neo4jClient.testConnection()
+      const isConnected = await neo4jManager.testConnection(config)
       const latency = Date.now() - startTime
       
       if (isConnected) {
         setConnectionStatus('connected')
         setTestDetails({ latency })
         toast.success(`Connection successful! (${latency}ms)`)
+        neo4jManager.setMockMode(false)
       } else {
         setConnectionStatus('failed')
         setConnectionError('Unable to establish connection')
         toast.error('Connection failed')
-        neo4jClient.setMockMode(true)
+        neo4jManager.setMockMode(true)
       }
     } catch (error) {
       setConnectionStatus('failed')
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setConnectionError(errorMessage)
       toast.error(`Connection error: ${errorMessage}`)
-      neo4jClient.setMockMode(true)
+      neo4jManager.setMockMode(true)
     } finally {
       setTesting(false)
     }
@@ -80,13 +79,12 @@ export function Neo4jSettings() {
 
   const handleSaveConfig = async () => {
     setSavedConfig(config)
-    await neo4jClient.setConfig(config)
     toast.success('Configuration saved')
   }
 
   const handleToggleMockMode = (enabled: boolean) => {
     setUseMockMode(() => enabled)
-    neo4jClient.setMockMode(enabled)
+    neo4jManager.setMockMode(enabled)
     if (enabled) {
       setConnectionStatus('unknown')
       toast.info('Mock mode enabled')
@@ -94,6 +92,8 @@ export function Neo4jSettings() {
       toast.info('Mock mode disabled - connect to Neo4j')
     }
   }
+
+  const status = neo4jManager.getConnectionStatus()
 
   return (
     <div className="space-y-6 max-h-[70vh] overflow-y-auto">
@@ -322,14 +322,14 @@ export function Neo4jSettings() {
                   <Separator className="my-2" />
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Driver Status:</span>
-                    <span className={`font-semibold ${neo4jClient.isConnected() ? 'text-green-600' : 'text-muted-foreground'}`}>
-                      {neo4jClient.isConnected() ? 'Active' : 'Inactive'}
+                    <span className={`font-semibold ${status.isConnected ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {status.isConnected ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Mode:</span>
-                    <span className={`font-semibold ${neo4jClient.isMockMode() ? 'text-yellow-600' : 'text-blue-600'}`}>
-                      {neo4jClient.isMockMode() ? 'Mock' : 'Live'}
+                    <span className={`font-semibold ${status.isMockMode ? 'text-yellow-600' : 'text-blue-600'}`}>
+                      {status.isMockMode ? 'Mock' : 'Live'}
                     </span>
                   </div>
                 </div>
