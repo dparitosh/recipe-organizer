@@ -5,6 +5,28 @@ export const NEO4J_CONSTANTS = {
   MAX_CONNECTION_POOL_SIZE: 50,
   DEFAULT_QUERY_LIMIT: 200,
   TEST_CONNECTION_TIMEOUT_MS: 30000,
+  NODE_LABELS: {
+    FOOD: 'Food',
+    NUTRIENT: 'Nutrient',
+    FOOD_CATEGORY: 'FoodCategory',
+    FORMULATION: 'Formulation',
+    RECIPE: 'Recipe',
+    MASTER_RECIPE: 'MasterRecipe',
+    MANUFACTURING_RECIPE: 'ManufacturingRecipe',
+    PLANT: 'Plant',
+    SALES_ORDER: 'SalesOrder',
+  },
+  RELATIONSHIP_TYPES: {
+    BELONGS_TO_CATEGORY: 'BELONGS_TO_CATEGORY',
+    CONTAINS_NUTRIENT: 'CONTAINS_NUTRIENT',
+    ALTERNATIVE_TO: 'ALTERNATIVE_TO',
+    USES_INGREDIENT: 'USES_INGREDIENT',
+    PROVIDES_NUTRIENT: 'PROVIDES_NUTRIENT',
+    DERIVED_FROM: 'DERIVED_FROM',
+    USES: 'USES',
+    PRODUCES: 'PRODUCES',
+    REQUIRES: 'REQUIRES',
+  },
 } as const
 
 export const AI_CONSTANTS = {
@@ -43,16 +65,31 @@ export const VALIDATION_CONSTANTS = {
 } as const
 
 export const GRAPH_COLORS = {
-  FORMULATION: 'oklch(0.50 0.16 255)',
-  INGREDIENT: 'oklch(0.48 0.14 260)',
+  FOOD: 'oklch(0.48 0.14 260)',
   NUTRIENT: 'oklch(0.65 0.14 35)',
-  PROCESS: 'oklch(0.52 0.12 280)',
-  SUPPLIER: 'oklch(0.55 0.12 200)',
+  FOOD_CATEGORY: 'oklch(0.60 0.12 180)',
+  FORMULATION: 'oklch(0.50 0.16 255)',
   RECIPE: 'oklch(0.50 0.16 255)',
   MASTER_RECIPE: 'oklch(0.58 0.14 240)',
   MANUFACTURING_RECIPE: 'oklch(0.48 0.12 300)',
   PLANT: 'oklch(0.55 0.12 200)',
   SALES_ORDER: 'oklch(0.65 0.14 35)',
+  PROCESS: 'oklch(0.52 0.12 280)',
+  SUPPLIER: 'oklch(0.55 0.12 200)',
+} as const
+
+export const FDC_CONSTANTS = {
+  API_BASE_URL: 'https://api.nal.usda.gov/fdc/v1',
+  DEFAULT_API_KEY: 'DEMO_KEY',
+  DEFAULT_PAGE_SIZE: 25,
+  MAX_PAGE_SIZE: 200,
+  RATE_LIMIT_PER_HOUR: 1000,
+  DATA_TYPES: {
+    FOUNDATION: 'Foundation',
+    SR_LEGACY: 'SR Legacy',
+    BRANDED: 'Branded',
+    SURVEY: 'Survey (FNDDS)',
+  },
 } as const
 
 export const ERROR_MESSAGES = {

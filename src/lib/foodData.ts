@@ -1,6 +1,15 @@
 import { FoodData, SearchResult } from './types'
+import { FDC_CONSTANTS } from './constants'
 
-const FDC_API_BASE = 'https://api.nal.usda.gov/fdc/v1'
+let FDC_API_KEY: string = FDC_CONSTANTS.DEFAULT_API_KEY
+
+export function setFDCApiKey(apiKey: string) {
+  FDC_API_KEY = apiKey
+}
+
+export function getFDCApiKey(): string {
+  return FDC_API_KEY
+}
 
 export const FOOD_CATEGORIES = {
   FRUITS: {
@@ -58,10 +67,10 @@ export function getCategoryColor(category: string): string {
   return FOOD_CATEGORIES[category as keyof typeof FOOD_CATEGORIES]?.color || FOOD_CATEGORIES.OTHER.color
 }
 
-export async function searchFoods(query: string, pageSize: number = 10): Promise<SearchResult[]> {
+export async function searchFoods(query: string, pageSize: number = FDC_CONSTANTS.DEFAULT_PAGE_SIZE): Promise<SearchResult[]> {
   try {
     const response = await fetch(
-      `${FDC_API_BASE}/foods/search?query=${encodeURIComponent(query)}&pageSize=${pageSize}&api_key=DEMO_KEY`
+      `${FDC_CONSTANTS.API_BASE_URL}/foods/search?query=${encodeURIComponent(query)}&pageSize=${pageSize}&api_key=${FDC_API_KEY}`
     )
     
     if (!response.ok) {
@@ -79,7 +88,7 @@ export async function searchFoods(query: string, pageSize: number = 10): Promise
 export async function getFoodDetails(fdcId: number): Promise<FoodData | null> {
   try {
     const response = await fetch(
-      `${FDC_API_BASE}/food/${fdcId}?api_key=DEMO_KEY`
+      `${FDC_CONSTANTS.API_BASE_URL}/food/${fdcId}?api_key=${FDC_API_KEY}`
     )
     
     if (!response.ok) {

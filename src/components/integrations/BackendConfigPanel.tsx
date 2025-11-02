@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
+import { FDCConfigPanel } from './FDCConfigPanel'
 import { 
   Database, 
   CloudArrowDown, 
@@ -251,10 +252,14 @@ export function BackendConfigPanel() {
       </Alert>
 
       <Tabs defaultValue="neo4j" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="neo4j" className="gap-2">
             <Database size={16} weight="bold" />
             Neo4j
+          </TabsTrigger>
+          <TabsTrigger value="fdc" className="gap-2">
+            <Database size={16} weight="bold" />
+            USDA FDC
           </TabsTrigger>
           <TabsTrigger value="plm" className="gap-2">
             <CloudArrowDown size={16} weight="bold" />
@@ -373,6 +378,10 @@ export function BackendConfigPanel() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="fdc" className="space-y-4">
+          <FDCConfigPanel />
         </TabsContent>
 
         <TabsContent value="plm" className="space-y-4">

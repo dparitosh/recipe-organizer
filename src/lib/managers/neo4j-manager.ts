@@ -171,11 +171,11 @@ export class Neo4jManager {
 
   async getFormulationGraph(formulationId: string): Promise<Neo4jResult> {
     const cypher = `
-      MATCH (f:Formulation {id: $formulationId})
-      OPTIONAL MATCH (f)-[r1:CONTAINS]->(i:Ingredient)
-      OPTIONAL MATCH (i)-[r2:ENRICHES]->(n:Nutrient)
+      MATCH (f:${NEO4J_CONSTANTS.NODE_LABELS.FORMULATION} {id: $formulationId})
+      OPTIONAL MATCH (f)-[r1:${NEO4J_CONSTANTS.RELATIONSHIP_TYPES.USES_INGREDIENT}]->(food:${NEO4J_CONSTANTS.NODE_LABELS.FOOD})
+      OPTIONAL MATCH (food)-[r2:${NEO4J_CONSTANTS.RELATIONSHIP_TYPES.CONTAINS_NUTRIENT}]->(n:${NEO4J_CONSTANTS.NODE_LABELS.NUTRIENT})
       OPTIONAL MATCH (f)-[r3:REQUIRES]->(p:Process)
-      RETURN f, r1, i, r2, n, r3, p
+      RETURN f, r1, food, r2, n, r3, p
     `
     return this.query(cypher, { formulationId })
   }
@@ -183,7 +183,12 @@ export class Neo4jManager {
   async getRelationshipGraph(): Promise<Neo4jResult> {
     const cypher = `
       MATCH path = (n)-[r]->(m)
-      WHERE n:Ingredient OR n:Recipe OR n:MasterRecipe OR n:ManufacturingRecipe OR n:Plant OR n:SalesOrder
+      WHERE n:${NEO4J_CONSTANTS.NODE_LABELS.FOOD} 
+         OR n:${NEO4J_CONSTANTS.NODE_LABELS.RECIPE} 
+         OR n:${NEO4J_CONSTANTS.NODE_LABELS.MASTER_RECIPE} 
+         OR n:${NEO4J_CONSTANTS.NODE_LABELS.MANUFACTURING_RECIPE} 
+         OR n:${NEO4J_CONSTANTS.NODE_LABELS.PLANT} 
+         OR n:${NEO4J_CONSTANTS.NODE_LABELS.SALES_ORDER}
       RETURN path
       LIMIT $limit
     `
@@ -194,77 +199,245 @@ export class Neo4jManager {
     const mockNodes: Neo4jGraphNode[] = [
       {
         id: 'master-recipe-1',
-        labels: ['MasterRecipe'],
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.MASTER_RECIPE],
         properties: { 
           id: 'mr-001', 
-          name: 'Chocolate Chip Cookie Master',
+          name: 'Chocolate Chip Cookie Master Recipe',
           version: '2.0',
-          status: 'Approved'
+          status: 'Approved',
+          createdBy: 'chef@tcs.com',
+          created: '2024-01-15'
         }
       },
       {
         id: 'recipe-1',
-        labels: ['Recipe'],
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.RECIPE],
         properties: { 
           id: 'recipe-001', 
-          name: 'Chocolate Chip Cookie Base',
-          yield: '100 units'
+          name: 'Chocolate Chip Cookie Base Recipe',
+          yield: '100 cookies',
+          prepTime: '30 min',
+          cookTime: '15 min'
         }
       },
       {
         id: 'mfg-recipe-1',
-        labels: ['ManufacturingRecipe'],
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.MANUFACTURING_RECIPE],
         properties: { 
           id: 'mfg-001', 
           name: 'Cookie Production Line A',
-          batchSize: '1000 kg'
+          batchSize: '1000 kg',
+          efficiency: '95%',
+          equipmentRequired: ['Industrial Mixer', 'Conveyor Oven']
         }
       },
       {
-        id: 'ingredient-1',
-        labels: ['Ingredient'],
+        id: 'mfg-recipe-2',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.MANUFACTURING_RECIPE],
         properties: { 
-          id: 'ing-flour', 
-          name: 'All-Purpose Flour',
-          allergen: 'Gluten'
+          id: 'mfg-002', 
+          name: 'Cookie Production Line B',
+          batchSize: '750 kg',
+          efficiency: '92%',
+          equipmentRequired: ['Batch Mixer', 'Rotary Oven']
         }
       },
       {
-        id: 'ingredient-2',
-        labels: ['Ingredient'],
+        id: 'food-1',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.FOOD],
         properties: { 
-          id: 'ing-chocolate', 
-          name: 'Chocolate Chips',
-          allergen: 'Dairy'
+          fdcId: 169414,
+          description: 'Wheat flour, white, all-purpose, enriched',
+          dataType: 'SR Legacy',
+          foodCategory: 'Cereal Grains and Pasta',
+          servingSize: 100,
+          servingSizeUnit: 'g'
+        }
+      },
+      {
+        id: 'food-2',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.FOOD],
+        properties: { 
+          fdcId: 169655,
+          description: 'Sugars, granulated',
+          dataType: 'SR Legacy',
+          foodCategory: 'Sweets',
+          servingSize: 100,
+          servingSizeUnit: 'g'
+        }
+      },
+      {
+        id: 'food-3',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.FOOD],
+        properties: { 
+          fdcId: 170851,
+          description: 'Chocolate, dark, 70-85% cacao solids',
+          dataType: 'SR Legacy',
+          foodCategory: 'Sweets',
+          servingSize: 100,
+          servingSizeUnit: 'g'
+        }
+      },
+      {
+        id: 'food-4',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.FOOD],
+        properties: { 
+          fdcId: 173430,
+          description: 'Butter, without salt',
+          dataType: 'SR Legacy',
+          foodCategory: 'Dairy and Egg Products',
+          servingSize: 100,
+          servingSizeUnit: 'g'
+        }
+      },
+      {
+        id: 'food-5',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.FOOD],
+        properties: { 
+          fdcId: 173424,
+          description: 'Egg, whole, raw, fresh',
+          dataType: 'SR Legacy',
+          foodCategory: 'Dairy and Egg Products',
+          servingSize: 50,
+          servingSizeUnit: 'g'
+        }
+      },
+      {
+        id: 'nutrient-1',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.NUTRIENT],
+        properties: {
+          nutrientId: 1003,
+          nutrientName: 'Protein',
+          nutrientNumber: '203',
+          unitName: 'g'
+        }
+      },
+      {
+        id: 'nutrient-2',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.NUTRIENT],
+        properties: {
+          nutrientId: 1004,
+          nutrientName: 'Total lipid (fat)',
+          nutrientNumber: '204',
+          unitName: 'g'
+        }
+      },
+      {
+        id: 'nutrient-3',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.NUTRIENT],
+        properties: {
+          nutrientId: 1005,
+          nutrientName: 'Carbohydrate, by difference',
+          nutrientNumber: '205',
+          unitName: 'g'
+        }
+      },
+      {
+        id: 'category-1',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.FOOD_CATEGORY],
+        properties: {
+          categoryId: 'cat-001',
+          description: 'Cereal Grains and Pasta'
+        }
+      },
+      {
+        id: 'category-2',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.FOOD_CATEGORY],
+        properties: {
+          categoryId: 'cat-002',
+          description: 'Sweets'
+        }
+      },
+      {
+        id: 'category-3',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.FOOD_CATEGORY],
+        properties: {
+          categoryId: 'cat-003',
+          description: 'Dairy and Egg Products'
         }
       },
       {
         id: 'plant-1',
-        labels: ['Plant'],
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.PLANT],
         properties: { 
           id: 'plant-north', 
           name: 'North Regional Plant',
-          region: 'North America'
+          region: 'North America',
+          capacity: '10000 units/day',
+          location: 'Chicago, IL',
+          certifications: ['FDA', 'HACCP', 'ISO 22000']
+        }
+      },
+      {
+        id: 'plant-2',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.PLANT],
+        properties: { 
+          id: 'plant-south', 
+          name: 'South Regional Plant',
+          region: 'South America',
+          capacity: '8000 units/day',
+          location: 'São Paulo, BR',
+          certifications: ['ANVISA', 'HACCP']
         }
       },
       {
         id: 'order-1',
-        labels: ['SalesOrder'],
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.SALES_ORDER],
         properties: { 
           id: 'so-12345', 
-          name: 'Retail Chain Order Q1',
-          quantity: '50000 units'
+          name: 'Retail Chain Order Q1 2024',
+          quantity: '50000 units',
+          customer: 'MegaMart',
+          dueDate: '2024-03-30',
+          priority: 'High',
+          status: 'In Production'
+        }
+      },
+      {
+        id: 'order-2',
+        labels: [NEO4J_CONSTANTS.NODE_LABELS.SALES_ORDER],
+        properties: { 
+          id: 'so-12346', 
+          name: 'Export Order EU Q2 2024',
+          quantity: '30000 units',
+          customer: 'European Distributors',
+          dueDate: '2024-04-15',
+          priority: 'Medium',
+          status: 'Planning'
         }
       }
     ]
 
     const mockRelationships: Neo4jGraphRelationship[] = [
-      { id: 'rel-1', type: 'derived_from', startNode: 'recipe-1', endNode: 'master-recipe-1', properties: {} },
-      { id: 'rel-2', type: 'derived_from', startNode: 'mfg-recipe-1', endNode: 'recipe-1', properties: {} },
-      { id: 'rel-3', type: 'uses', startNode: 'recipe-1', endNode: 'ingredient-1', properties: {} },
-      { id: 'rel-4', type: 'uses', startNode: 'recipe-1', endNode: 'ingredient-2', properties: {} },
-      { id: 'rel-5', type: 'produces', startNode: 'plant-1', endNode: 'mfg-recipe-1', properties: {} },
-      { id: 'rel-6', type: 'REQUIRES', startNode: 'order-1', endNode: 'mfg-recipe-1', properties: {} }
+      { id: 'rel-1', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.DERIVED_FROM, startNode: 'recipe-1', endNode: 'master-recipe-1', properties: { derivedDate: '2024-01-20' } },
+      { id: 'rel-2', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.DERIVED_FROM, startNode: 'mfg-recipe-1', endNode: 'recipe-1', properties: { derivedDate: '2024-02-01' } },
+      { id: 'rel-3', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.DERIVED_FROM, startNode: 'mfg-recipe-2', endNode: 'recipe-1', properties: { derivedDate: '2024-02-01' } },
+      
+      { id: 'rel-4', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.USES, startNode: 'recipe-1', endNode: 'food-1', properties: { amount: '500g' } },
+      { id: 'rel-5', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.USES, startNode: 'recipe-1', endNode: 'food-2', properties: { amount: '300g' } },
+      { id: 'rel-6', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.USES, startNode: 'recipe-1', endNode: 'food-3', properties: { amount: '200g' } },
+      { id: 'rel-7', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.USES, startNode: 'recipe-1', endNode: 'food-4', properties: { amount: '250g' } },
+      { id: 'rel-8', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.USES, startNode: 'recipe-1', endNode: 'food-5', properties: { amount: '2 units' } },
+      
+      { id: 'rel-9', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.USES, startNode: 'mfg-recipe-1', endNode: 'food-1', properties: { scaled: true } },
+      { id: 'rel-10', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.USES, startNode: 'mfg-recipe-1', endNode: 'food-2', properties: { scaled: true } },
+      { id: 'rel-11', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.USES, startNode: 'mfg-recipe-1', endNode: 'food-3', properties: { scaled: true } },
+
+      { id: 'rel-12', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.BELONGS_TO_CATEGORY, startNode: 'food-1', endNode: 'category-1', properties: {} },
+      { id: 'rel-13', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.BELONGS_TO_CATEGORY, startNode: 'food-2', endNode: 'category-2', properties: {} },
+      { id: 'rel-14', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.BELONGS_TO_CATEGORY, startNode: 'food-3', endNode: 'category-2', properties: {} },
+      { id: 'rel-15', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.BELONGS_TO_CATEGORY, startNode: 'food-4', endNode: 'category-3', properties: {} },
+      { id: 'rel-16', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.BELONGS_TO_CATEGORY, startNode: 'food-5', endNode: 'category-3', properties: {} },
+
+      { id: 'rel-17', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.CONTAINS_NUTRIENT, startNode: 'food-1', endNode: 'nutrient-1', properties: { value: 10.3, unit: 'g', per100g: 10.3 } },
+      { id: 'rel-18', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.CONTAINS_NUTRIENT, startNode: 'food-1', endNode: 'nutrient-2', properties: { value: 1.2, unit: 'g', per100g: 1.2 } },
+      { id: 'rel-19', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.CONTAINS_NUTRIENT, startNode: 'food-1', endNode: 'nutrient-3', properties: { value: 76.3, unit: 'g', per100g: 76.3 } },
+      
+      { id: 'rel-20', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.PRODUCES, startNode: 'plant-1', endNode: 'mfg-recipe-1', properties: { line: 'A', capacity: '500kg/hr' } },
+      { id: 'rel-21', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.PRODUCES, startNode: 'plant-2', endNode: 'mfg-recipe-2', properties: { line: 'B', capacity: '350kg/hr' } },
+      
+      { id: 'rel-22', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.REQUIRES, startNode: 'order-1', endNode: 'mfg-recipe-1', properties: { quantity: 50000 } },
+      { id: 'rel-23', type: NEO4J_CONSTANTS.RELATIONSHIP_TYPES.REQUIRES, startNode: 'order-2', endNode: 'mfg-recipe-2', properties: { quantity: 30000 } }
     ]
     
     return Promise.resolve({

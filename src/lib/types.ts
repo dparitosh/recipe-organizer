@@ -4,6 +4,8 @@ export interface FoodNutrient {
   nutrientNumber: string
   unitName: string
   value: number
+  derivationCode?: string
+  derivationDescription?: string
 }
 
 export interface FoodData {
@@ -15,7 +17,13 @@ export interface FoodData {
   servingSize?: number
   servingSizeUnit?: string
   brandOwner?: string
+  brandName?: string
+  subbrandName?: string
+  gtinUpc?: string
   ingredients?: string
+  publicationDate?: string
+  marketCountry?: string
+  householdServingFullText?: string
 }
 
 export interface FoodNode {
