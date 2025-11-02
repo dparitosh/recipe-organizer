@@ -19,12 +19,23 @@ An enterprise-grade Food & Beverage formulation management platform that integra
 - **Progression**: Create formulation → Add ingredients with quantities/percentages → Set function (base, flavor, preservative) → Validate total equals 100% → Save
 - **Success criteria**: All ingredients sum to 100%, formulation persists across sessions, multi-version support
 
-### BOM Configuration
-- **Functionality**: Define Bill of Materials with components, process steps, suppliers, and lead times
-- **Purpose**: Connect formulations to production requirements and procurement planning
-- **Trigger**: Select formulation and open BOM configurator
-- **Progression**: Create BOM → Add components by phase (procurement/production/packaging) → Define process steps with duration → Calculate total cost and lead time → Export
-- **Success criteria**: Complete BOM with costs, process steps sequenced correctly, lead times calculated
+### BOM Configuration (ENHANCED)
+- **Functionality**: Comprehensive Bill of Materials configurator with three-pane interface: ingredient tree view, process step editor, and calculation summary with yield and byproduct visualization
+- **Purpose**: Connect formulations to production requirements with detailed component management, multi-step process tracking, and real-time cost/yield calculations
+- **Trigger**: Select formulation and click "Create BOM" or select existing BOM from tab
+- **Progression**: 
+  - **Component Management**: Create BOM → Add components with dynamic tree view organized by phase (procurement/production/packaging) → Edit quantity, unit, cost, and phase inline → Remove components → Validate component data with inline warnings
+  - **Process Step Configuration**: Add process steps with sequential ordering → Define name, description, duration, temperature, equipment → Configure yield parameters (input quantity, output quantity, waste) → Track efficiency with automatic yield percentage calculation → Display warnings for steps with >20% loss → Edit steps with expandable detail panel
+  - **Real-time Calculation**: Click Calculate to compute → Overall yield percentage with progress visualization → Material cost, processing cost, overhead cost breakdown → Cost per unit calculation → Waste and byproduct tracking with quantity → Visual summary with charts and badges → Export calculation results
+- **Success criteria**: 
+  - Dynamic component tree organized by phase with inline editing
+  - Process steps sequenced correctly with yield tracking
+  - Inline validation showing rounding errors and high loss warnings
+  - Real-time calculation preview with cost breakdown and yield chart
+  - Three-pane layout: left (components), center (process), right (calculations)
+  - Responsive design with collapsible sections for mobile
+  - Persistent BOM storage linked to formulation
+  - Export BOM and calculation results
 
 ### Calculation Engine Suite (ENHANCED)
 - **Functionality**: Comprehensive deterministic calculation engine for formulation scaling, yield computation, cost analysis, and nutrition aggregation
