@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,16 +6,14 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Database, CloudArrowDown, MagnifyingGlass, Gear } from '@phosphor-icons/react'
+import { Database, CloudArrowDown, MagnifyingGlass, Gear, CheckCircle, XCircle, Warning } from '@phosphor-icons/react'
 import { plmClient } from '@/lib/api/plm'
 import { mdgClient } from '@/lib/api/mdg'
-import { neo4jClient } from '@/lib/api/neo4j'
+import { integrationManager } from '@/lib/managers/integration-manager'
 import { PLMMaterial, MDGMaterial } from '@/lib/schemas/integration'
-import { Neo4jConfigPanel, Neo4jConfig } from './Neo4jConfigPanel'
 import { toast } from 'sonner'
 
 export function IntegrationPanel() {
-  const [showNeo4jConfig, setShowNeo4jConfig] = useState(false)
   const [plmSearchQuery, setPlmSearchQuery] = useState('')
   const [plmResults, setPlmResults] = useState<PLMMaterial[]>([])
   const [plmLoading, setPlmLoading] = useState(false)
@@ -27,6 +25,16 @@ export function IntegrationPanel() {
   const [neo4jQuery, setNeo4jQuery] = useState('MATCH (n) RETURN n LIMIT 10')
   const [neo4jResults, setNeo4jResults] = useState<any>(null)
   const [neo4jLoading, setNeo4jLoading] = useState(false)
+
+  const [syncStatuses, setSyncStatuses] = useState(integrationManager.getAllSyncStatuses())
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSyncStatuses(integrationManager.getAllSyncStatuses())
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const handlePLMSearch = async () => {
     if (!plmSearchQuery.trim()) return
@@ -65,39 +73,79 @@ export function IntegrationPanel() {
 
     setNeo4jLoading(true)
     try {
-      const results = await neo4jClient.query(neo4jQuery)
+      const results = await integrationManager.queryNeo4j(neo4jQuery)
       setNeo4jResults(results)
       toast.success(`Found ${results.nodes.length} nodes, ${results.relationships.length} relationships`)
     } catch (error) {
-      toast.error('Neo4j query failed')
+      toast.error('Neo4j query failed - check connection settings')
       console.error(error)
     } finally {
       setNeo4jLoading(false)
     }
   }
 
-  const handleNeo4jConfigChange = (config: Neo4jConfig) => {
-    neo4jClient.setMockMode(config.mockMode)
-    neo4jClient.setConfig({
-      uri: config.uri,
-      username: config.username,
-      password: config.password,
-      database: config.database
-    })
+  const handleTestConnections = async () => {
+    toast.info('Testing all connections...')
+    try {
+      const results = await integrationManager.testAllConnections()
+      
+      Object.entries(results).forEach(([service, connected]) => {
+        if (connected) {
+          toast.success(`${service.toUpperCase()}: Connected`)
+        } else {
+          toast.error(`${service.toUpperCase()}: Connection failed`)
+        }
+      })
+    } catch (error) {
+      toast.error('Connection test failed')
+    }
+  }
+
+  const getStatusIcon = (status: any) => {
+    if (!status) return <Warning size={16} className="text-yellow-500" />
+    if (status.connected) return <CheckCircle size={16} className="text-green-500" />
+    return <XCircle size={16} className="text-red-500" />
   }
 
   return (
     <div className="space-y-4">
-      <Neo4jConfigPanel onConfigChange={handleNeo4jConfigChange} />
-      
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database size={24} />
-            System Integrations
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Database size={24} />
+              System Integrations
+            </CardTitle>
+            <Button onClick={handleTestConnections} variant="outline" size="sm">
+              Test Connections
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            {['neo4j', 'plm', 'mdg'].map((service) => {
+              const status = syncStatuses.find(s => s.service === service)
+              return (
+                <Card key={service} className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(status)}
+                      <span className="text-sm font-semibold uppercase">{service}</span>
+                    </div>
+                    {status?.connected && (
+                      <Badge variant="outline" className="text-xs">
+                        {status.lastSync ? new Date(status.lastSync).toLocaleTimeString() : 'Never'}
+                      </Badge>
+                    )}
+                  </div>
+                  {status?.error && (
+                    <p className="text-xs text-red-500 mt-1">{status.error}</p>
+                  )}
+                </Card>
+              )
+            })}
+          </div>
+
           <Tabs defaultValue="plm">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="plm">PLM</TabsTrigger>
@@ -217,10 +265,18 @@ export function IntegrationPanel() {
               />
             </div>
 
-            <Button onClick={handleNeo4jQuery} disabled={neo4jLoading} className="w-full">
+            <Button onClick={handleNeo4jQuery} disabled={neo4jLoading || !integrationManager.isNeo4jConnected()} className="w-full">
               <Database className="mr-2" size={18} />
               Execute Query
             </Button>
+
+            {!integrationManager.isNeo4jConnected() && (
+              <Card className="p-4 bg-yellow-50 border-yellow-200">
+                <p className="text-sm text-yellow-800">
+                  Neo4j not connected. Please configure connection in Settings.
+                </p>
+              </Card>
+            )}
 
             {neo4jResults && (
               <ScrollArea className="h-[300px]">

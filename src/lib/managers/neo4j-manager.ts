@@ -1,3 +1,4 @@
+import neo4j from 'neo4j-driver'
 import { neo4jDriver, Neo4jDriverConfig } from '@/lib/drivers/neo4j-driver'
 import { genAIClient } from '@/lib/genai/genai-client'
 import { Neo4jGraphNode, Neo4jGraphRelationship, Neo4jResult } from '@/lib/schemas/integration'
@@ -31,14 +32,13 @@ export class Neo4jManager {
 
   async testConnection(config: Neo4jDriverConfig): Promise<boolean> {
     try {
-      await neo4jDriver.connect(config)
-      const isConnected = await neo4jDriver.verifyConnectivity()
-      
-      if (!isConnected) {
-        await neo4jDriver.disconnect()
-      }
-      
-      return isConnected
+      const testDriver = neo4j.driver(
+        config.uri,
+        neo4j.auth.basic(config.username, config.password)
+      )
+      await testDriver.verifyConnectivity()
+      await testDriver.close()
+      return true
     } catch (error) {
       console.error('✗ Neo4j Manager: Test connection failed', error)
       return false
@@ -83,13 +83,13 @@ export class Neo4jManager {
       
       const nodes: Neo4jGraphNode[] = []
       const relationships: Neo4jGraphRelationship[] = []
-      const nodeMap = new Map<string, Neo4jGraphNode>()
+      const nodeMap = new Map<string, boolean>()
 
       for (const record of result.records) {
-        const keys = Object.keys(record.toObject())
+        const obj = record.toObject()
         
-        for (const key of keys) {
-          const value = record.get(key)
+        for (const key in obj) {
+          const value = obj[key]
           
           if (value && typeof value === 'object') {
             if (value.labels) {
@@ -101,7 +101,7 @@ export class Neo4jManager {
                   properties: value.properties || {}
                 }
                 nodes.push(node)
-                nodeMap.set(nodeId, node)
+                nodeMap.set(nodeId, true)
               }
             } else if (value.type) {
               const rel: Neo4jGraphRelationship = {
@@ -112,6 +112,39 @@ export class Neo4jManager {
                 properties: value.properties || {}
               }
               relationships.push(rel)
+            } else if (value.segments) {
+              for (const segment of value.segments) {
+                const startId = segment.start.identity?.toString() || segment.start.elementId
+                if (!nodeMap.has(startId)) {
+                  const startNode: Neo4jGraphNode = {
+                    id: startId,
+                    labels: segment.start.labels,
+                    properties: segment.start.properties || {}
+                  }
+                  nodes.push(startNode)
+                  nodeMap.set(startId, true)
+                }
+
+                const endId = segment.end.identity?.toString() || segment.end.elementId
+                if (!nodeMap.has(endId)) {
+                  const endNode: Neo4jGraphNode = {
+                    id: endId,
+                    labels: segment.end.labels,
+                    properties: segment.end.properties || {}
+                  }
+                  nodes.push(endNode)
+                  nodeMap.set(endId, true)
+                }
+
+                const rel: Neo4jGraphRelationship = {
+                  id: segment.relationship.identity?.toString() || segment.relationship.elementId,
+                  type: segment.relationship.type,
+                  startNode: startId,
+                  endNode: endId,
+                  properties: segment.relationship.properties || {}
+                }
+                relationships.push(rel)
+              }
             }
           }
         }
