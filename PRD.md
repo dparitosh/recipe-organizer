@@ -26,16 +26,26 @@ An enterprise-grade Food & Beverage formulation management platform that integra
 - **Progression**: Create BOM → Add components by phase (procurement/production/packaging) → Define process steps with duration → Calculate total cost and lead time → Export
 - **Success criteria**: Complete BOM with costs, process steps sequenced correctly, lead times calculated
 
-### Calculation Engine Suite
-- **Functionality**: Real-time yield, cost, scaling, and byproduct calculations
-- **Purpose**: Financial and production planning with what-if analysis
+### Calculation Engine Suite (ENHANCED)
+- **Functionality**: Comprehensive deterministic calculation engine for formulation scaling, yield computation, cost analysis, and nutrition aggregation
+- **Purpose**: Production planning with precise scaling from 100g basis to batch sizes (e.g., 10,000 L), accounting for losses, density conversions, and plant constraints
 - **Trigger**: Select formulation and open calculation panel
 - **Progression**: 
-  - **Yield**: Input process parameters (loss %, moisture %, evaporation) → Calculate theoretical vs actual yield → View loss breakdown → Identify optimization opportunities
-  - **Cost**: Input overhead, labor, energy rates → Calculate total cost and per-unit cost → Analyze margin and profitability → View cost breakdown
-  - **Scaling**: Enter target quantity and unit → Calculate scale factor → Generate scaled ingredient list → Maintain percentage ratios
-  - **Byproduct**: Analyze process waste streams → Categorize (waste/recyclable/saleable/hazardous) → Calculate recovery value → Get optimization recommendations
-- **Success criteria**: Accurate calculations, real-time updates, warnings for inefficiencies, export results
+  - **Scaling with Density**: Input target batch size and unit (kg/L/gal) → Engine converts mass↔volume using ingredient density map → Apply plant rounding constraints → Generate scaled ingredient list with volume equivalents
+  - **Yield Chain Computation**: Define loss models per step (process/evaporation/moisture/transfer) → Engine computes step-by-step yields → Track cumulative yield through production → Identify high-loss steps → Calculate actual vs theoretical output
+  - **Plant Constraint Rounding**: Define rounding rules by ingredient pattern and quantity thresholds → Engine applies intelligent rounding based on equipment precision → Respect min/max batch sizes → Account for equipment capacity limitations
+  - **Cost Rollup**: Calculate raw materials, labor (from process time), overhead, packaging, energy, shipping → Aggregate total cost and cost per unit → Include byproduct value recovery → Compute net cost and profitability metrics
+  - **Nutrition Aggregation**: Collect nutrition data from all ingredients → Scale based on rounded quantities → Normalize to per-100g basis → Aggregate macros, vitamins, minerals → Generate complete nutritional profile
+  - **Byproduct Analysis**: Track waste streams from yield chain → Categorize by type (waste/recyclable/saleable/hazardous) → Calculate disposal costs and recovery value → Suggest optimization opportunities
+- **Success criteria**: 
+  - Accurate scaling with density conversion (±0.1% precision)
+  - Complete yield chain with cumulative loss tracking
+  - Intelligent rounding respecting plant constraints
+  - Comprehensive cost breakdown including all factors
+  - Accurate nutritional aggregation normalized to 100g
+  - Efficiency score (0-100) calculated from yield, cost, and warnings
+  - Support for batch comparisons and scenario analysis
+  - Export results to CSV/JSON
 
 ### Graph Visualization (Cytoscape)
 - **Functionality**: Interactive network graph showing formulation-ingredient-nutrient relationships
