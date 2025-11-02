@@ -1,27 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Node, Edge, GraphData, ViewTransform } from '@/lib/types'
+import { FoodNode, Edge, GraphData, ViewTransform, SearchResult } from '@/lib/types'
+import { searchFoods, getFoodDetails, getFoodCategory, getCategoryColor, calculateNutrientSimilarity } from '@/lib/foodData'
 import { GraphCanvas } from '@/components/GraphCanvas'
-import { NodeEditor } from '@/components/NodeEditor'
+import { FoodDetailPanel } from '@/components/FoodDetailPanel'
+import { SearchBar } from '@/components/SearchBar'
 import { EmptyState } from '@/components/EmptyState'
 import { Toolbar } from '@/components/Toolbar'
 import { Toaster } from '@/components/ui/sonner'
-import { Graph } from '@phosphor-icons/react'
+import { AppleLogo } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
-const NODE_COLORS = [
-  'oklch(0.68 0.18 25)',
-  'oklch(0.62 0.24 295)', 
-  'oklch(0.75 0.20 130)',
-  'oklch(0.70 0.18 50)',
-  'oklch(0.65 0.20 260)',
-  'oklch(0.72 0.18 340)',
-]
-
 function App() {
-  const [graphData, setGraphData] = useKV<GraphData>('graph-data', { nodes: [], edges: [] })
+  const [graphData, setGraphData] = useKV<GraphData>('food-graph-data', { nodes: [], edges: [] })
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
-  const [isCreatingEdge, setIsCreatingEdge] = useState(false)
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
   const [viewTransform, setViewTransform] = useState<ViewTransform>({
     x: 400,
     y: 300,
@@ -32,13 +26,46 @@ function App() {
   const edges = graphData?.edges || []
   const selectedNode = nodes.find(n => n.id === selectedNodeId)
 
-  const addNode = (x?: number, y?: number) => {
-    const newNode: Node = {
-      id: `node-${Date.now()}`,
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    setIsSearching(true)
+    try {
+      const results = await searchFoods(query, 15)
+      setSearchResults(results)
+    } catch (error) {
+      toast.error('Failed to search foods')
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const addFoodNode = async (result: SearchResult, x?: number, y?: number) => {
+    const existingNode = nodes.find(n => n.foodData.fdcId === result.fdcId)
+    if (existingNode) {
+      setSelectedNodeId(existingNode.id)
+      toast.info('Food already added to graph')
+      return
+    }
+
+    const foodData = await getFoodDetails(result.fdcId)
+    if (!foodData) {
+      toast.error('Failed to load food details')
+      return
+    }
+
+    const category = getFoodCategory(foodData.description, foodData.foodCategory)
+    const newNode: FoodNode = {
+      id: `food-${Date.now()}`,
       x: x ?? 400,
       y: y ?? 300,
-      label: `Node ${nodes.length + 1}`,
-      color: NODE_COLORS[nodes.length % NODE_COLORS.length],
+      foodData,
+      category,
+      color: getCategoryColor(category),
     }
 
     setGraphData((current) => ({
@@ -47,16 +74,8 @@ function App() {
     }))
 
     setSelectedNodeId(newNode.id)
-    toast.success('Node added')
-  }
-
-  const updateNode = (nodeId: string, updates: Partial<Node>) => {
-    setGraphData((current) => ({
-      nodes: (current?.nodes || []).map((node) =>
-        node.id === nodeId ? { ...node, ...updates } : node
-      ),
-      edges: current?.edges || [],
-    }))
+    setSearchResults([])
+    toast.success(`Added ${foodData.description}`)
   }
 
   const deleteNode = (nodeId: string) => {
@@ -67,27 +86,42 @@ function App() {
       ),
     }))
     setSelectedNodeId(null)
-    toast.success('Node deleted')
+    toast.success('Food removed')
   }
 
   const moveNode = (nodeId: string, x: number, y: number) => {
-    updateNode(nodeId, { x, y })
+    setGraphData((current) => ({
+      nodes: (current?.nodes || []).map((node) =>
+        node.id === nodeId ? { ...node, x, y } : node
+      ),
+      edges: current?.edges || [],
+    }))
   }
 
-  const createEdge = (sourceId: string, targetId: string) => {
+  const compareNodes = (node1Id: string, node2Id: string) => {
+    const node1 = nodes.find(n => n.id === node1Id)
+    const node2 = nodes.find(n => n.id === node2Id)
+    
+    if (!node1 || !node2) return
+
     const edgeExists = edges.some(
-      (edge) => edge.source === sourceId && edge.target === targetId
+      (edge) => 
+        (edge.source === node1Id && edge.target === node2Id) ||
+        (edge.source === node2Id && edge.target === node1Id)
     )
 
     if (edgeExists) {
-      toast.error('Edge already exists')
+      toast.info('Comparison already exists')
       return
     }
 
+    const similarity = calculateNutrientSimilarity(node1.foodData, node2.foodData)
+
     const newEdge: Edge = {
       id: `edge-${Date.now()}`,
-      source: sourceId,
-      target: targetId,
+      source: node1Id,
+      target: node2Id,
+      similarity,
     }
 
     setGraphData((current) => ({
@@ -95,7 +129,7 @@ function App() {
       edges: [...(current?.edges || []), newEdge],
     }))
 
-    toast.success('Edge created')
+    toast.success(`Comparison added (${Math.round(similarity * 100)}% similar)`)
   }
 
   const clearGraph = () => {
@@ -117,18 +151,18 @@ function App() {
     const minY = Math.min(...ys)
     const maxY = Math.max(...ys)
 
-    const width = maxX - minX + 200
-    const height = maxY - minY + 200
+    const width = maxX - minX + 300
+    const height = maxY - minY + 300
     const centerX = (minX + maxX) / 2
     const centerY = (minY + maxY) / 2
 
     const scaleX = window.innerWidth / width
-    const scaleY = (window.innerHeight - 100) / height
+    const scaleY = (window.innerHeight - 150) / height
     const scale = Math.min(scaleX, scaleY, 1.5)
 
     setViewTransform({
       x: window.innerWidth / 2 - centerX * scale,
-      y: (window.innerHeight - 50) / 2 - centerY * scale,
+      y: (window.innerHeight - 100) / 2 - centerY * scale,
       scale,
     })
 
@@ -138,28 +172,28 @@ function App() {
   const zoomIn = () => {
     setViewTransform((current) => ({
       ...current,
-      scale: Math.min(5, current.scale * 1.2),
+      scale: Math.min(3, current.scale * 1.2),
     }))
   }
 
   const zoomOut = () => {
     setViewTransform((current) => ({
       ...current,
-      scale: Math.max(0.1, current.scale / 1.2),
+      scale: Math.max(0.3, current.scale / 1.2),
     }))
   }
 
   const exportGraph = () => {
     const dataStr = JSON.stringify(graphData, null, 2)
     const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr)
-    const exportFileDefaultName = `graph-${Date.now()}.json`
+    const exportFileDefaultName = `food-comparison-${Date.now()}.json`
 
     const linkElement = document.createElement('a')
     linkElement.setAttribute('href', dataUri)
     linkElement.setAttribute('download', exportFileDefaultName)
     linkElement.click()
 
-    toast.success('Graph exported')
+    toast.success('Data exported')
   }
 
   useEffect(() => {
@@ -180,21 +214,29 @@ function App() {
       <Toaster position="top-center" />
       
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="px-4 py-3 flex items-center gap-3">
-          <Graph className="text-primary" size={28} weight="duotone" />
-          <h1 className="text-2xl font-bold">Graph Visualizer</h1>
+        <div className="px-6 py-4 flex items-center gap-3">
+          <AppleLogo className="text-primary" size={32} weight="duotone" />
+          <h1 className="text-2xl font-bold tracking-tight">Food Data Explorer</h1>
         </div>
       </header>
 
+      <div className="border-b border-border bg-card/30 backdrop-blur-sm px-6 py-4">
+        <SearchBar 
+          onSearch={handleSearch}
+          onSelectResult={addFoodNode}
+          results={searchResults}
+          isSearching={isSearching}
+        />
+      </div>
+
       <Toolbar
-        onAddNode={() => addNode()}
         onClearGraph={clearGraph}
         onFitView={fitView}
         onZoomIn={zoomIn}
         onZoomOut={zoomOut}
         onExport={exportGraph}
-        nodeCount={nodes.length}
-        edgeCount={edges.length}
+        foodCount={nodes.length}
+        comparisonCount={edges.length}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -205,22 +247,20 @@ function App() {
             selectedNodeId={selectedNodeId}
             onNodeSelect={setSelectedNodeId}
             onNodeMove={moveNode}
-            onNodeDoubleClick={addNode}
-            onEdgeCreate={createEdge}
-            isCreatingEdge={isCreatingEdge}
-            setIsCreatingEdge={setIsCreatingEdge}
+            onCompare={compareNodes}
             viewTransform={viewTransform}
             onViewTransformChange={setViewTransform}
           />
-          {nodes.length === 0 && <EmptyState onAddNode={() => addNode()} />}
+          {nodes.length === 0 && <EmptyState />}
         </div>
 
         {selectedNode && (
-          <div className="w-80 border-l border-border bg-card/30 backdrop-blur-sm p-4 overflow-y-auto">
-            <NodeEditor
+          <div className="w-96 border-l border-border bg-card/30 backdrop-blur-sm overflow-y-auto">
+            <FoodDetailPanel
               node={selectedNode}
-              onUpdate={updateNode}
+              allNodes={nodes}
               onDelete={deleteNode}
+              onCompare={compareNodes}
             />
           </div>
         )}

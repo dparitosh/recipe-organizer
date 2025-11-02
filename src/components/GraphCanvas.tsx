@@ -1,30 +1,16 @@
-import { useRef, useEffect, useState } from 'react'
-import { Node, Edge, ViewTransform } from '@/lib/types'
-import * as d3 from 'd3'
+import { useRef, useState, useEffect } from 'react'
+import { FoodNode, Edge, ViewTransform } from '@/lib/types'
 
 interface GraphCanvasProps {
-  nodes: Node[]
+  nodes: FoodNode[]
   edges: Edge[]
   selectedNodeId: string | null
-  onNodeSelect: (nodeId: string | null) => void
+  onNodeSelect: (nodeId: string) => void
   onNodeMove: (nodeId: string, x: number, y: number) => void
-  onNodeDoubleClick: (x: number, y: number) => void
-  onEdgeCreate: (sourceId: string, targetId: string) => void
-  isCreatingEdge: boolean
-  setIsCreatingEdge: (value: boolean) => void
+  onCompare: (node1Id: string, node2Id: string) => void
   viewTransform: ViewTransform
   onViewTransformChange: (transform: ViewTransform) => void
 }
-
-const NODE_RADIUS = 30
-const NODE_COLORS = [
-  'oklch(0.68 0.18 25)',
-  'oklch(0.62 0.24 295)', 
-  'oklch(0.75 0.20 130)',
-  'oklch(0.70 0.18 50)',
-  'oklch(0.65 0.20 260)',
-  'oklch(0.72 0.18 340)',
-]
 
 export function GraphCanvas({
   nodes,
@@ -32,137 +18,119 @@ export function GraphCanvas({
   selectedNodeId,
   onNodeSelect,
   onNodeMove,
-  onNodeDoubleClick,
-  onEdgeCreate,
-  isCreatingEdge,
-  setIsCreatingEdge,
+  onCompare,
   viewTransform,
   onViewTransformChange,
 }: GraphCanvasProps) {
-  const svgRef = useRef<SVGSVGElement>(null)
+  const canvasRef = useRef<SVGSVGElement>(null)
   const [draggingNode, setDraggingNode] = useState<string | null>(null)
-  const [edgeStart, setEdgeStart] = useState<string | null>(null)
-  const [tempEdgeEnd, setTempEdgeEnd] = useState<{ x: number; y: number } | null>(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isPanning, setIsPanning] = useState(false)
-  const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null)
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+  const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
-  const handleMouseDown = (e: React.MouseEvent, nodeId: string) => {
-    if (e.button === 0 && e.shiftKey) {
-      e.stopPropagation()
-      setEdgeStart(nodeId)
-      setIsCreatingEdge(true)
-      const node = nodes.find(n => n.id === nodeId)
-      if (node) {
-        setTempEdgeEnd({ x: node.x, y: node.y })
-      }
-    } else if (e.button === 0) {
-      e.stopPropagation()
-      setDraggingNode(nodeId)
-      onNodeSelect(nodeId)
+  const NODE_RADIUS = 40
+
+  const screenToWorld = (screenX: number, screenY: number) => {
+    return {
+      x: (screenX - viewTransform.x) / viewTransform.scale,
+      y: (screenY - viewTransform.y) / viewTransform.scale,
     }
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!svgRef.current) return
+  const handleMouseDown = (e: React.MouseEvent<SVGCircleElement>, nodeId: string) => {
+    if (e.button === 2 || e.shiftKey) {
+      e.stopPropagation()
+      setConnectingFrom(nodeId)
+      return
+    }
 
-    const rect = svgRef.current.getBoundingClientRect()
-    const x = (e.clientX - rect.left - viewTransform.x) / viewTransform.scale
-    const y = (e.clientY - rect.top - viewTransform.y) / viewTransform.scale
+    e.stopPropagation()
+    onNodeSelect(nodeId)
+
+    const node = nodes.find(n => n.id === nodeId)
+    if (!node) return
+
+    const worldPos = screenToWorld(e.clientX, e.clientY)
+    setDraggingNode(nodeId)
+    setDragOffset({
+      x: worldPos.x - node.x,
+      y: worldPos.y - node.y,
+    })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const worldPos = screenToWorld(e.clientX, e.clientY)
+    setMousePos(worldPos)
 
     if (draggingNode) {
-      onNodeMove(draggingNode, x, y)
-    } else if (isCreatingEdge && edgeStart) {
-      setTempEdgeEnd({ x, y })
-    } else if (isPanning && panStart) {
-      const dx = e.clientX - panStart.x
-      const dy = e.clientY - panStart.y
+      onNodeMove(draggingNode, worldPos.x - dragOffset.x, worldPos.y - dragOffset.y)
+    } else if (isPanning) {
       onViewTransformChange({
         ...viewTransform,
-        x: viewTransform.x + dx,
-        y: viewTransform.y + dy,
+        x: viewTransform.x + (e.clientX - panStart.x),
+        y: viewTransform.y + (e.clientY - panStart.y),
       })
       setPanStart({ x: e.clientX, y: e.clientY })
     }
   }
 
-  const handleMouseUp = (e: React.MouseEvent, nodeId?: string) => {
-    if (isCreatingEdge && edgeStart && nodeId && nodeId !== edgeStart) {
-      onEdgeCreate(edgeStart, nodeId)
+  const handleMouseUp = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (connectingFrom) {
+      const target = e.target as Element
+      const nodeId = target.getAttribute('data-node-id')
+      if (nodeId && nodeId !== connectingFrom) {
+        onCompare(connectingFrom, nodeId)
+      }
+      setConnectingFrom(null)
     }
-    
+
     setDraggingNode(null)
-    setEdgeStart(null)
-    setTempEdgeEnd(null)
-    setIsCreatingEdge(false)
     setIsPanning(false)
-    setPanStart(null)
   }
 
-  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+  const handleCanvasMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 0 && !e.shiftKey) {
-      onNodeSelect(null)
       setIsPanning(true)
       setPanStart({ x: e.clientX, y: e.clientY })
+      onNodeSelect('')
     }
   }
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    if (!svgRef.current) return
-    const rect = svgRef.current.getBoundingClientRect()
-    const x = (e.clientX - rect.left - viewTransform.x) / viewTransform.scale
-    const y = (e.clientY - rect.top - viewTransform.y) / viewTransform.scale
-    onNodeDoubleClick(x, y)
-  }
-
-  const handleWheel = (e: React.WheelEvent) => {
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault()
-    if (!svgRef.current) return
-
-    const rect = svgRef.current.getBoundingClientRect()
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-
     const delta = e.deltaY > 0 ? 0.9 : 1.1
-    const newScale = Math.max(0.1, Math.min(5, viewTransform.scale * delta))
+    const newScale = Math.max(0.3, Math.min(3, viewTransform.scale * delta))
 
-    const newX = mouseX - (mouseX - viewTransform.x) * (newScale / viewTransform.scale)
-    const newY = mouseY - (mouseY - viewTransform.y) * (newScale / viewTransform.scale)
+    const worldPos = screenToWorld(e.clientX, e.clientY)
 
     onViewTransformChange({
-      x: newX,
-      y: newY,
+      x: e.clientX - worldPos.x * newScale,
+      y: e.clientY - worldPos.y * newScale,
       scale: newScale,
     })
   }
 
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('contextmenu', handleContextMenu)
+    return () => window.removeEventListener('contextmenu', handleContextMenu)
+  }, [])
+
   return (
     <svg
-      ref={svgRef}
+      ref={canvasRef}
       className="w-full h-full cursor-grab active:cursor-grabbing"
-      onMouseMove={handleMouseMove}
-      onMouseUp={(e) => handleMouseUp(e)}
       onMouseDown={handleCanvasMouseDown}
-      onDoubleClick={handleDoubleClick}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
       onWheel={handleWheel}
     >
       <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="10"
-          markerHeight="10"
-          refX="9"
-          refY="3"
-          orient="auto"
-          markerUnits="strokeWidth"
-        >
-          <path d="M0,0 L0,6 L9,3 z" fill="oklch(0.60 0.02 250)" />
-        </marker>
-        <pattern
-          id="grid"
-          width="20"
-          height="20"
-          patternUnits="userSpaceOnUse"
-        >
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
           <path
             d="M 20 0 L 0 0 0 20"
             fill="none"
@@ -171,94 +139,91 @@ export function GraphCanvas({
             opacity="0.3"
           />
         </pattern>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
 
+      <rect width="100%" height="100%" fill="url(#grid)" />
+
       <g transform={`translate(${viewTransform.x}, ${viewTransform.y}) scale(${viewTransform.scale})`}>
-        <rect
-          x="-5000"
-          y="-5000"
-          width="10000"
-          height="10000"
-          fill="url(#grid)"
-        />
+        {edges.map((edge) => {
+          const sourceNode = nodes.find(n => n.id === edge.source)
+          const targetNode = nodes.find(n => n.id === edge.target)
+          if (!sourceNode || !targetNode) return null
 
-        <g className="edges">
-          {edges.map((edge) => {
-            const source = nodes.find((n) => n.id === edge.source)
-            const target = nodes.find((n) => n.id === edge.target)
-            if (!source || !target) return null
+          const similarity = edge.similarity || 0
+          const edgeColor = similarity > 0.7 ? 'oklch(0.68 0.20 140)' : 
+                           similarity > 0.4 ? 'oklch(0.72 0.15 70)' : 
+                           'oklch(0.62 0.22 15)'
 
-            const dx = target.x - source.x
-            const dy = target.y - source.y
-            const angle = Math.atan2(dy, dx)
-            const targetX = target.x - NODE_RADIUS * Math.cos(angle)
-            const targetY = target.y - NODE_RADIUS * Math.sin(angle)
+          return (
+            <line
+              key={edge.id}
+              x1={sourceNode.x}
+              y1={sourceNode.y}
+              x2={targetNode.x}
+              y2={targetNode.y}
+              stroke={edgeColor}
+              strokeWidth="3"
+              opacity="0.6"
+              strokeDasharray={similarity > 0 ? 'none' : '5,5'}
+            />
+          )
+        })}
 
-            return (
-              <line
-                key={edge.id}
-                x1={source.x}
-                y1={source.y}
-                x2={targetX}
-                y2={targetY}
-                stroke="oklch(0.60 0.02 250)"
-                strokeWidth="2"
-                markerEnd="url(#arrowhead)"
-              />
-            )
-          })}
-          {isCreatingEdge && edgeStart && tempEdgeEnd && (() => {
-            const source = nodes.find((n) => n.id === edgeStart)
-            if (!source) return null
-            return (
-              <line
-                x1={source.x}
-                y1={source.y}
-                x2={tempEdgeEnd.x}
-                y2={tempEdgeEnd.y}
-                stroke="oklch(0.72 0.15 195)"
-                strokeWidth="2"
-                strokeDasharray="5,5"
-                opacity="0.6"
-              />
-            )
-          })()}
-        </g>
+        {connectingFrom && (
+          <line
+            x1={nodes.find(n => n.id === connectingFrom)?.x}
+            y1={nodes.find(n => n.id === connectingFrom)?.y}
+            x2={mousePos.x}
+            y2={mousePos.y}
+            stroke="oklch(0.70 0.18 50)"
+            strokeWidth="2"
+            strokeDasharray="5,5"
+            opacity="0.7"
+          />
+        )}
 
-        <g className="nodes">
-          {nodes.map((node) => (
-            <g
-              key={node.id}
-              transform={`translate(${node.x}, ${node.y})`}
-              onMouseDown={(e) => handleMouseDown(e, node.id)}
-              onMouseUp={(e) => handleMouseUp(e, node.id)}
-              className="cursor-pointer"
-              style={{ cursor: draggingNode === node.id ? 'grabbing' : 'grab' }}
-            >
+        {nodes.map((node) => {
+          const isSelected = node.id === selectedNodeId
+          const label = node.foodData.description
+          const truncatedLabel = label.length > 20 ? label.substring(0, 20) + '...' : label
+
+          return (
+            <g key={node.id}>
               <circle
+                cx={node.x}
+                cy={node.y}
                 r={NODE_RADIUS}
                 fill={node.color}
-                stroke={selectedNodeId === node.id ? 'oklch(0.72 0.15 195)' : 'oklch(0.90 0.02 250)'}
-                strokeWidth={selectedNodeId === node.id ? 3 : 2}
-                className="transition-all duration-200"
-                style={{
-                  filter: selectedNodeId === node.id ? 'drop-shadow(0 0 8px oklch(0.72 0.15 195))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
-                }}
+                stroke={isSelected ? 'oklch(0.70 0.18 50)' : 'oklch(0.90 0.02 250)'}
+                strokeWidth={isSelected ? 4 : 2}
+                filter={isSelected ? 'url(#glow)' : undefined}
+                className="cursor-pointer hover:brightness-110 transition-all"
+                onMouseDown={(e) => handleMouseDown(e, node.id)}
+                data-node-id={node.id}
               />
               <text
+                x={node.x}
+                y={node.y}
                 textAnchor="middle"
-                dy=".3em"
+                dominantBaseline="middle"
                 fill="white"
-                fontSize="13"
+                fontSize="12"
                 fontWeight="600"
                 pointerEvents="none"
-                style={{ userSelect: 'none' }}
+                className="select-none"
               >
-                {node.label}
+                {truncatedLabel}
               </text>
             </g>
-          ))}
-        </g>
+          )
+        })}
       </g>
     </svg>
   )
