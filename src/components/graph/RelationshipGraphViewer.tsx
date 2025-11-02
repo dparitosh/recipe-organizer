@@ -184,7 +184,13 @@ export function RelationshipGraphViewer({
           'text-outline-width': 2,
           'text-wrap': 'wrap',
           'text-max-width': '90px',
-          'min-zoomed-font-size': 8
+          'min-zoomed-font-size': 8,
+          'background-color': 'oklch(0.60 0.15 200)',
+          'shape': 'ellipse',
+          'width': 60,
+          'height': 60,
+          'border-width': 3,
+          'border-color': 'oklch(0.50 0.15 200)'
         }
       },
       ...Object.entries(NODE_TYPE_CONFIG).map(([type, config]) => ({
@@ -195,7 +201,7 @@ export function RelationshipGraphViewer({
           'width': config.size,
           'height': config.size,
           'border-width': 3,
-          'border-color': config.color.replace('0.6', '0.4')
+          'border-color': config.color.replace(/oklch\(([\d.]+)/, 'oklch($1').replace(/0\.(\d+)/, (m, p1) => `0.${Math.max(0, parseInt(p1) - 20)}`)
         }
       })),
       {
