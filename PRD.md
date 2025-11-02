@@ -199,6 +199,34 @@ An enterprise-grade Food & Beverage formulation management platform that integra
   - Integration with existing formulation and graph data
   - Responsive UI with proper loading states
 
+### Sample Data Loader (NEW)
+- **Functionality**: Comprehensive sample data loader for Neo4j database with pre-configured F&B datasets including potato wafer chips, carbonated beverages, and fruit juices with full formulation hierarchies
+- **Purpose**: Provide instant demo-ready data for presentations and testing, allowing users to explore the full application capabilities without manual data entry
+- **Trigger**: Navigate to "Sample Data" tab and click "Load Sample Data"
+- **Progression**: 
+  - **Data Overview**: View three product categories with visual cards (Potato Wafer Chips, Classic Cola, Fruit Juices) → See entity types that will be loaded (Formulations, Master Recipes, Manufacturing Recipes, Raw Materials, Nutrients, Processes, Plants, Sales Orders)
+  - **Load Operation**: Click "Load Sample Data" → Clear existing database (with confirmation) → Create constraints for data integrity → Load potato chips dataset with 5+ ingredients, 6 processes, 2 manufacturing lines → Load cola beverage with carbonation process, 5 ingredients → Load orange juice and mixed berry juice with HTST pasteurization, fortification, multiple concentrates → Display progress indicator
+  - **Data Statistics**: Show real-time statistics after load → Total nodes created (80-100) → Total relationships created (150-200) → Node categories list (Formulation, MasterRecipe, ManufacturingRecipe, Food, Nutrient, Process, Plant, SalesOrder, FoodCategory) → Execution time in milliseconds
+  - **Success Confirmation**: Green success alert with detailed breakdown → Link to Relationships tab to visualize loaded data → Data ready for querying in AI Assistant and graph visualization
+  - **Clear Database**: "Clear Database" button with destructive styling → Confirmation prompt before clearing → Removes all nodes and relationships → Updates status indicators
+- **Success criteria**: 
+  - Potato Wafer Chips: 5+ ingredients (potato, palm oil, salt, antioxidants), 6 sequential processes (wash, slice, fry, season, cool, pack), 2 manufacturing recipes with different efficiency, 2 plants, 2 sales orders, full nutrient data
+  - Classic Cola: Syrup base, carbonation process, 5 ingredients (water, sugar, concentrate, CO2, preservative), HTST pasteurization, aseptic filling
+  - Orange Juice: Reconstitution process, vitamin C fortification, HTST pasteurization, concentrate dilution
+  - Mixed Berry Juice: 3 fruit concentrates (strawberry, blueberry, raspberry), enzymatic treatment, ultra-filtration, blending
+  - Complete relationship hierarchies: DERIVED_FROM (master→manufacturing), USES_INGREDIENT (formulation→food), CONTAINS_NUTRIENT (food→nutrient), REQUIRES_PROCESS (formulation→process), PRODUCES (plant→manufacturing), REQUIRES (sales order→manufacturing)
+  - All nodes include realistic metadata (dates, versions, approvals, specifications)
+  - Constraints created for data integrity (unique IDs on Formulation, Food, Nutrient, Recipe)
+  - Clear visual feedback during load (progress bar, status messages)
+  - Statistics display showing exact counts and categories
+  - Execution time tracking (typically <2s)
+  - Error handling with clear messages if Neo4j not connected
+  - Warning about data clearing with confirmation prompt
+  - Integration with Relationships tab for visualization
+  - Data compatible with all existing features (AI Assistant, API endpoints, calculations)
+  - Toast notifications for key events (start, success, error)
+  - Proper loading states with disabled buttons during operation
+
 ## Edge Case Handling
 
 - **Empty Formulation** - Show empty state with guidance to add ingredients

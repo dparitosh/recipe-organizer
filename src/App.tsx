@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Toaster } from '@/components/ui/sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Flask, Graph, Calculator, Database, Plus, Cube, GitBranch, Gear, Lightning, Code, Sparkle } from '@phosphor-icons/react'
+import { Flask, Graph, Calculator, Database, Plus, Cube, GitBranch, Gear, Lightning, Code, Sparkle, UploadSimple } from '@phosphor-icons/react'
 import { FormulationEditor } from '@/components/formulation/FormulationEditor'
 import { CalculationPanel } from '@/components/formulation/CalculationPanel'
 import { FormulationGraph } from '@/components/graph/FormulationGraph'
@@ -15,6 +15,7 @@ import { BOMConfigurator } from '@/components/bom/BOMConfigurator'
 import { BackendConfigPanel } from '@/components/integrations/BackendConfigPanel'
 import { APITester } from '@/components/APITester'
 import { AIAssistantPanel } from '@/components/AIAssistantPanel'
+import { DataLoaderPanel } from '@/components/DataLoaderPanel'
 import { Formulation, createEmptyFormulation } from '@/lib/schemas/formulation'
 import { BOM, createEmptyBOM } from '@/lib/schemas/bom'
 import { neo4jManager } from '@/lib/managers/neo4j-manager'
@@ -26,7 +27,7 @@ function App() {
   const [boms, setBOMs] = useKV<BOM[]>('boms', [])
   const [activeFormulationId, setActiveFormulationId] = useState<string | null>(null)
   const [activeBOMId, setActiveBOMId] = useState<string | null>(null)
-  const [activeView, setActiveView] = useState<'formulation' | 'bom' | 'relationships' | 'api' | 'ai'>('formulation')
+  const [activeView, setActiveView] = useState<'formulation' | 'bom' | 'relationships' | 'api' | 'ai' | 'dataloader'>('formulation')
   const [graphData, setGraphData] = useState<any>(null)
   const [relationshipGraphData, setRelationshipGraphData] = useState<any>(null)
   const [graphLayout, setGraphLayout] = useState<'hierarchical' | 'force' | 'circular'>('hierarchical')
@@ -205,7 +206,7 @@ function App() {
       <main className="flex-1 p-6">
         <div className="space-y-6">
           <Card className="p-4 shadow-sm">
-            <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'formulation' | 'bom' | 'relationships' | 'api' | 'ai')}>
+            <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'formulation' | 'bom' | 'relationships' | 'api' | 'ai' | 'dataloader')}>
               <div className="flex items-center gap-4 mb-4">
                 <TabsList>
                   <TabsTrigger value="formulation" className="gap-2">
@@ -219,6 +220,10 @@ function App() {
                   <TabsTrigger value="relationships" className="gap-2">
                     <GitBranch size={16} weight="bold" />
                     Relationships
+                  </TabsTrigger>
+                  <TabsTrigger value="dataloader" className="gap-2">
+                    <UploadSimple size={16} weight="bold" />
+                    Sample Data
                   </TabsTrigger>
                   <TabsTrigger value="api" className="gap-2">
                     <Code size={16} weight="bold" />
@@ -410,6 +415,15 @@ function App() {
                       if (node) {
                         console.log('Selected node:', node)
                       }
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="dataloader" className="mt-0">
+                  <DataLoaderPanel 
+                    onDataLoaded={() => {
+                      toast.success('Sample data loaded! You can now view it in the Relationships tab.')
+                      setRelationshipGraphData(null)
                     }}
                   />
                 </TabsContent>
