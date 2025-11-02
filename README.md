@@ -54,13 +54,22 @@ To connect to your enterprise systems:
 
 ## 📚 Documentation
 
+### User Guides
 - **[AI_ASSISTANT_GUIDE.md](./AI_ASSISTANT_GUIDE.md)** - AI Assistant complete documentation
 - **[AI_ASSISTANT_QUICK_REFERENCE.md](./AI_ASSISTANT_QUICK_REFERENCE.md)** - AI Assistant quick reference
 - **[CONNECTING_BACKEND_SERVICES.md](./CONNECTING_BACKEND_SERVICES.md)** - User guide for backend configuration
+
+### Technical Documentation
 - **[BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md)** - Technical architecture and API documentation
 - **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - REST API reference
 - **[NEO4J_ARCHITECTURE.md](./NEO4J_ARCHITECTURE.md)** - Graph database schema
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture overview
 - **[PRD.md](./PRD.md)** - Product requirements and design decisions
+
+### Maintenance & Deployment
+- **[CLEANUP_ACTIONS.md](./CLEANUP_ACTIONS.md)** - Code cleanup and optimization guide
+- **[CLEANUP_COMPLETE.md](./CLEANUP_COMPLETE.md)** - Cleanup completion report and instructions
+- **[SECURITY.md](./SECURITY.md)** - Security best practices
 
 ## 🏗️ Architecture
 
@@ -120,6 +129,28 @@ Perfect for rapid development:
 - Test UI/UX without infrastructure
 
 ### Production Deployment
+
+#### Pre-Deployment Cleanup
+
+Before deploying, run the cleanup script to remove duplicate files:
+
+```bash
+# Make script executable
+chmod +x cleanup.sh
+
+# Run cleanup
+./cleanup.sh
+
+# Verify build
+npm run build
+
+# Test application
+npm run dev
+```
+
+See [CLEANUP_COMPLETE.md](./CLEANUP_COMPLETE.md) for detailed instructions.
+
+#### Configuration Steps
 
 1. Configure backend services in Settings
 2. Test all connections
