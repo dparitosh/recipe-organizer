@@ -8,15 +8,15 @@ A modern, enterprise-grade Food & Beverage formulation management platform with 
 3. **Well-Architected** - Clear separation of concerns: React (UI/UX) ↔ FastAPI (business logic) ↔ Neo4j (graph data) with standardized API contracts and comprehensive error handling
 
 **Complexity Level**: Complex Application (advanced functionality, microservices architecture)
-  - Modern tech stack: React 19 + JavaScript frontend, Python FastAPI backend, Neo4j graph database, async API architecture, real-time graph visualizations, fresh data ingestion from USDA FDC API
+  - Modern tech stack: React 19 + TypeScript frontend, Python FastAPI backend, Neo4j graph database, async API architecture, real-time graph visualizations, fresh data ingestion from USDA FDC API
 
 ## Architecture Overview
 
-### Frontend Architecture (React + JavaScript)
-- **UI Layer**: Modern React 19 with JavaScript/JSX, shadcn/ui components, Tailwind CSS v4
+### Frontend Architecture (React + TypeScript)
+- **UI Layer**: Modern React 19 with TypeScript/TSX, shadcn/ui components, Tailwind CSS v4
 - **State Management**: React hooks (useState, useEffect) + useKV for persistence
 - **Graph Visualization**: Cytoscape.js with physics-based layouts, interactive filtering, zoom/pan controls
-- **API Client**: Centralized API service with clean JavaScript modules for all endpoints
+- **API Client**: Centralized API service with clean TypeScript modules for all endpoints
 - **Routing**: Single-page app with tab-based navigation
 - **Real-time Updates**: Optimistic UI updates with background sync
 

@@ -57,6 +57,7 @@ rm -f src/hooks/use-mobile.js
 # Lib files
 echo "Removing lib duplicate files..."
 rm -f src/lib/utils.js
+rm -f src/lib/constants.js
 rm -f src/lib/api/service.js
 
 echo ""
@@ -72,6 +73,7 @@ echo "  - src/components/layout/*.jsx (3 files)"
 echo "  - src/components/views/*.jsx (4 files)"
 echo "  - src/hooks/use-mobile.js"
 echo "  - src/lib/utils.js"
+echo "  - src/lib/constants.js"
 echo "  - src/lib/api/service.js"
 echo ""
 echo "Next steps:"
