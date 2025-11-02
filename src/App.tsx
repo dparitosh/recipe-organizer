@@ -146,25 +146,30 @@ function App() {
     <div className="min-h-screen flex flex-col bg-background">
       <Toaster position="top-center" />
       
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-border bg-white shadow-sm sticky top-0 z-10">
         <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Flask className="text-primary" size={32} weight="duotone" />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 border-r border-border pr-4">
+              <div className="w-10 h-10 bg-primary rounded flex items-center justify-center">
+                <Flask className="text-white" size={24} weight="bold" />
+              </div>
+              <div className="font-bold text-xl text-primary tracking-wide">TCS</div>
+            </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Formulation Graph Studio</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-xl font-semibold text-foreground">Formulation Graph Studio</h1>
+              <p className="text-xs text-muted-foreground">
                 Enterprise F&B Formulation Management & BOM Configuration
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleCreateFormulation} className="gap-2">
-              <Plus size={18} />
+              <Plus size={18} weight="bold" />
               New Formulation
             </Button>
             {activeFormulation && (
               <Button onClick={handleCreateBOM} variant="outline" className="gap-2">
-                <Cube size={18} />
+                <Cube size={18} weight="bold" />
                 Create BOM
               </Button>
             )}
@@ -174,20 +179,20 @@ function App() {
 
       <main className="flex-1 p-6">
         <div className="space-y-6">
-          <Card className="p-4">
+          <Card className="p-4 shadow-sm">
             <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'formulation' | 'bom' | 'relationships')}>
               <div className="flex items-center gap-4 mb-4">
                 <TabsList>
                   <TabsTrigger value="formulation" className="gap-2">
-                    <Flask size={16} />
+                    <Flask size={16} weight="bold" />
                     Formulation
                   </TabsTrigger>
                   <TabsTrigger value="bom" className="gap-2">
-                    <Cube size={16} />
+                    <Cube size={16} weight="bold" />
                     BOM Configurator
                   </TabsTrigger>
                   <TabsTrigger value="relationships" className="gap-2">
-                    <GitBranch size={16} />
+                    <GitBranch size={16} weight="bold" />
                     Relationships
                   </TabsTrigger>
                 </TabsList>
@@ -218,15 +223,17 @@ function App() {
 
               <TabsContent value="formulation" className="mt-0">
                 {(formulations || []).length === 0 ? (
-                  <Card className="p-12 text-center">
-                    <Flask className="mx-auto mb-4 text-muted-foreground" size={64} weight="duotone" />
+                  <Card className="p-12 text-center shadow-sm">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center">
+                      <Flask className="text-primary" size={32} weight="duotone" />
+                    </div>
                     <h2 className="text-2xl font-semibold mb-2">Welcome to Formulation Graph Studio</h2>
                     <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
                       Create, manage, and visualize Food & Beverage formulations with integrated PLM, SAP MDG,
                       and Neo4j graph relationships. Calculate yields, costs, and optimize your recipes.
                     </p>
                     <Button onClick={handleCreateFormulation} size="lg" className="gap-2">
-                      <Plus size={20} />
+                      <Plus size={20} weight="bold" />
                       Create Your First Formulation
                     </Button>
                   </Card>
@@ -238,11 +245,11 @@ function App() {
                           onChange={handleUpdateFormulation}
                         />
 
-                        <Card className="p-6">
+                        <Card className="p-6 shadow-sm">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
-                              <Graph size={24} />
-                              <h3 className="font-semibold">Relationship Graph</h3>
+                              <Graph size={24} className="text-primary" weight="bold" />
+                              <h3 className="font-semibold text-lg">Relationship Graph</h3>
                             </div>
                             <div className="flex gap-2">
                               <Button
@@ -257,11 +264,11 @@ function App() {
                                 variant="outline"
                                 onClick={handleLoadGraphData}
                               >
-                                <Database size={16} className="mr-1" />
+                                <Database size={16} className="mr-1" weight="bold" />
                                 Load from Neo4j
                               </Button>
                               <select
-                                className="px-3 py-1 text-sm border rounded-md"
+                                className="px-3 py-1 text-sm border rounded-md bg-white"
                                 value={graphLayout}
                                 onChange={(e) => setGraphLayout(e.target.value as any)}
                               >
@@ -284,11 +291,11 @@ function App() {
                         <Tabs defaultValue="calculations">
                           <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="calculations">
-                              <Calculator size={16} className="mr-1" />
+                              <Calculator size={16} className="mr-1" weight="bold" />
                               Calculations
                             </TabsTrigger>
                             <TabsTrigger value="integrations">
-                              <Database size={16} className="mr-1" />
+                              <Database size={16} className="mr-1" weight="bold" />
                               Integrations
                             </TabsTrigger>
                           </TabsList>
@@ -305,32 +312,34 @@ function App() {
                           </TabsContent>
                         </Tabs>
 
-                        <Card className="p-6 bg-secondary/20">
+                        <Card className="p-6 bg-accent/30 shadow-sm">
                           <h3 className="font-semibold mb-3 text-sm">System Status</h3>
                           <div className="space-y-2 text-xs">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Neo4j:</span>
-                              <span className="text-green-500 font-semibold">Connected (Mock)</span>
+                              <span className="text-green-600 font-semibold">Connected (Mock)</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">PLM:</span>
-                              <span className="text-green-500 font-semibold">Connected (Mock)</span>
+                              <span className="text-green-600 font-semibold">Connected (Mock)</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">SAP MDG:</span>
-                              <span className="text-green-500 font-semibold">Connected (Mock)</span>
+                              <span className="text-green-600 font-semibold">Connected (Mock)</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">FDC API:</span>
-                              <span className="text-green-500 font-semibold">Available</span>
+                              <span className="text-green-600 font-semibold">Available</span>
                             </div>
                           </div>
                         </Card>
                       </div>
                     </div>
                   ) : (
-                    <Card className="p-12 text-center">
-                      <Flask className="mx-auto mb-4 text-muted-foreground" size={48} weight="duotone" />
+                    <Card className="p-12 text-center shadow-sm">
+                      <div className="w-16 h-16 bg-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <Flask className="text-primary" size={32} weight="duotone" />
+                      </div>
                       <p className="text-muted-foreground">Select a formulation to edit</p>
                     </Card>
                   )
@@ -344,15 +353,17 @@ function App() {
                       onChange={handleUpdateBOM}
                     />
                   ) : (
-                    <Card className="p-12 text-center">
-                      <Cube className="mx-auto mb-4 text-muted-foreground" size={64} weight="duotone" />
+                    <Card className="p-12 text-center shadow-sm">
+                      <div className="w-16 h-16 bg-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <Cube className="text-primary" size={32} weight="duotone" />
+                      </div>
                       <h3 className="text-xl font-semibold mb-2">No BOM Selected</h3>
                       <p className="text-muted-foreground mb-4">
                         Select a formulation and create a BOM to start configuring
                       </p>
                       {activeFormulation && (
                         <Button onClick={handleCreateBOM} className="gap-2">
-                          <Plus size={18} />
+                          <Plus size={18} weight="bold" />
                           Create BOM for {activeFormulation.name}
                         </Button>
                       )}
@@ -376,9 +387,16 @@ function App() {
           </div>
       </main>
 
-      <footer className="border-t border-border bg-card/30 py-4">
-        <div className="px-6 text-center text-sm text-muted-foreground">
-          Formulation Graph Studio • Enterprise F&B Management Platform
+      <footer className="border-t border-border bg-white py-4 mt-auto">
+        <div className="px-6 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-primary">TCS</span>
+            <span>|</span>
+            <span>Formulation Graph Studio</span>
+            <span>|</span>
+            <span>Enterprise F&B Management Platform</span>
+          </div>
+          <div>© 2024 Tata Consultancy Services Limited</div>
         </div>
       </footer>
     </div>

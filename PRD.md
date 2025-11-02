@@ -3,8 +3,8 @@
 An enterprise-grade Food & Beverage formulation management platform that integrates PLM (Product Lifecycle Management), SAP MDG (Master Data Governance), Neo4j graph databases, and USDA FDC nutritional data to provide comprehensive recipe development, BOM configuration, and cost/yield optimization.
 
 **Experience Qualities**:
-1. **Professional** - Enterprise-level tools with production-ready integrations and calculations suitable for F&B manufacturing
-2. **Analytical** - Data-driven insights through yield calculations, cost analysis, and graph visualizations of ingredient relationships
+1. **Professional** - Enterprise-level tools adhering to TCS brand standards with production-ready integrations and calculations suitable for F&B manufacturing
+2. **Trustworthy** - Clear, accessible interface following TCS design language that conveys reliability and corporate excellence
 3. **Integrated** - Seamless connections to external systems (Neo4j, PLM, SAP MDG) with real-time data synchronization
 
 **Complexity Level**: Complex Application (advanced functionality, accounts)
@@ -139,43 +139,45 @@ An enterprise-grade Food & Beverage formulation management platform that integra
 
 ## Design Direction
 
-The design should feel like an enterprise software platform—professional, data-dense but organized, with clear information hierarchy. Think SAP meets modern web apps: serious business tools with contemporary UX patterns. Dark theme emphasizes data visualization, reduces eye strain for long work sessions.
+The design follows TCS (Tata Consultancy Services) brand standards—professional, trustworthy, and enterprise-grade with a clean, modern aesthetic. The interface embraces TCS's signature blue color palette, conveying reliability and corporate excellence. Light theme with crisp whites and strategic use of TCS blue creates a sophisticated, accessible interface suitable for enterprise environments.
 
 ## Color Selection
 
-Custom palette optimized for data visualization with accessible contrast and semantic color coding for different node types and statuses.
+TCS-aligned color palette optimized for professional enterprise applications with accessible contrast ratios and clear visual hierarchy.
 
-- **Primary Color**: Green (oklch(0.65 0.18 145)) - Represents growth, formulation, approved status
-- **Secondary Colors**: Deep Blue-Gray (oklch(0.35 0.02 250)) for UI chrome, Dark Background (oklch(0.25 0.01 250))
-- **Accent Color**: Orange (oklch(0.70 0.18 50)) - Highlights, warnings, selected states, CTA buttons
-- **Node Type Colors**:
-  - Formulation: Green (oklch(0.65 0.18 145))
-  - Ingredient: Blue (oklch(0.60 0.16 250))
-  - Nutrient: Orange (oklch(0.70 0.18 50))
-  - Process: Purple (oklch(0.55 0.14 300))
-  - Supplier: Teal (oklch(0.68 0.12 180))
-  - Recipe: Green (oklch(0.65 0.18 145))
-  - MasterRecipe: Lime (oklch(0.68 0.18 85))
-  - ManufacturingRecipe: Magenta (oklch(0.62 0.16 320))
-  - Plant: Teal (oklch(0.64 0.14 160))
-  - SalesOrder: Orange (oklch(0.70 0.18 50))
+- **Primary Color**: TCS Blue (oklch(0.50 0.16 255)) - The signature TCS brand color representing trust, professionalism, and enterprise excellence. Used for primary actions, headers, and key interactive elements.
+- **Secondary Colors**: TCS Navy (oklch(0.38 0.14 255)) for depth and hierarchy, Light Blue (oklch(0.88 0.04 220)) for subtle backgrounds and accents
+- **Accent Color**: Warm Accent (oklch(0.65 0.14 35)) - Strategic highlights for selected states and important notifications
+- **Background**: Clean White (oklch(0.98 0.005 240)) with subtle neutral tint for professional appearance
+- **Node Type Colors** (maintaining differentiation while aligning with TCS palette):
+  - Formulation: TCS Blue (oklch(0.50 0.16 255))
+  - Ingredient: Deep Blue (oklch(0.48 0.14 260))
+  - Nutrient: Warm Accent (oklch(0.65 0.14 35))
+  - Process: Purple-Blue (oklch(0.52 0.12 280))
+  - Supplier: Teal (oklch(0.55 0.12 200))
+  - Recipe: TCS Blue (oklch(0.50 0.16 255))
+  - MasterRecipe: Bright Blue (oklch(0.58 0.14 240))
+  - ManufacturingRecipe: Deep Purple (oklch(0.48 0.12 300))
+  - Plant: Teal (oklch(0.55 0.12 200))
+  - SalesOrder: Warm Accent (oklch(0.65 0.14 35))
 - **Status Colors**:
-  - Success/Active: Green (oklch(0.65 0.18 145))
-  - Warning: Orange (oklch(0.70 0.18 50))
-  - Error/Inactive: Red (oklch(0.60 0.24 25))
-  - Draft: Gray (oklch(0.50 0.02 250))
+  - Success/Active: Success Green (oklch(0.55 0.16 145))
+  - Warning: Warning Orange (oklch(0.65 0.14 35))
+  - Error/Inactive: Error Red (oklch(0.55 0.22 25))
+  - Draft: Neutral Gray (oklch(0.50 0.01 240))
 - **Foreground/Background Pairings**:
-  - Background (oklch(0.25 0.01 250)): Light text (oklch(0.90 0.02 250)) - Ratio 11.5:1 ✓
-  - Card (oklch(0.30 0.02 250)): Light text (oklch(0.90 0.02 250)) - Ratio 9.2:1 ✓
-  - Primary (oklch(0.65 0.18 145)): White text (oklch(1 0 0)) - Ratio 5.2:1 ✓
-  - Accent (oklch(0.70 0.18 50)): White text (oklch(1 0 0)) - Ratio 4.7:1 ✓
+  - Background (oklch(0.98 0.005 240)): Dark text (oklch(0.20 0.015 240)) - Ratio 14.2:1 ✓
+  - Card (oklch(1 0 0)): Dark text (oklch(0.20 0.015 240)) - Ratio 15.8:1 ✓
+  - Primary (oklch(0.50 0.16 255)): White text (oklch(1 0 0)) - Ratio 5.8:1 ✓
+  - Secondary (oklch(0.38 0.14 255)): White text (oklch(1 0 0)) - Ratio 8.2:1 ✓
+  - Accent (oklch(0.88 0.04 220)): Dark text (oklch(0.20 0.015 240)) - Ratio 11.5:1 ✓
 
 ## Font Selection
 
 Typography emphasizes readability of technical data, tabular numbers for financial/nutritional values, and clear hierarchy for complex interfaces.
 
 - **Typographic Hierarchy**:
-  - H1 (App Title): Inter Bold/24px/tight tracking - "Formulation Graph Studio"
+  - H1 (App Title): Inter Bold/20px/tight tracking with TCS branding
   - H2 (Section Headers): Inter SemiBold/18px/normal tracking - "Calculation Engine"
   - H3 (Subsections): Inter SemiBold/14px/normal tracking - "Ingredients", "Process Steps"
   - Body (Labels): Inter Regular/14px/1.5 line-height for form labels and descriptions
@@ -185,10 +187,10 @@ Typography emphasizes readability of technical data, tabular numbers for financi
 
 ## Animations
 
-Purposeful, professional animations that guide attention without distracting from complex data workflows.
+Professional, purposeful animations that reinforce TCS's commitment to quality and attention to detail without being distracting.
 
-- **Purposeful Meaning**: Tab transitions slide content, calculation results fade in, graph layouts animate smoothly over 500ms, loading states prevent blank flashes
-- **Hierarchy of Movement**: Critical data updates (cost calculations) are immediate; UI transitions are 200ms; graph layouts animate for spatial continuity; hovering over nodes shows subtle scale transform
+- **Purposeful Meaning**: Smooth tab transitions, calculation results fade gracefully, graph layouts animate over 400ms for clarity, loading states provide feedback, all animations respect user preferences
+- **Hierarchy of Movement**: Critical data updates (cost calculations) are immediate with subtle fade-in; UI transitions are 200ms with ease-out curves; graph layouts animate smoothly; hover states use subtle scale and shadow transformations
 
 ## Component Selection
 
@@ -212,10 +214,10 @@ Purposeful, professional animations that guide attention without distracting fro
   - Node type legend for graph visualization
 
 - **States**:
-  - Formulation Status: Draft (gray), Review (yellow), Approved (green), Archived (muted)
-  - Calculations: Idle, Calculating (spinner), Success (green badge), Warning (orange text), Error (red)
-  - Graph Nodes: Default (category color), Hovered (border glow), Selected (thick border + highlight), Active (pulse animation)
-  - API Connections: Connected (green dot), Disconnected (red dot), Loading (animated)
+  - Formulation Status: Draft (gray), Review (amber), Approved (green), Archived (muted)
+  - Calculations: Idle, Calculating (spinner with TCS blue), Success (green badge), Warning (amber text), Error (red)
+  - Graph Nodes: Default (category color), Hovered (subtle shadow), Selected (TCS blue border + highlight), Active (subtle pulse)
+  - API Connections: Connected (green dot), Disconnected (red dot), Loading (animated TCS blue pulse)
   - Validation: Valid (check icon), Invalid (error text), Warning (warning icon)
 
 - **Icon Selection**:
