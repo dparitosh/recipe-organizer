@@ -6,14 +6,16 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Database, CloudArrowDown, MagnifyingGlass } from '@phosphor-icons/react'
+import { Database, CloudArrowDown, MagnifyingGlass, Gear } from '@phosphor-icons/react'
 import { plmClient } from '@/lib/api/plm'
 import { mdgClient } from '@/lib/api/mdg'
 import { neo4jClient } from '@/lib/api/neo4j'
 import { PLMMaterial, MDGMaterial } from '@/lib/schemas/integration'
+import { Neo4jConfigPanel, Neo4jConfig } from './Neo4jConfigPanel'
 import { toast } from 'sonner'
 
 export function IntegrationPanel() {
+  const [showNeo4jConfig, setShowNeo4jConfig] = useState(false)
   const [plmSearchQuery, setPlmSearchQuery] = useState('')
   const [plmResults, setPlmResults] = useState<PLMMaterial[]>([])
   const [plmLoading, setPlmLoading] = useState(false)
@@ -74,21 +76,34 @@ export function IntegrationPanel() {
     }
   }
 
+  const handleNeo4jConfigChange = (config: Neo4jConfig) => {
+    neo4jClient.setMockMode(config.mockMode)
+    neo4jClient.setConfig({
+      uri: config.uri,
+      username: config.username,
+      password: config.password,
+      database: config.database
+    })
+  }
+
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Database size={24} />
-          System Integrations
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="plm">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="plm">PLM</TabsTrigger>
-            <TabsTrigger value="mdg">SAP MDG</TabsTrigger>
-            <TabsTrigger value="neo4j">Neo4j</TabsTrigger>
-          </TabsList>
+    <div className="space-y-4">
+      <Neo4jConfigPanel onConfigChange={handleNeo4jConfigChange} />
+      
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database size={24} />
+            System Integrations
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="plm">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="plm">PLM</TabsTrigger>
+              <TabsTrigger value="mdg">SAP MDG</TabsTrigger>
+              <TabsTrigger value="neo4j">Neo4j</TabsTrigger>
+            </TabsList>
 
           <TabsContent value="plm" className="space-y-4">
             <div className="flex gap-2">
@@ -254,5 +269,6 @@ export function IntegrationPanel() {
         </Tabs>
       </CardContent>
     </Card>
+    </div>
   )
 }

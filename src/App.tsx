@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ import { BOMConfigurator } from '@/components/bom/BOMConfigurator'
 import { Formulation, createEmptyFormulation } from '@/lib/schemas/formulation'
 import { BOM, createEmptyBOM } from '@/lib/schemas/bom'
 import { neo4jClient } from '@/lib/api/neo4j'
+import { createMockNeo4jAPI } from '@/lib/api/neo4j-api'
 import { toast } from 'sonner'
 
 function App() {
@@ -25,6 +26,11 @@ function App() {
   const [graphData, setGraphData] = useState<any>(null)
   const [relationshipGraphData, setRelationshipGraphData] = useState<any>(null)
   const [graphLayout, setGraphLayout] = useState<'hierarchical' | 'force' | 'circular'>('hierarchical')
+
+  useEffect(() => {
+    const mockAPI = createMockNeo4jAPI()
+    return () => mockAPI.restore()
+  }, [])
 
   const activeFormulation = (formulations || []).find(f => f.id === activeFormulationId) || null
   const activeBOM = (boms || []).find(b => b.id === activeBOMId) || null
@@ -317,7 +323,9 @@ function App() {
                           <div className="space-y-2 text-xs">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Neo4j:</span>
-                              <span className="text-green-600 font-semibold">Connected (Mock)</span>
+                              <span className={`font-semibold ${neo4jClient.isMockMode() ? 'text-yellow-600' : 'text-green-600'}`}>
+                                {neo4jClient.isMockMode() ? 'Mock Mode' : 'Connected'}
+                              </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">PLM:</span>

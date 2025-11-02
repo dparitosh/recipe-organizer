@@ -97,12 +97,27 @@ An enterprise-grade Food & Beverage formulation management platform that integra
   - Responsive design: 2-column on desktop (graph + panel), stacked on mobile
   - Performance: Handles 200+ nodes smoothly with 60fps interactions
 
-### Neo4j Integration
-- **Functionality**: Query and visualize graph relationships from Neo4j database
-- **Purpose**: Leverage graph database for complex relationship queries and pathfinding
-- **Trigger**: Enter Cypher query and execute
-- **Progression**: Write Cypher query → Execute against Neo4j → Display nodes and relationships → Show execution metadata → Export results
-- **Success criteria**: Valid Cypher execution, clear result display, error handling, mock mode for development
+### Neo4j Integration (ENHANCED - CONFIGURABLE)
+- **Functionality**: Configurable Neo4j connection with credential management, test connectivity, and toggle between mock/real mode for querying and visualizing graph relationships
+- **Purpose**: Flexible database integration supporting both development (mock mode) and production (real Neo4j connection) with secure credential storage
+- **Trigger**: Open Integrations panel → Configure Neo4j credentials → Toggle mock mode on/off → Execute Cypher queries
+- **Progression**: 
+  - **Configuration**: Open Neo4j config panel → Enter connection details (URI: neo4j+s://2cccd05b.databases.neo4j.io, username: neo4j, password: tcs12345, database: neo4j) → Test connection → Save configuration → Toggle mock mode switch
+  - **Mock Mode**: Enable mock mode → Use simulated data for all operations → No external connection required → Instant responses → Consistent test data
+  - **Real Mode**: Disable mock mode → Connect to configured Neo4j instance → Execute actual Cypher queries → Fetch live graph data → Handle connection errors gracefully
+  - **Query Execution**: Write Cypher query → Execute against Neo4j (mock or real) → Display nodes and relationships → Show execution metadata → Export results
+  - **Status Indicator**: System status panel shows current mode (Mock Mode/Connected) with color coding → Yellow for mock, green for connected
+- **Success criteria**: 
+  - Persistent credential storage using useKV
+  - Test connection validates credentials before saving
+  - Show/hide password toggle for security
+  - Seamless switching between mock and real modes
+  - Mock API intercepts fetch calls when needed
+  - Real queries send credentials securely
+  - Clear connection status indicators
+  - Error handling with helpful messages
+  - Valid Cypher execution in both modes
+  - Export results functionality
 
 ### PLM Integration
 - **Functionality**: Search and sync material master data from PLM system
@@ -131,11 +146,14 @@ An enterprise-grade Food & Beverage formulation management platform that integra
 - **Percentage Not 100%** - Warning badge showing current total, prevent approval if not valid
 - **Missing Cost Data** - Calculate with available data, show warnings for missing costs
 - **API Failures** - Graceful degradation to mock data, retry logic, clear error messages
+- **Neo4j Connection Issues** - Automatic fallback to mock mode on connection failure, connection test with timeout, clear error messages, retry mechanism
+- **Invalid Neo4j Credentials** - Test connection before saving, show validation errors, prevent saving invalid configs
 - **Large Formulations** - Pagination for ingredient lists, virtual scrolling for performance
 - **Concurrent Edits** - Last-write-wins with timestamp tracking, future: optimistic locking
-- **Invalid Cypher** - Syntax error display, example queries provided
+- **Invalid Cypher** - Syntax error display, example queries provided, mock mode always accepts valid syntax
 - **Network Timeouts** - Loading states, timeout after 30s, retry button
 - **Unit Conversions** - Handle kg/g/lb/oz and L/ml/gal conversions automatically
+- **Password Security** - Passwords stored in useKV (browser storage), show/hide toggle, never logged or exposed in UI
 
 ## Design Direction
 
@@ -234,7 +252,7 @@ Professional, purposeful animations that reinforce TCS's commitment to quality a
   - Circle (Ingredient nodes)
   - Square (Recipe nodes)
   - Hexagon (MasterRecipe nodes)
-  - Gear (ManufacturingRecipe nodes)
+  - Gear (ManufacturingRecipe nodes, settings)
   - MapPin (Plant nodes)
   - Tag (SalesOrder nodes)
   - GitBranch (Relationships tab)
@@ -243,6 +261,9 @@ Professional, purposeful animations that reinforce TCS's commitment to quality a
   - ArrowsIn/ArrowsOut (Zoom controls)
   - Camera (Fit to view)
   - DownloadSimple (Export functions)
+  - Eye/EyeSlash (Password visibility toggle)
+  - CheckCircle (Connection success)
+  - Warning (Connection failure, validation issues)
 
 - **Spacing**:
   - Main layout: 6-column grid with 24px gap

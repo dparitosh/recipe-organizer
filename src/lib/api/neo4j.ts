@@ -8,17 +8,43 @@ import {
   NODE_LABELS
 } from '@/lib/schemas/integration'
 
-const NEO4J_CONFIG = {
-  uri: import.meta.env.VITE_NEO4J_URI || 'bolt://localhost:7687',
-  user: import.meta.env.VITE_NEO4J_USER || 'neo4j',
-  password: import.meta.env.VITE_NEO4J_PASSWORD || 'password'
+export interface Neo4jConnectionConfig {
+  uri: string
+  username: string
+  password: string
+  database: string
 }
 
 export class Neo4jClient {
   private mockMode: boolean = true
+  private config: Neo4jConnectionConfig = {
+    uri: 'neo4j+s://2cccd05b.databases.neo4j.io',
+    username: 'neo4j',
+    password: 'tcs12345',
+    database: 'neo4j'
+  }
 
-  constructor(mockMode: boolean = true) {
+  constructor(mockMode: boolean = true, config?: Neo4jConnectionConfig) {
     this.mockMode = mockMode
+    if (config) {
+      this.config = config
+    }
+  }
+
+  setMockMode(enabled: boolean) {
+    this.mockMode = enabled
+  }
+
+  setConfig(config: Neo4jConnectionConfig) {
+    this.config = config
+  }
+
+  getConfig(): Neo4jConnectionConfig {
+    return { ...this.config }
+  }
+
+  isMockMode(): boolean {
+    return this.mockMode
   }
 
   async query(cypher: string, parameters?: Record<string, any>): Promise<Neo4jResult> {
@@ -28,25 +54,35 @@ export class Neo4jClient {
 
     const startTime = Date.now()
     
-    const response = await fetch('/api/neo4j/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cypher, parameters })
-    })
+    try {
+      const response = await fetch('/api/neo4j/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          cypher, 
+          parameters,
+          config: this.config
+        })
+      })
 
-    if (!response.ok) {
-      throw new Error(`Neo4j query failed: ${response.statusText}`)
-    }
-
-    const data = await response.json()
-    
-    return {
-      nodes: data.nodes || [],
-      relationships: data.relationships || [],
-      metadata: {
-        executionTime: Date.now() - startTime,
-        recordCount: data.nodes?.length || 0
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Neo4j query failed: ${errorText || response.statusText}`)
       }
+
+      const data = await response.json()
+      
+      return {
+        nodes: data.nodes || [],
+        relationships: data.relationships || [],
+        metadata: {
+          executionTime: Date.now() - startTime,
+          recordCount: data.nodes?.length || 0
+        }
+      }
+    } catch (error) {
+      console.error('Neo4j query error:', error)
+      throw error
     }
   }
 
