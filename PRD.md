@@ -1,32 +1,44 @@
 # Formulation Graph Studio - Product Requirements Document
 
-An enterprise-grade Food & Beverage formulation management platform that integrates PLM (Product Lifecycle Management), SAP MDG (Master Data Governance), Neo4j graph databases, and USDA FDC nutritional data to provide comprehensive recipe development, BOM configuration, and cost/yield optimization with fresh data ingestion capabilities.
+A modern, enterprise-grade Food & Beverage formulation management platform with clean architectural separation: React frontend for immersive UX and interactive graph visualizations, Python FastAPI backend for robust business logic and data processing, Neo4j for graph relationships, and USDA FDC for nutritional data ingestion.
 
 **Experience Qualities**:
-1. **Professional** - Enterprise-level tools adhering to TCS brand standards with production-ready integrations and calculations suitable for F&B manufacturing
-2. **Trustworthy** - Clear, accessible interface following TCS design language that conveys reliability and corporate excellence with clear database management workflows
-3. **Integrated** - Seamless connections to external systems (Neo4j, PLM, SAP MDG) with real-time data synchronization and fresh schema initialization
+1. **Modern & Immersive** - Cutting-edge React frontend with advanced graph visualizations (Cytoscape.js with physics simulations), smooth animations, and intuitive interactions following latest UX trends
+2. **Performant & Scalable** - Python FastAPI backend with async processing, clean REST APIs, proper validation, and optimized database queries
+3. **Well-Architected** - Clear separation of concerns: React (UI/UX) ↔ FastAPI (business logic) ↔ Neo4j (graph data) with standardized API contracts and comprehensive error handling
 
-**Complexity Level**: Complex Application (advanced functionality, accounts)
-  - Multi-system integration with Neo4j graph database, PLM for material master data, SAP MDG for enterprise data governance, plus advanced calculation engines for yield, cost, scaling, and byproduct optimization, with comprehensive data ingestion from USDA FDC API
+**Complexity Level**: Complex Application (advanced functionality, microservices architecture)
+  - Modern tech stack: React 19 + TypeScript frontend, Python FastAPI backend, Neo4j graph database, async API architecture, real-time graph visualizations, fresh data ingestion from USDA FDC API
 
-## Recent Updates (Fresh Schema & Data Ingestion)
+## Architecture Overview
 
-### Neo4j Schema Management
-- **Clear Schema Functionality**: Added ability to delete all nodes and relationships from Neo4j database
-- **Location**: Backend Services Configuration → Neo4j tab → Danger Zone section
-- **Safety**: Requires active connection (not mock mode) and user confirmation before execution
-- **Purpose**: Enables fresh start for data ingestion and testing without residual data
+### Frontend Architecture (React + TypeScript)
+- **UI Layer**: Modern React 19 with TypeScript, shadcn/ui components, Tailwind CSS v4
+- **State Management**: React hooks (useState, useEffect) + useKV for persistence
+- **Graph Visualization**: Cytoscape.js with physics-based layouts, interactive filtering, zoom/pan controls
+- **API Client**: Centralized API service with TypeScript interfaces for all endpoints
+- **Routing**: Single-page app with tab-based navigation
+- **Real-time Updates**: Optimistic UI updates with background sync
 
-### Enhanced Data Loading
-- **Sample Data Loader**: Updated with clear warning that loading sample data will clear existing database first
-- **Visual Feedback**: Added alert banner explaining fresh start approach
-- **FDC Ingestion**: Search and import USDA FoodData Central data with full nutritional information
-- **Workflow**: Clear Schema → Ingest Fresh Data → Validate in Relationships Graph
+### Backend Architecture (Python FastAPI)
+- **API Layer**: FastAPI with async/await, Pydantic models for validation, automatic OpenAPI docs
+- **Business Logic**: Services layer for formulations, calculations, BOM processing
+- **Data Access**: Neo4j Python driver for graph operations, async queries
+- **External APIs**: USDA FDC client for nutritional data ingestion
+- **Validation**: Comprehensive input validation, business rule enforcement
+- **Error Handling**: Structured error responses with proper HTTP status codes
 
-### Error Resolution
-- **TypeScript Compliance**: Fixed ErrorFallback component with proper type definitions
-- **Type Safety**: Added ErrorFallbackProps interface for error and resetErrorBoundary parameters
+### Integration Points
+- **Frontend ↔ Backend**: REST API over HTTP/HTTPS, JSON payloads, JWT authentication (future)
+- **Backend ↔ Neo4j**: Official Python driver with connection pooling, Cypher queries
+- **Backend ↔ USDA FDC**: HTTP client for food data API, rate limiting, caching
+- **Fresh Schema**: API endpoint to clear database and reinitialize with clean schema
+
+### Data Flow
+1. **User Action** → React component updates local state → Calls API service
+2. **API Request** → FastAPI validates request → Executes business logic → Queries Neo4j/external APIs
+3. **API Response** → Frontend updates UI → Persists to useKV if needed → Shows toast notification
+4. **Graph Visualization** → Fetches graph data from API → Renders with Cytoscape → Enables interactions
 
 ## Essential Features
 

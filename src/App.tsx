@@ -1,474 +1,55 @@
-import { useState, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { useState } from 'react'
 import { Toaster } from '@/components/ui/sonner'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Flask, Graph, Calculator, Database, Plus, Cube, GitBranch, Gear, Lightning, Code, Sparkle, UploadSimple, Carrot } from '@phosphor-icons/react'
-import { FormulationEditor } from '@/components/formulation/FormulationEditor'
-import { CalculationPanel } from '@/components/formulation/CalculationPanel'
-import { FormulationGraph } from '@/components/graph/FormulationGraph'
-import { RelationshipGraphViewer } from '@/components/graph/RelationshipGraphViewer'
-import { IntegrationPanel } from '@/components/integrations/IntegrationPanel'
-import { BOMConfigurator } from '@/components/bom/BOMConfigurator'
-import { BackendConfigPanel } from '@/components/integrations/BackendConfigPanel'
-import { APITester } from '@/components/APITester'
-import { AIAssistantPanel } from '@/components/AIAssistantPanel'
-import { DataLoaderPanel } from '@/components/DataLoaderPanel'
-import { FDCDataIngestionPanel } from '@/components/FDCDataIngestionPanel'
-import { Formulation, createEmptyFormulation } from '@/lib/schemas/formulation'
-import { BOM, createEmptyBOM } from '@/lib/schemas/bom'
-import { neo4jManager } from '@/lib/managers/neo4j-manager'
-import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '@/lib/constants'
-import { toast } from 'sonner'
+import { Header } from '@/components/layout/Header'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { MainContent } from '@/components/layout/MainContent'
+import { GraphView } from '@/components/views/GraphView'
+import { FormulationsView } from '@/components/views/FormulationsView'
+import { IngestView } from '@/components/views/IngestView'
+import { SettingsView } from '@/components/views/SettingsView'
+import { useKV } from '@github/spark/hooks'
+
+export type View = 'dashboard' | 'formulations' | 'graph' | 'ingest' | 'settings'
 
 function App() {
-  const [formulations, setFormulations] = useKV<Formulation[]>('formulations', [])
-  const [boms, setBOMs] = useKV<BOM[]>('boms', [])
-  const [activeFormulationId, setActiveFormulationId] = useState<string | null>(null)
-  const [activeBOMId, setActiveBOMId] = useState<string | null>(null)
-  const [activeView, setActiveView] = useState<'formulation' | 'bom' | 'relationships' | 'api' | 'ai' | 'dataloader' | 'fdc'>('formulation')
-  const [graphData, setGraphData] = useState<any>(null)
-  const [relationshipGraphData, setRelationshipGraphData] = useState<any>(null)
-  const [graphLayout, setGraphLayout] = useState<'hierarchical' | 'force' | 'circular'>('hierarchical')
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [currentView, setCurrentView] = useState<View>('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [backendUrl, setBackendUrl] = useKV<string>('backend-url', 'http://localhost:8000')
 
-  useEffect(() => {
-    setGraphData(null)
-  }, [activeFormulationId])
-
-  const activeFormulation = (formulations || []).find(f => f.id === activeFormulationId) || null
-  const activeBOM = (boms || []).find(b => b.id === activeBOMId) || null
-
-  const handleCreateFormulation = async () => {
-    const user = await (window as any).spark.user()
-    const newFormulation = createEmptyFormulation(user.login)
-    setFormulations(current => [...(current || []), newFormulation])
-    setActiveFormulationId(newFormulation.id)
-    setActiveView('formulation')
-    toast.success(SUCCESS_MESSAGES.FORMULATION.CREATED)
-  }
-
-  const handleCreateBOM = async () => {
-    if (!activeFormulation) {
-      toast.error('Please select a formulation first')
-      return
-    }
-    const newBOM = createEmptyBOM(activeFormulation.id)
-    newBOM.name = `BOM for ${activeFormulation.name}`
-    newBOM.batchSize = activeFormulation.targetYield
-    newBOM.batchUnit = activeFormulation.yieldUnit
-    setBOMs(current => [...(current || []), newBOM])
-    setActiveBOMId(newBOM.id)
-    setActiveView('bom')
-    toast.success(SUCCESS_MESSAGES.BOM.CREATED)
-  }
-
-  const handleUpdateFormulation = (updated: Formulation) => {
-    setFormulations(current =>
-      (current || []).map(f => f.id === updated.id ? updated : f)
-    )
-  }
-
-  const handleUpdateBOM = (updated: BOM) => {
-    setBOMs(current =>
-      (current || []).map(b => b.id === updated.id ? updated : b)
-    )
-  }
-
-  const handleLoadGraphData = async () => {
-    if (!activeFormulation) {
-      toast.error(ERROR_MESSAGES.FORMULATION.NOT_FOUND)
-      return
-    }
-
-    try {
-      const result = await neo4jManager.getFormulationGraph(activeFormulation.id)
-      setGraphData(result)
-      toast.success(SUCCESS_MESSAGES.GRAPH.DATA_LOADED)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.GENERAL.UNEXPECTED_ERROR
-      toast.error(errorMessage)
-      console.error('Graph data loading error:', error)
-    }
-  }
-
-  const handleGenerateMockGraph = () => {
-    if (!activeFormulation) {
-      toast.error(ERROR_MESSAGES.FORMULATION.NOT_FOUND)
-      return
-    }
-
-    const mockNodes = [
-      {
-        id: activeFormulation.id,
-        labels: ['Formulation'],
-        properties: {
-          name: activeFormulation.name,
-          version: activeFormulation.version,
-          type: activeFormulation.type
-        }
-      },
-      ...activeFormulation.ingredients.map((ing) => ({
-        id: ing.id,
-        labels: ['Ingredient'],
-        properties: {
-          name: ing.name,
-          quantity: ing.quantity,
-          percentage: ing.percentage,
-          function: ing.function
-        }
-      }))
-    ]
-
-    const mockRelationships = activeFormulation.ingredients.map((ing, idx) => ({
-      id: `rel-${idx}`,
-      type: 'CONTAINS',
-      startNode: activeFormulation.id,
-      endNode: ing.id,
-      properties: {
-        percentage: ing.percentage
-      }
-    }))
-
-    setGraphData({
-      nodes: mockNodes,
-      relationships: mockRelationships,
-      metadata: {
-        executionTime: 10,
-        recordCount: mockNodes.length
-      }
-    })
-
-    toast.success(SUCCESS_MESSAGES.GRAPH.GENERATED)
-  }
-
-  const handleLoadRelationshipGraph = async () => {
-    try {
-      const result = await neo4jManager.getRelationshipGraph()
-      setRelationshipGraphData(result)
-      toast.success(SUCCESS_MESSAGES.GRAPH.DATA_LOADED)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.GENERAL.UNEXPECTED_ERROR
-      toast.error(errorMessage)
-      console.error('Relationship graph loading error:', error)
-    }
-  }
+  const backendUrlValue = backendUrl || 'http://localhost:8000'
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Toaster position="top-center" />
       
-      <header className="border-b border-border bg-white shadow-sm sticky top-0 z-10">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 border-r border-border pr-4">
-              <div className="w-10 h-10 bg-primary rounded flex items-center justify-center">
-                <Flask className="text-white" size={24} weight="bold" />
-              </div>
-              <div className="font-bold text-xl text-primary tracking-wide">TCS</div>
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold text-foreground">Formulation Graph Studio</h1>
-              <p className="text-xs text-muted-foreground">
-                Enterprise F&B Formulation Management & BOM Configuration
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Gear size={18} weight="bold" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Backend Services Configuration</DialogTitle>
-                </DialogHeader>
-                <BackendConfigPanel />
-              </DialogContent>
-            </Dialog>
-            <Button onClick={handleCreateFormulation} className="gap-2">
-              <Plus size={18} weight="bold" />
-              New Formulation
-            </Button>
-            {activeFormulation && (
-              <Button onClick={handleCreateBOM} variant="outline" className="gap-2">
-                <Cube size={18} weight="bold" />
-                Create BOM
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+      <Header 
+        onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+        backendUrl={backendUrlValue}
+      />
 
-      <main className="flex-1 p-6">
-        <div className="space-y-6">
-          <Card className="p-4 shadow-sm">
-            <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'formulation' | 'bom' | 'relationships' | 'api' | 'ai' | 'dataloader' | 'fdc')}>
-              <div className="flex items-center gap-4 mb-4">
-                <TabsList>
-                  <TabsTrigger value="formulation" className="gap-2">
-                    <Flask size={16} weight="bold" />
-                    Formulation
-                  </TabsTrigger>
-                  <TabsTrigger value="bom" className="gap-2">
-                    <Cube size={16} weight="bold" />
-                    BOM Configurator
-                  </TabsTrigger>
-                  <TabsTrigger value="relationships" className="gap-2">
-                    <GitBranch size={16} weight="bold" />
-                    Relationships
-                  </TabsTrigger>
-                  <TabsTrigger value="fdc" className="gap-2">
-                    <Carrot size={16} weight="bold" />
-                    FDC Ingestion
-                  </TabsTrigger>
-                  <TabsTrigger value="dataloader" className="gap-2">
-                    <UploadSimple size={16} weight="bold" />
-                    Sample Data
-                  </TabsTrigger>
-                  <TabsTrigger value="api" className="gap-2">
-                    <Code size={16} weight="bold" />
-                    API Testing
-                  </TabsTrigger>
-                  <TabsTrigger value="ai" className="gap-2">
-                    <Sparkle size={16} weight="bold" />
-                    AI Assistant
-                  </TabsTrigger>
-                </TabsList>
+      <div className="flex-1 flex overflow-hidden">
+        <Sidebar 
+          open={sidebarOpen}
+          currentView={currentView}
+          onViewChange={setCurrentView}
+        />
 
-                <div className="flex-1 flex gap-2 overflow-x-auto">
-                  {activeView === 'formulation' && (formulations || []).map((f) => (
-                    <Button
-                      key={f.id}
-                      size="sm"
-                      variant={f.id === activeFormulationId ? 'default' : 'outline'}
-                      onClick={() => setActiveFormulationId(f.id)}
-                    >
-                      {f.name}
-                    </Button>
-                  ))}
-                  {activeView === 'bom' && (boms || []).map((b) => (
-                    <Button
-                      key={b.id}
-                      size="sm"
-                      variant={b.id === activeBOMId ? 'default' : 'outline'}
-                      onClick={() => setActiveBOMId(b.id)}
-                    >
-                      {b.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <TabsContent value="formulation" className="mt-0">
-                {(formulations || []).length === 0 ? (
-                  <Card className="p-12 text-center shadow-sm">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center">
-                      <Flask className="text-primary" size={32} weight="duotone" />
-                    </div>
-                    <h2 className="text-2xl font-semibold mb-2">Welcome to Formulation Graph Studio</h2>
-                    <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-                      Create, manage, and visualize Food & Beverage formulations with integrated PLM, SAP MDG,
-                      and Neo4j graph relationships. Calculate yields, costs, and optimize your recipes.
-                    </p>
-                    <Button onClick={handleCreateFormulation} size="lg" className="gap-2">
-                      <Plus size={20} weight="bold" />
-                      Create Your First Formulation
-                    </Button>
-                  </Card>
-                ) : activeFormulation ? (
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                      <div className="xl:col-span-2 space-y-6">
-                        <FormulationEditor
-                          formulation={activeFormulation}
-                          onChange={handleUpdateFormulation}
-                        />
-
-                        <Card className="p-6 shadow-sm">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                              <Graph size={24} className="text-primary" weight="bold" />
-                              <h3 className="font-semibold text-lg">Relationship Graph</h3>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleGenerateMockGraph}
-                              >
-                                Generate Graph
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleLoadGraphData}
-                              >
-                                <Database size={16} className="mr-1" weight="bold" />
-                                Load from Neo4j
-                              </Button>
-                              <select
-                                className="px-3 py-1 text-sm border rounded-md bg-white"
-                                value={graphLayout}
-                                onChange={(e) => setGraphLayout(e.target.value as any)}
-                              >
-                                <option value="hierarchical">Hierarchical</option>
-                                <option value="force">Force-Directed</option>
-                                <option value="circular">Circular</option>
-                              </select>
-                            </div>
-                          </div>
-                          <FormulationGraph
-                            data={graphData}
-                            layout={graphLayout}
-                            height="500px"
-                            onNodeSelect={(nodeId) => toast.info(`Selected: ${nodeId}`)}
-                          />
-                        </Card>
-                      </div>
-
-                      <div className="space-y-6">
-                        <Tabs defaultValue="calculations">
-                          <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="calculations">
-                              <Calculator size={16} className="mr-1" weight="bold" />
-                              Calculations
-                            </TabsTrigger>
-                            <TabsTrigger value="integrations">
-                              <Database size={16} className="mr-1" weight="bold" />
-                              Integrations
-                            </TabsTrigger>
-                          </TabsList>
-
-                          <TabsContent value="calculations">
-                            <CalculationPanel
-                              formulation={activeFormulation}
-                              onScaledFormulation={handleUpdateFormulation}
-                            />
-                          </TabsContent>
-
-                          <TabsContent value="integrations">
-                            <IntegrationPanel />
-                          </TabsContent>
-                        </Tabs>
-
-                        <Card className="p-6 bg-accent/30 shadow-sm">
-                          <h3 className="font-semibold mb-3 text-sm">System Status</h3>
-                          <div className="space-y-2 text-xs">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Neo4j:</span>
-                              <span className={`font-semibold ${neo4jManager.isMockMode() ? 'text-yellow-600' : neo4jManager.isConnected() ? 'text-green-600' : 'text-red-600'}`}>
-                                {neo4jManager.isMockMode() ? 'Mock Mode' : neo4jManager.isConnected() ? 'Connected' : 'Disconnected'}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Database:</span>
-                              <span className="font-semibold text-foreground">{neo4jManager.getConnectionStatus().config?.database || 'neo4j'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">URI:</span>
-                              <span className="font-semibold text-foreground text-[10px] truncate max-w-[180px]">{neo4jManager.getConnectionStatus().config?.uri || '(not configured)'}</span>
-                            </div>
-                          </div>
-                        </Card>
-                      </div>
-                    </div>
-                  ) : (
-                    <Card className="p-12 text-center shadow-sm">
-                      <div className="w-16 h-16 bg-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center">
-                        <Flask className="text-primary" size={32} weight="duotone" />
-                      </div>
-                      <p className="text-muted-foreground">Select a formulation to edit</p>
-                    </Card>
-                  )
-                }
-                </TabsContent>
-
-                <TabsContent value="bom" className="mt-0">
-                  {activeBOM ? (
-                    <BOMConfigurator
-                      bom={activeBOM}
-                      onChange={handleUpdateBOM}
-                    />
-                  ) : (
-                    <Card className="p-12 text-center shadow-sm">
-                      <div className="w-16 h-16 bg-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center">
-                        <Cube className="text-primary" size={32} weight="duotone" />
-                      </div>
-                      <h3 className="text-xl font-semibold mb-2">No BOM Selected</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Select a formulation and create a BOM to start configuring
-                      </p>
-                      {activeFormulation && (
-                        <Button onClick={handleCreateBOM} className="gap-2">
-                          <Plus size={18} weight="bold" />
-                          Create BOM for {activeFormulation.name}
-                        </Button>
-                      )}
-                    </Card>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="relationships" className="mt-0">
-                  <RelationshipGraphViewer
-                    data={relationshipGraphData}
-                    onRefresh={handleLoadRelationshipGraph}
-                    onNodeSelect={(node) => {
-                      if (node) {
-                        console.log('Selected node:', node)
-                      }
-                    }}
-                  />
-                </TabsContent>
-
-                <TabsContent value="fdc" className="mt-0">
-                  <FDCDataIngestionPanel 
-                    onDataIngested={() => {
-                      toast.success('FDC data ingested! You can now view it in the Relationships tab.')
-                      setRelationshipGraphData(null)
-                    }}
-                  />
-                </TabsContent>
-
-                <TabsContent value="dataloader" className="mt-0">
-                  <DataLoaderPanel 
-                    onDataLoaded={() => {
-                      toast.success('Sample data loaded! You can now view it in the Relationships tab.')
-                      setRelationshipGraphData(null)
-                    }}
-                  />
-                </TabsContent>
-
-                <TabsContent value="api" className="mt-0">
-                  <APITester />
-                </TabsContent>
-
-                <TabsContent value="ai" className="mt-0">
-                  <AIAssistantPanel 
-                    formulations={formulations || []}
-                    activeFormulationId={activeFormulationId}
-                  />
-                </TabsContent>
-              </Tabs>
-            </Card>
-          </div>
-      </main>
-
-      <footer className="border-t border-border bg-white py-4 mt-auto">
-        <div className="px-6 flex items-center justify-between text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-primary">TCS</span>
-            <span>|</span>
-            <span>Formulation Graph Studio</span>
-            <span>|</span>
-            <span>Enterprise F&B Management Platform</span>
-          </div>
-          <div>© 2024 Tata Consultancy Services Limited</div>
-        </div>
-      </footer>
+        <MainContent 
+          view={currentView}
+          sidebarOpen={sidebarOpen}
+        >
+          {currentView === 'dashboard' && <GraphView backendUrl={backendUrlValue} />}
+          {currentView === 'formulations' && <FormulationsView backendUrl={backendUrlValue} />}
+          {currentView === 'graph' && <GraphView backendUrl={backendUrlValue} />}
+          {currentView === 'ingest' && <IngestView backendUrl={backendUrlValue} />}
+          {currentView === 'settings' && (
+            <SettingsView 
+              backendUrl={backendUrlValue}
+              onBackendUrlChange={setBackendUrl}
+            />
+          )}
+        </MainContent>
+      </div>
     </div>
   )
 }
