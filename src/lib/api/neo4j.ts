@@ -1,3 +1,4 @@
+import neo4j, { Driver, Session } from 'neo4j-driver'
 import {
   Neo4jGraphNode,
   Neo4jGraphRelationship,
@@ -17,6 +18,7 @@ export interface Neo4jConnectionConfig {
 
 export class Neo4jClient {
   private mockMode: boolean = true
+  private driver: Driver | null = null
   private config: Neo4jConnectionConfig = {
     uri: 'neo4j+s://2cccd05b.databases.neo4j.io',
     username: 'neo4j',
@@ -31,12 +33,54 @@ export class Neo4jClient {
     }
   }
 
+  async connect(): Promise<void> {
+    if (this.driver) {
+      await this.driver.close()
+    }
+
+    try {
+      this.driver = neo4j.driver(
+        this.config.uri,
+        neo4j.auth.basic(this.config.username, this.config.password)
+      )
+      await this.driver.verifyConnectivity()
+      console.log('Neo4j connected successfully')
+    } catch (error) {
+      console.error('Failed to connect to Neo4j:', error)
+      throw error
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.driver) {
+      await this.driver.close()
+      this.driver = null
+    }
+  }
+
+  async testConnection(): Promise<boolean> {
+    try {
+      if (!this.driver) {
+        await this.connect()
+      }
+      await this.driver!.verifyConnectivity()
+      return true
+    } catch (error) {
+      console.error('Connection test failed:', error)
+      return false
+    }
+  }
+
   setMockMode(enabled: boolean) {
     this.mockMode = enabled
   }
 
-  setConfig(config: Neo4jConnectionConfig) {
+  async setConfig(config: Neo4jConnectionConfig): Promise<void> {
     this.config = config
+    if (!this.mockMode && this.driver) {
+      await this.disconnect()
+      await this.connect()
+    }
   }
 
   getConfig(): Neo4jConnectionConfig {
@@ -47,6 +91,10 @@ export class Neo4jClient {
     return this.mockMode
   }
 
+  isConnected(): boolean {
+    return this.driver !== null
+  }
+
   async query(cypher: string, parameters?: Record<string, any>): Promise<Neo4jResult> {
     if (this.mockMode) {
       return this.mockQuery(cypher, parameters)
@@ -55,30 +103,95 @@ export class Neo4jClient {
     const startTime = Date.now()
     
     try {
-      const response = await fetch('/api/neo4j/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          cypher, 
-          parameters,
-          config: this.config
-        })
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Neo4j query failed: ${errorText || response.statusText}`)
+      if (!this.driver) {
+        await this.connect()
       }
 
-      const data = await response.json()
-      
-      return {
-        nodes: data.nodes || [],
-        relationships: data.relationships || [],
-        metadata: {
-          executionTime: Date.now() - startTime,
-          recordCount: data.nodes?.length || 0
+      const session = this.driver!.session({
+        database: this.config.database,
+        defaultAccessMode: neo4j.session.READ
+      })
+
+      try {
+        const result = await session.run(cypher, parameters)
+        
+        const nodes: Neo4jGraphNode[] = []
+        const relationships: Neo4jGraphRelationship[] = []
+        const nodeMap = new Map<string, Neo4jGraphNode>()
+
+        for (const record of result.records) {
+          for (const key of record.keys) {
+            const value = record.get(key)
+            
+            if (value && typeof value === 'object') {
+              if (value.labels) {
+                const nodeId = value.identity?.toString() || value.elementId
+                if (!nodeMap.has(nodeId)) {
+                  const node: Neo4jGraphNode = {
+                    id: nodeId,
+                    labels: value.labels,
+                    properties: value.properties || {}
+                  }
+                  nodes.push(node)
+                  nodeMap.set(nodeId, node)
+                }
+              } else if (value.type) {
+                const rel: Neo4jGraphRelationship = {
+                  id: value.identity?.toString() || value.elementId,
+                  type: value.type,
+                  startNode: value.start?.toString() || value.startNodeElementId,
+                  endNode: value.end?.toString() || value.endNodeElementId,
+                  properties: value.properties || {}
+                }
+                relationships.push(rel)
+              } else if (value.segments) {
+                for (const segment of value.segments) {
+                  const startId = segment.start.identity?.toString() || segment.start.elementId
+                  if (!nodeMap.has(startId)) {
+                    const startNode: Neo4jGraphNode = {
+                      id: startId,
+                      labels: segment.start.labels,
+                      properties: segment.start.properties || {}
+                    }
+                    nodes.push(startNode)
+                    nodeMap.set(startId, startNode)
+                  }
+
+                  const endId = segment.end.identity?.toString() || segment.end.elementId
+                  if (!nodeMap.has(endId)) {
+                    const endNode: Neo4jGraphNode = {
+                      id: endId,
+                      labels: segment.end.labels,
+                      properties: segment.end.properties || {}
+                    }
+                    nodes.push(endNode)
+                    nodeMap.set(endId, endNode)
+                  }
+
+                  const rel: Neo4jGraphRelationship = {
+                    id: segment.relationship.identity?.toString() || segment.relationship.elementId,
+                    type: segment.relationship.type,
+                    startNode: startId,
+                    endNode: endId,
+                    properties: segment.relationship.properties || {}
+                  }
+                  relationships.push(rel)
+                }
+              }
+            }
+          }
         }
+        
+        return {
+          nodes,
+          relationships,
+          metadata: {
+            executionTime: Date.now() - startTime,
+            recordCount: nodes.length
+          }
+        }
+      } finally {
+        await session.close()
       }
     } catch (error) {
       console.error('Neo4j query error:', error)

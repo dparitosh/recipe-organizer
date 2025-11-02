@@ -98,26 +98,29 @@ An enterprise-grade Food & Beverage formulation management platform that integra
   - Performance: Handles 200+ nodes smoothly with 60fps interactions
 
 ### Neo4j Integration (ENHANCED - CONFIGURABLE)
-- **Functionality**: Configurable Neo4j connection with credential management, test connectivity, and toggle between mock/real mode for querying and visualizing graph relationships
-- **Purpose**: Flexible database integration supporting both development (mock mode) and production (real Neo4j connection) with secure credential storage
-- **Trigger**: Open Integrations panel → Configure Neo4j credentials → Toggle mock mode on/off → Execute Cypher queries
+- **Functionality**: Configurable Neo4j connection with credential management, test connectivity, toggle between mock/real mode, Neo4j Driver for direct database access, and support for GenAI plugin natural language queries
+- **Purpose**: Flexible database integration supporting both development (mock mode) and production (real Neo4j connection) with secure credential storage, utilizing official Neo4j JavaScript driver for optimal performance
+- **Trigger**: Open Integrations panel → Configure Neo4j credentials → Toggle mock mode on/off → Execute Cypher queries or natural language queries (with GenAI plugin)
 - **Progression**: 
   - **Configuration**: Open Neo4j config panel → Enter connection details (URI: neo4j+s://2cccd05b.databases.neo4j.io, username: neo4j, password: tcs12345, database: neo4j) → Test connection → Save configuration → Toggle mock mode switch
   - **Mock Mode**: Enable mock mode → Use simulated data for all operations → No external connection required → Instant responses → Consistent test data
-  - **Real Mode**: Disable mock mode → Connect to configured Neo4j instance → Execute actual Cypher queries → Fetch live graph data → Handle connection errors gracefully
+  - **Real Mode (Neo4j Driver)**: Disable mock mode → Connect to configured Neo4j instance using official neo4j-driver package → Execute actual Cypher queries → Fetch live graph data → Handle connection errors gracefully → Automatic session management and connection pooling
   - **Query Execution**: Write Cypher query → Execute against Neo4j (mock or real) → Display nodes and relationships → Show execution metadata → Export results
-  - **Status Indicator**: System status panel shows current mode (Mock Mode/Connected) with color coding → Yellow for mock, green for connected
+  - **GenAI Plugin Support**: When GenAI plugin is available on Neo4j instance → Enable natural language queries → Convert natural language to Cypher → Execute generated queries → Provide query explanation
+  - **Status Indicator**: System status panel shows current mode (Mock Mode/Connected/Disconnected) with color coding → Yellow for mock, green for connected, red for disconnected → Shows connection URI and database name
 - **Success criteria**: 
   - Persistent credential storage using useKV
   - Test connection validates credentials before saving
   - Show/hide password toggle for security
   - Seamless switching between mock and real modes
-  - Mock API intercepts fetch calls when needed
-  - Real queries send credentials securely
+  - Real queries use official Neo4j driver with proper session management
+  - Connection pooling and automatic reconnection
   - Clear connection status indicators
   - Error handling with helpful messages
   - Valid Cypher execution in both modes
   - Export results functionality
+  - GenAI plugin detection and natural language query support
+  - Driver version: neo4j-driver 5.x or 6.x (latest)
 
 ### PLM Integration
 - **Functionality**: Search and sync material master data from PLM system

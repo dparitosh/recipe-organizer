@@ -4,13 +4,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Toaster } from '@/components/ui/sonner'
-import { Flask, Graph, Calculator, Database, Plus, Cube, GitBranch } from '@phosphor-icons/react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Flask, Graph, Calculator, Database, Plus, Cube, GitBranch, Gear } from '@phosphor-icons/react'
 import { FormulationEditor } from '@/components/formulation/FormulationEditor'
 import { CalculationPanel } from '@/components/formulation/CalculationPanel'
 import { FormulationGraph } from '@/components/graph/FormulationGraph'
 import { RelationshipGraphViewer } from '@/components/graph/RelationshipGraphViewer'
 import { IntegrationPanel } from '@/components/integrations/IntegrationPanel'
 import { BOMConfigurator } from '@/components/bom/BOMConfigurator'
+import { Neo4jSettings } from '@/components/Neo4jSettings'
 import { Formulation, createEmptyFormulation } from '@/lib/schemas/formulation'
 import { BOM, createEmptyBOM } from '@/lib/schemas/bom'
 import { neo4jClient } from '@/lib/api/neo4j'
@@ -26,6 +28,7 @@ function App() {
   const [graphData, setGraphData] = useState<any>(null)
   const [relationshipGraphData, setRelationshipGraphData] = useState<any>(null)
   const [graphLayout, setGraphLayout] = useState<'hierarchical' | 'force' | 'circular'>('hierarchical')
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
     const mockAPI = createMockNeo4jAPI()
@@ -169,6 +172,19 @@ function App() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Gear size={18} weight="bold" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Settings</DialogTitle>
+                </DialogHeader>
+                <Neo4jSettings />
+              </DialogContent>
+            </Dialog>
             <Button onClick={handleCreateFormulation} className="gap-2">
               <Plus size={18} weight="bold" />
               New Formulation
@@ -323,21 +339,17 @@ function App() {
                           <div className="space-y-2 text-xs">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Neo4j:</span>
-                              <span className={`font-semibold ${neo4jClient.isMockMode() ? 'text-yellow-600' : 'text-green-600'}`}>
-                                {neo4jClient.isMockMode() ? 'Mock Mode' : 'Connected'}
+                              <span className={`font-semibold ${neo4jClient.isMockMode() ? 'text-yellow-600' : neo4jClient.isConnected() ? 'text-green-600' : 'text-red-600'}`}>
+                                {neo4jClient.isMockMode() ? 'Mock Mode' : neo4jClient.isConnected() ? 'Connected' : 'Disconnected'}
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">PLM:</span>
-                              <span className="text-green-600 font-semibold">Connected (Mock)</span>
+                              <span className="text-muted-foreground">Database:</span>
+                              <span className="font-semibold text-foreground">{neo4jClient.getConfig().database}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">SAP MDG:</span>
-                              <span className="text-green-600 font-semibold">Connected (Mock)</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">FDC API:</span>
-                              <span className="text-green-600 font-semibold">Available</span>
+                              <span className="text-muted-foreground">URI:</span>
+                              <span className="font-semibold text-foreground text-[10px] truncate max-w-[180px]">{neo4jClient.getConfig().uri}</span>
                             </div>
                           </div>
                         </Card>
