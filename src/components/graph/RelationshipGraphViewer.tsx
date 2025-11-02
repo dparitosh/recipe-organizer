@@ -201,7 +201,10 @@ export function RelationshipGraphViewer({
           'width': config.size,
           'height': config.size,
           'border-width': 3,
-          'border-color': config.color.replace(/oklch\(([\d.]+)/, 'oklch($1').replace(/0\.(\d+)/, (m, p1) => `0.${Math.max(0, parseInt(p1) - 20)}`)
+          'border-color': config.color.replace(/oklch\(([\d.]+)/, (match, p1) => {
+            const lightness = parseFloat(p1)
+            return `oklch(${Math.max(0.3, lightness - 0.15)}`
+          })
         }
       })),
       {
