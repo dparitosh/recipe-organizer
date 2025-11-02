@@ -2,6 +2,7 @@ import neo4j from 'neo4j-driver'
 import { neo4jDriver, Neo4jDriverConfig } from '@/lib/drivers/neo4j-driver'
 import { genAIClient } from '@/lib/genai/genai-client'
 import { Neo4jGraphNode, Neo4jGraphRelationship, Neo4jResult } from '@/lib/schemas/integration'
+import { NEO4J_CONSTANTS } from '@/lib/constants'
 
 export interface ConnectionStatus {
   isConnected: boolean
@@ -18,40 +19,36 @@ export class Neo4jManager {
     try {
       await neo4jDriver.connect(config)
       this.mockMode = false
-      console.log('✓ Neo4j Manager: Connection established')
     } catch (error) {
-      console.error('✗ Neo4j Manager: Connection failed', error)
+      console.error('Neo4j Manager: Connection failed', error)
       throw error
     }
   }
 
   async disconnect(): Promise<void> {
     await neo4jDriver.disconnect()
-    console.log('✓ Neo4j Manager: Disconnected')
   }
 
   async testConnection(config: Neo4jDriverConfig): Promise<boolean> {
     try {
       const testDriver = neo4j.driver(
         config.uri,
-        neo4j.auth.basic(config.username, config.password)
+        neo4j.auth.basic(config.username, config.password),
+        {
+          connectionAcquisitionTimeout: NEO4J_CONSTANTS.TEST_CONNECTION_TIMEOUT_MS,
+        }
       )
       await testDriver.verifyConnectivity()
       await testDriver.close()
       return true
     } catch (error) {
-      console.error('✗ Neo4j Manager: Test connection failed', error)
+      console.error('Neo4j Manager: Test connection failed', error)
       return false
     }
   }
 
   setMockMode(enabled: boolean) {
     this.mockMode = enabled
-    if (enabled) {
-      console.log('✓ Neo4j Manager: Mock mode enabled')
-    } else {
-      console.log('✓ Neo4j Manager: Mock mode disabled')
-    }
   }
 
   isMockMode(): boolean {
@@ -166,7 +163,6 @@ export class Neo4jManager {
 
   async naturalLanguageQuery(query: string, context?: Record<string, any>): Promise<any> {
     if (this.mockMode) {
-      console.log('Natural language query in mock mode:', query)
       return this.executeMockQuery('MATCH (n) RETURN n LIMIT 10')
     }
 
@@ -189,14 +185,12 @@ export class Neo4jManager {
       MATCH path = (n)-[r]->(m)
       WHERE n:Ingredient OR n:Recipe OR n:MasterRecipe OR n:ManufacturingRecipe OR n:Plant OR n:SalesOrder
       RETURN path
-      LIMIT 200
+      LIMIT $limit
     `
-    return this.query(cypher)
+    return this.query(cypher, { limit: NEO4J_CONSTANTS.DEFAULT_QUERY_LIMIT })
   }
 
   private executeMockQuery(cypher: string, parameters?: Record<string, any>): Promise<Neo4jResult> {
-    console.log('Mock Query:', cypher, parameters)
-    
     const mockNodes: Neo4jGraphNode[] = [
       {
         id: 'master-recipe-1',

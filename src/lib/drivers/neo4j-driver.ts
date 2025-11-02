@@ -1,4 +1,5 @@
 import neo4j, { Driver, Session, Result } from 'neo4j-driver'
+import { NEO4J_CONSTANTS } from '@/lib/constants'
 
 export interface Neo4jDriverConfig {
   uri: string
@@ -27,17 +28,16 @@ export class Neo4jDriver {
         config.uri,
         neo4j.auth.basic(config.username, config.password),
         {
-          maxConnectionLifetime: 3 * 60 * 60 * 1000,
-          maxConnectionPoolSize: 50,
-          connectionAcquisitionTimeout: 2 * 60 * 1000,
+          maxConnectionLifetime: NEO4J_CONSTANTS.MAX_CONNECTION_LIFETIME_MS,
+          maxConnectionPoolSize: NEO4J_CONSTANTS.MAX_CONNECTION_POOL_SIZE,
+          connectionAcquisitionTimeout: NEO4J_CONSTANTS.CONNECTION_TIMEOUT_MS,
           disableLosslessIntegers: true
         }
       )
 
       await this.driver.verifyConnectivity()
-      console.log('✓ Neo4j Driver: Connected successfully')
     } catch (error) {
-      console.error('✗ Neo4j Driver: Connection failed', error)
+      console.error('Neo4j Driver: Connection failed', error)
       this.driver = null
       throw error
     }
@@ -48,7 +48,6 @@ export class Neo4jDriver {
       await this.driver.close()
       this.driver = null
       this.config = null
-      console.log('✓ Neo4j Driver: Disconnected')
     }
   }
 
@@ -61,7 +60,7 @@ export class Neo4jDriver {
       await this.driver.verifyConnectivity()
       return true
     } catch (error) {
-      console.error('✗ Neo4j Driver: Connectivity check failed', error)
+      console.error('Neo4j Driver: Connectivity check failed', error)
       return false
     }
   }
@@ -71,7 +70,7 @@ export class Neo4jDriver {
       throw new Error('Neo4j driver not connected. Call connect() first.')
     }
 
-    const session = this.driver.session()
+    const session = this.driver.session({ database: this.config.database })
 
     try {
       const result = await session.run(cypher, parameters || {})
@@ -89,10 +88,12 @@ export class Neo4jDriver {
       throw new Error('Neo4j driver not connected. Call connect() first.')
     }
 
-    const session = this.driver.session()
+    const session = this.driver.session({ database: this.config.database })
 
     try {
-      const result = await session.run(cypher, parameters || {})
+      const result = await session.executeWrite(async (tx) => {
+        return await tx.run(cypher, parameters || {})
+      })
       return {
         records: result.records,
         summary: result.summary
@@ -110,7 +111,7 @@ export class Neo4jDriver {
       throw new Error('Neo4j driver not connected. Call connect() first.')
     }
 
-    const session = this.driver.session()
+    const session = this.driver.session({ database: this.config.database })
 
     try {
       if (accessMode === 'WRITE') {

@@ -18,7 +18,7 @@ import { AIAssistantPanel } from '@/components/AIAssistantPanel'
 import { Formulation, createEmptyFormulation } from '@/lib/schemas/formulation'
 import { BOM, createEmptyBOM } from '@/lib/schemas/bom'
 import { neo4jManager } from '@/lib/managers/neo4j-manager'
-import { createMockNeo4jAPI } from '@/lib/api/neo4j-api'
+import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '@/lib/constants'
 import { toast } from 'sonner'
 
 function App() {
@@ -33,9 +33,8 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
-    const mockAPI = createMockNeo4jAPI()
-    return () => mockAPI.restore()
-  }, [])
+    setGraphData(null)
+  }, [activeFormulationId])
 
   const activeFormulation = (formulations || []).find(f => f.id === activeFormulationId) || null
   const activeBOM = (boms || []).find(b => b.id === activeBOMId) || null
@@ -46,7 +45,7 @@ function App() {
     setFormulations(current => [...(current || []), newFormulation])
     setActiveFormulationId(newFormulation.id)
     setActiveView('formulation')
-    toast.success('New formulation created')
+    toast.success(SUCCESS_MESSAGES.FORMULATION.CREATED)
   }
 
   const handleCreateBOM = async () => {
@@ -61,7 +60,7 @@ function App() {
     setBOMs(current => [...(current || []), newBOM])
     setActiveBOMId(newBOM.id)
     setActiveView('bom')
-    toast.success('BOM created')
+    toast.success(SUCCESS_MESSAGES.BOM.CREATED)
   }
 
   const handleUpdateFormulation = (updated: Formulation) => {
@@ -78,23 +77,24 @@ function App() {
 
   const handleLoadGraphData = async () => {
     if (!activeFormulation) {
-      toast.error('No active formulation')
+      toast.error(ERROR_MESSAGES.FORMULATION.NOT_FOUND)
       return
     }
 
     try {
       const result = await neo4jManager.getFormulationGraph(activeFormulation.id)
       setGraphData(result)
-      toast.success('Graph data loaded')
+      toast.success(SUCCESS_MESSAGES.GRAPH.DATA_LOADED)
     } catch (error) {
-      toast.error('Failed to load graph data')
-      console.error(error)
+      const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.GENERAL.UNEXPECTED_ERROR
+      toast.error(errorMessage)
+      console.error('Graph data loading error:', error)
     }
   }
 
   const handleGenerateMockGraph = () => {
     if (!activeFormulation) {
-      toast.error('No active formulation')
+      toast.error(ERROR_MESSAGES.FORMULATION.NOT_FOUND)
       return
     }
 
@@ -139,17 +139,18 @@ function App() {
       }
     })
 
-    toast.success('Graph generated from formulation')
+    toast.success(SUCCESS_MESSAGES.GRAPH.GENERATED)
   }
 
   const handleLoadRelationshipGraph = async () => {
     try {
       const result = await neo4jManager.getRelationshipGraph()
       setRelationshipGraphData(result)
-      toast.success('Relationship graph loaded')
+      toast.success(SUCCESS_MESSAGES.GRAPH.DATA_LOADED)
     } catch (error) {
-      toast.error('Failed to load relationship graph')
-      console.error(error)
+      const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.GENERAL.UNEXPECTED_ERROR
+      toast.error(errorMessage)
+      console.error('Relationship graph loading error:', error)
     }
   }
 

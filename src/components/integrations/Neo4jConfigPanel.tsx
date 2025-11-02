@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { Database, CheckCircle, Warning, Eye, EyeSlash } from '@phosphor-icons/react'
+import { neo4jManager } from '@/lib/managers/neo4j-manager'
+import { SUCCESS_MESSAGES, ERROR_MESSAGES, NEO4J_CONSTANTS } from '@/lib/constants'
 
 export interface Neo4jConfig {
   uri: string
@@ -22,11 +24,11 @@ interface Neo4jConfigPanelProps {
 
 export function Neo4jConfigPanel({ onConfigChange }: Neo4jConfigPanelProps) {
   const [config, setConfig] = useKV<Neo4jConfig>('neo4j-config', {
-    uri: 'neo4j+s://2cccd05b.databases.neo4j.io',
-    username: 'neo4j',
-    password: 'tcs12345',
-    database: 'neo4j',
-    mockMode: false
+    uri: '',
+    username: '',
+    password: '',
+    database: NEO4J_CONSTANTS.DEFAULT_DATABASE,
+    mockMode: true
   })
 
   const [showPassword, setShowPassword] = useState(false)
@@ -34,8 +36,11 @@ export function Neo4jConfigPanel({ onConfigChange }: Neo4jConfigPanelProps) {
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'failed'>('unknown')
 
   useEffect(() => {
-    if (config && onConfigChange) {
-      onConfigChange(config)
+    if (config) {
+      neo4jManager.setMockMode(config.mockMode)
+      if (onConfigChange) {
+        onConfigChange(config)
+      }
     }
   }, [config, onConfigChange])
 
@@ -54,38 +59,54 @@ export function Neo4jConfigPanel({ onConfigChange }: Neo4jConfigPanelProps) {
     setConnectionStatus('unknown')
 
     try {
-      const response = await fetch('/api/neo4j/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uri: config.uri,
-          username: config.username,
-          password: config.password,
-          database: config.database
-        })
+      const isConnected = await neo4jManager.testConnection({
+        uri: config.uri,
+        username: config.username,
+        password: config.password,
+        database: config.database
       })
 
-      if (response.ok) {
+      if (isConnected) {
         setConnectionStatus('connected')
-        toast.success('Connected to Neo4j successfully')
+        toast.success(SUCCESS_MESSAGES.NEO4J.CONNECTED)
       } else {
         setConnectionStatus('failed')
-        const error = await response.text()
-        toast.error(`Connection failed: ${error}`)
+        toast.error(ERROR_MESSAGES.NEO4J.CONNECTION_FAILED)
       }
     } catch (error) {
       setConnectionStatus('failed')
-      toast.error('Connection test failed')
+      const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.GENERAL.UNEXPECTED_ERROR
+      toast.error(errorMessage)
       console.error(error)
     } finally {
       setTesting(false)
     }
   }
 
-  const handleSaveConfig = () => {
-    toast.success('Neo4j configuration saved')
-    if (onConfigChange && config) {
-      onConfigChange(config)
+  const handleSaveConfig = async () => {
+    if (!config) return
+
+    try {
+      if (!config.mockMode && config.uri && config.username && config.password) {
+        await neo4jManager.connect({
+          uri: config.uri,
+          username: config.username,
+          password: config.password,
+          database: config.database
+        })
+        neo4jManager.setMockMode(false)
+      } else {
+        neo4jManager.setMockMode(true)
+      }
+      
+      toast.success(SUCCESS_MESSAGES.NEO4J.CONFIG_SAVED)
+      if (onConfigChange) {
+        onConfigChange(config)
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.GENERAL.UNEXPECTED_ERROR
+      toast.error(errorMessage)
+      console.error(error)
     }
   }
 
