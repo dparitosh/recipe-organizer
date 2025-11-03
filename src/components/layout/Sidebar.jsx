@@ -5,10 +5,12 @@ import {
   Flask, 
   Graph, 
   UploadSimple, 
-  Gear 
+  Gear,
+  Sparkle
 } from '@phosphor-icons/react'
 
 const navItems = [
+  { view: 'orchestration', label: 'Orchestration', icon: Sparkle },
   { view: 'dashboard', label: 'Dashboard', icon: House },
   { view: 'formulations', label: 'Formulations', icon: Flask },
   { view: 'graph', label: 'Graph Explorer', icon: Graph },
