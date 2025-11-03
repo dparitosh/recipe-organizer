@@ -49,6 +49,27 @@ A modern, enterprise-grade Food & Beverage formulation management platform with 
 
 ## Essential Features
 
+### Multi-Agent Orchestration System (NEW)
+- **Functionality**: Autogen-inspired agent orchestration framework that coordinates specialized AI agents to process formulation workflows end-to-end with validated JSON handoffs between agents
+- **Purpose**: Decompose complex formulation tasks into specialized agent responsibilities, ensuring data consistency, automated validation, and seamless workflow progression from recipe design to graph visualization
+- **Trigger**: User clicks "Run Orchestration" with a natural language formulation request or selects "Agent Workflow" mode
+- **Progression**: Natural language input → Recipe Engineer agent (parses structure, validates yields) → Scaling Calculator agent (computes quantities, costs) → Graph Builder agent (prepares Neo4j nodes/edges) → QA Validator agent (checks consistency, constraints) → UI Designer agent (generates React component configs) → Final validated output displayed
+- **Agents**:
+  - **Recipe Engineer**: Interprets formulation requirements, structures ingredients with functions, validates percentages sum to 100%, outputs standardized recipe JSON
+  - **Scaling Calculator**: Takes recipe JSON, computes scaled quantities for target batch size, applies density conversions, calculates costs and yields, outputs calculation JSON
+  - **Graph Builder**: Transforms calculation JSON into Neo4j Cypher commands, defines nodes (formulation/ingredient/nutrient), creates relationships, outputs graph schema JSON
+  - **QA Validator**: Cross-checks all previous agent outputs, validates data consistency, checks business rules (yield >0, cost >0, percentages valid), flags warnings/errors, outputs validation report JSON
+  - **UI Designer**: Generates React component configuration based on validated data, defines card layouts, chart types, color schemes, outputs UI config JSON
+- **Success criteria**: 
+  - All agents produce valid JSON conforming to defined schemas
+  - Each agent validates input from previous agent before processing
+  - Orchestration completes with <5s total latency for typical formulation
+  - QA Validator catches >95% of data inconsistencies
+  - UI Designer output renders correctly in React without manual adjustment
+  - Workflow state persisted in useKV for resume capability
+  - Agent conversation history displayed in expandable panel
+  - Error handling with graceful degradation (skip failing agent if non-critical)
+
 ### Formulation Management
 - **Functionality**: Create, edit, and manage F&B formulations with ingredients, percentages, and metadata
 - **Purpose**: Central repository for all product recipes with version control and approval workflows

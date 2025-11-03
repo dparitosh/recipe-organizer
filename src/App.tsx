@@ -7,10 +7,11 @@ import { GraphView } from '@/components/views/GraphView'
 import { FormulationsView } from '@/components/views/FormulationsView'
 import { IngestView } from '@/components/views/IngestView'
 import { SettingsView } from '@/components/views/SettingsView'
+import { OrchestrationView } from '@/components/orchestration/OrchestrationView'
 import { useKV } from '@github/spark/hooks'
 
 function App() {
-  const [currentView, setCurrentView] = useState('dashboard')
+  const [currentView, setCurrentView] = useState('orchestration')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [backendUrl, setBackendUrl] = useKV('backend-url', 'http://localhost:8000')
 
@@ -36,6 +37,7 @@ function App() {
           view={currentView}
           sidebarOpen={sidebarOpen}
         >
+          {currentView === 'orchestration' && <OrchestrationView />}
           {currentView === 'dashboard' && <GraphView backendUrl={backendUrlValue} />}
           {currentView === 'formulations' && <FormulationsView backendUrl={backendUrlValue} />}
           {currentView === 'graph' && <GraphView backendUrl={backendUrlValue} />}
