@@ -3,7 +3,6 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataImportMapper } from '@/components/DataImportMapper'
 import { AIServiceSettings } from '@/components/AIServiceSettings'
 import { Gear, CloudArrowDown } from '@phosphor-icons/react'
 import { toast } from 'sonner'
@@ -13,21 +12,17 @@ export function SettingsView({ backendUrl, onBackendUrlChange }) {
     toast.success('Settings saved successfully')
   }
 
-  const handleImportComplete = (data) => {
-    toast.success(`Import complete! ${data.length} records processed`)
-  }
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
         <p className="text-muted-foreground mt-1">
-          Configure backend connections, AI service, and data import
+          Configure backend connections and AI service
         </p>
       </div>
 
       <Tabs defaultValue="backend" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:grid-cols-2">
           <TabsTrigger value="backend" className="gap-2">
             <Gear size={16} />
             Backend
@@ -35,9 +30,6 @@ export function SettingsView({ backendUrl, onBackendUrlChange }) {
           <TabsTrigger value="ai-service" className="gap-2">
             <CloudArrowDown size={16} />
             AI Service
-          </TabsTrigger>
-          <TabsTrigger value="data-import" className="gap-2">
-            Data Import
           </TabsTrigger>
         </TabsList>
 
@@ -66,52 +58,10 @@ export function SettingsView({ backendUrl, onBackendUrlChange }) {
               </Button>
             </div>
           </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Architecture</h3>
-              <div className="space-y-3 text-sm">
-                <div className="p-3 bg-muted rounded-lg">
-                  <h4 className="font-semibold mb-1">Frontend</h4>
-                  <p className="text-muted-foreground">React 19 + JavaScript + Tailwind CSS v4</p>
-                </div>
-                <div className="p-3 bg-muted rounded-lg">
-                  <h4 className="font-semibold mb-1">Backend</h4>
-                  <p className="text-muted-foreground">Python FastAPI + Pydantic</p>
-                </div>
-                <div className="p-3 bg-muted rounded-lg">
-                  <h4 className="font-semibold mb-1">Database</h4>
-                  <p className="text-muted-foreground">Neo4j Graph Database</p>
-                </div>
-                <div className="p-3 bg-muted rounded-lg">
-                  <h4 className="font-semibold mb-1">Graph Visualization</h4>
-                  <p className="text-muted-foreground">Cytoscape.js with physics</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-primary/5 border-primary/20">
-              <h3 className="text-lg font-semibold mb-2">Backend Setup Instructions</h3>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>1. Ensure Python 3.10+ is installed</p>
-                <p>2. Install dependencies: <code className="bg-muted px-2 py-1 rounded">pip install fastapi uvicorn neo4j python-dotenv pydantic</code></p>
-                <p>3. Configure Neo4j connection in backend <code className="bg-muted px-2 py-1 rounded">.env</code> file</p>
-                <p>4. Start backend: <code className="bg-muted px-2 py-1 rounded">uvicorn main:app --reload --port 8000</code></p>
-                <p>5. Backend API docs available at: <code className="bg-muted px-2 py-1 rounded">{backendUrl}/docs</code></p>
-              </div>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="ai-service" className="space-y-6 mt-6">
           <AIServiceSettings />
-        </TabsContent>
-
-        <TabsContent value="data-import" className="space-y-6 mt-6">
-          <DataImportMapper 
-            backendUrl={backendUrl}
-            onImportComplete={handleImportComplete}
-          />
         </TabsContent>
       </Tabs>
     </div>
