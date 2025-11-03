@@ -1,21 +1,21 @@
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigg
+import { Gear, CloudArrowDown } from '@phosph
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AIServiceSettings } from '@/components/AIServiceSettings'
 import { Gear, CloudArrowDown } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
-export function SettingsView({ backendUrl, onBackendUrlChange }) {
-  const handleSave = () => {
-    toast.success('Settings saved successfully')
-  }
+        <p className="text-muted-foreground mt-1">
+        </p>
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
+   
+
+          
+            <CloudArrowDown siz
+          <
+
         <p className="text-muted-foreground mt-1">
           Configure backend connections and AI service
         </p>
@@ -34,7 +34,7 @@ export function SettingsView({ backendUrl, onBackendUrlChange }) {
         </TabsList>
 
         <TabsContent value="backend" className="space-y-6 mt-6">
-          <Card className="p-6">
+
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Gear size={24} className="text-primary" />
               Backend Configuration
@@ -44,26 +44,68 @@ export function SettingsView({ backendUrl, onBackendUrlChange }) {
                 <Label htmlFor="backend-url">Backend API URL</Label>
                 <Input
                   id="backend-url"
-                  value={backendUrl}
+
                   onChange={(e) => onBackendUrlChange(e.target.value)}
-                  placeholder="http://localhost:8000"
+
                 />
                 <p className="text-sm text-muted-foreground">
                   URL of the Python FastAPI backend server
-                </p>
+
               </div>
 
               <Button onClick={handleSave} className="w-full">
                 Save Settings
               </Button>
-            </div>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="ai-service" className="space-y-6 mt-6">
-          <AIServiceSettings />
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
-}
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Architecture</h3>
+              <div className="space-y-3 text-sm">
+                <div className="p-3 bg-muted rounded-lg">
+                  <h4 className="font-semibold mb-1">Frontend</h4>
+                  <p className="text-muted-foreground">React 19 + JavaScript + Tailwind CSS v4</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
