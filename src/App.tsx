@@ -7,7 +7,7 @@ import { GraphView } from '@/components/views/GraphView'
 import { FormulationsView } from '@/components/views/FormulationsView'
 import { IngestView } from '@/components/views/IngestView'
 import { SettingsView } from '@/components/views/SettingsView'
-import { OrchestrationView } from '@/components/orchestration/OrchestrationView'
+import { OrchestrationView } from '@/components/orchestration/OrchestrationView.jsx'
 import { useKV } from '@github/spark/hooks'
 
 function App() {
