@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Select, SelectContent, SelectItem, S
 import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { parseCSV } from '@/lib/utils/export'
+import { 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Progress } from '@/components/ui/progress'
@@ -14,54 +14,54 @@ import { toast } from 'sonner'
 import { 
   Upload, 
   ArrowsLeftRight, 
-  Database, 
-  CheckCircle, 
-  X, 
-  Warning,
-  Info,
-  FileCsv,
-  FileCode,
   FileXls
-} from '@phosphor-icons/react'
 
-interface ColumnMapping {
-  sourceColumn: string
-  targetField: string
-  dataType?: 'string' | 'number' | 'date' | 'boolean'
+  sou
+  dataType
+
+  onImport
 }
+const SCH
+  { value: 'name', label: 'Nam
 
-interface UnifiedDataImportProps {
-  onImportComplete?: (data: any[]) => void
-  backendUrl: string
-}
+  { value: 'quantity', la
+  { value: 'cost', lab
+  { value: 'date', la
+  { value: 'notes', label: 'Notes', required: false, 
 
-const SCHEMA_FIELDS = [
-  { value: 'id', label: 'ID', required: true, type: 'string' },
-  { value: 'name', label: 'Name', required: true, type: 'string' },
-  { value: 'description', label: 'Description', required: false, type: 'string' },
-  { value: 'category', label: 'Category', required: false, type: 'string' },
-  { value: 'type', label: 'Type', required: false, type: 'string' },
-  { value: 'quantity', label: 'Quantity', required: false, type: 'number' },
-  { value: 'unit', label: 'Unit', required: false, type: 'string' },
-  { value: 'cost', label: 'Cost', required: false, type: 'number' },
-  { value: 'supplier', label: 'Supplier', required: false, type: 'string' },
-  { value: 'date', label: 'Date', required: false, type: 'date' },
-  { value: 'status', label: 'Status', required: false, type: 'string' },
-  { value: 'notes', label: 'Notes', required: false, type: 'string' },
-]
 
-export function UnifiedDataImport({ onImportComplete, backendUrl }: UnifiedDataImportProps) {
-  const [uploadedData, setUploadedData] = useState<any[]>([])
-  const [sourceColumns, setSourceColumns] = useState<string[]>([])
-  const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([])
-  const [isImporting, setIsImporting] = useState(false)
-  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
-  const [fileInfo, setFileInfo] = useState<{ name: string; type: string; size: number } | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [columnMappings, setColumn
+  const [importProgress, setImportProgress
+  const fileInputRef
+ 
 
-  const parseXML = (xmlText: string): any[] => {
-    const parser = new DOMParser()
-    const xmlDoc = parser.parseFromString(xmlText, 'text/xml')
+    const parserError =
+      throw new Error('Invalid XML format')
+
+    const rootElements = xmlDoc.documentElement.children
+    for (let i = 0; i < rootElements.length; i++) {
+      const record: any = {}
+      for (let j = 0; j < element.children.length; j++) {
+        record[child.tagName] = child.textContent || ''
+      
+        records.push(record)
+    }
+    return records
+
+ 
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!file) return
+    setFileInfo({
+      type: file.type,
+    })
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+        const text = e.target?.result as string
+
+          const jsonData = JSON.parse(text)
+            parsedData = jsonData
+            const firstArrayKey = Object.keys(jsonData).find(k
     
     const parserError = xmlDoc.querySelector('parsererror')
     if (parserError) {
@@ -254,262 +254,262 @@ export function UnifiedDataImport({ onImportComplete, backendUrl }: UnifiedDataI
         try {
           const response = await fetch(`${backendUrl}/api/data/import`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(record)
-          })
+      <CardContent className="space-y-6">
+          <TabsList>
+            
 
-          if (response.ok) {
-            successCount++
-          }
-        } catch (error) {
-          console.error(`Failed to import record ${i}:`, error)
-        }
+            <Alert className
+              <AlertDescri
+           
+
+              <Label htmlFor="file-upload">Upload Data File</La
+         
         
-        setImportProgress({ current: i + 1, total: transformedData.length })
-      }
+                    type="file"
+       
 
-      toast.success(`Successfully imported ${successCount} of ${transformedData.length} records`)
+                  <Badge variant="outline" className="gap-1">
       
-      if (onImportComplete) {
-        onImportComplete(transformedData)
-      }
+                    <FileCode
+                  <Badge variant="outline
+       
 
-      setUploadedData([])
-      setSourceColumns([])
-      setColumnMappings([])
-      setFileInfo(null)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Import failed')
-    } finally {
-      setIsImporting(false)
-    }
-  }
+                <p classN
+                </p>
+            </div>
+            {uploadedDa
+                <Alert>
+                  <AlertDescription cla
+       
+                </Ale
+                <div className="space-y-4">
+               
+                      <Badg
+     
+   
 
-  const unmappedColumns = sourceColumns.filter(
-    col => !columnMappings.some(m => m.sourceColumn === col)
+
+                    <div className="space-y-2">
+   
+
+                          <div className="flex-1">
+                          </div>
+                          <div className="flex-1">
+                              value={mapping.targetFi
+   
+
+          
+          
+                  
+                                ))}
+                            </Select>
+                          <Butt
+                    
+                         
+                          </Button>
+                      ))}
+                   
+                          key={column}
+                        >
+                    
+                          <ArrowsLeftRight size={20} className="te
+                            <Select
+                     
+
+                              <SelectContent>
+                                  <SelectItem key={field.v
+                                    <span className="text-xs text-mute
+                                ))}
+                            </Select>
+                        </div>
+                    
+
+                {
+                    <div className="flex items-center justify-betwe
+                      <span className="font-med
+                      </span>
+                    <Pro
+                      className="h-2" 
+                  </div>
+
+                  <Button
+                    disabled={isImporting || co
+                    
+                    {i
+                        <div className="w-4 
+                      </>
+                      <>
+                        Im
+                    )}
+                </div>
+            )}
+
+            <Alert>
+              <AlertDescri
+              </AlertD
+
+              <div>
+                <ul className="space-y-2 text-sm text-muted-foregr
+                    <FileCsv size={16} className="text-primary" />
+                  </
+                
+                  
+
+                  </li>
+              </
+              <div>
+                <div className="flex flex-wrap gap-2">
+                    <Badge key={field.value} variant=
+                    </Badge>
+                </div>
+
+                <h4 clas
+
+                  <li>• <strong>Date:</stro
+                </ul>
+
+                <Warning className="h-4 w-4 text
+                  <strong>Note:</strong> Large fi
+              </Alert>
+          </TabsContent>
+      </CardContent>
   )
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' B'
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-  }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Upload size={24} className="text-primary" weight="bold" />
-          Data Import & Mapping
-        </CardTitle>
-        <CardDescription>
-          Upload CSV, JSON, XML files and map columns to database schema for Neo4j import
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <Tabs defaultValue="upload">
-          <TabsList>
-            <TabsTrigger value="upload">Upload & Map</TabsTrigger>
-            <TabsTrigger value="info">Import Guide</TabsTrigger>
-          </TabsList>
 
-          <TabsContent value="upload" className="space-y-6">
-            <Alert className="bg-blue-50 border-blue-200">
-              <Info className="h-4 w-4 text-blue-600" weight="bold" />
-              <AlertDescription className="ml-2 text-sm">
-                <strong>Supported Formats:</strong> CSV, JSON, XML. Maximum file size: 10MB
-              </AlertDescription>
-            </Alert>
 
-            <div>
-              <Label htmlFor="file-upload">Upload Data File</Label>
-              <div className="flex gap-2 mt-2">
-                <div className="flex-1">
-                  <Input
-                    ref={fileInputRef}
-                    id="file-upload"
-                    type="file"
-                    accept=".csv,.json,.xml"
-                    onChange={handleFileUpload}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Badge variant="outline" className="gap-1">
-                    <FileCsv size={14} /> CSV
-                  </Badge>
-                  <Badge variant="outline" className="gap-1">
-                    <FileCode size={14} /> JSON
-                  </Badge>
-                  <Badge variant="outline" className="gap-1">
-                    <FileCode size={14} /> XML
-                  </Badge>
-                </div>
-              </div>
-              {fileInfo && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Loaded: {fileInfo.name} ({formatFileSize(fileInfo.size)})
-                </p>
-              )}
-            </div>
 
-            {uploadedData.length > 0 && (
-              <>
-                <Alert>
-                  <Database className="h-4 w-4" weight="bold" />
-                  <AlertDescription className="ml-2">
-                    <strong>{uploadedData.length} records</strong> loaded from file.
-                    Map the source columns to database fields below.
-                  </AlertDescription>
-                </Alert>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">Column Mapping</h4>
-                    <div className="flex gap-2">
-                      <Badge variant="secondary">
-                        {columnMappings.length} mapped
-                      </Badge>
-                      <Badge variant="outline">
-                        {unmappedColumns.length} unmapped
-                      </Badge>
-                    </div>
-                  </div>
 
-                  <ScrollArea className="h-[400px] rounded-md border p-4">
-                    <div className="space-y-2">
-                      {columnMappings.map(mapping => (
-                        <div 
-                          key={mapping.sourceColumn}
-                          className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <Badge variant="outline">{mapping.sourceColumn}</Badge>
-                          </div>
-                          <ArrowsLeftRight size={20} className="text-muted-foreground" />
-                          <div className="flex-1">
-                            <Select
-                              value={mapping.targetField}
-                              onValueChange={(value) => updateMapping(mapping.sourceColumn, value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select target field" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SCHEMA_FIELDS.map(field => (
-                                  <SelectItem key={field.value} value={field.value}>
-                                    {field.label} {field.required && <span className="text-destructive">*</span>}
-                                    <span className="text-xs text-muted-foreground ml-2">({field.type})</span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeMapping(mapping.sourceColumn)}
-                          >
-                            <X size={16} />
-                          </Button>
-                        </div>
-                      ))}
 
-                      {unmappedColumns.map(column => (
-                        <div 
-                          key={column}
-                          className="flex items-center gap-3 p-3 border-2 border-dashed rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <Badge variant="secondary">{column}</Badge>
-                          </div>
-                          <ArrowsLeftRight size={20} className="text-muted-foreground" />
-                          <div className="flex-1">
-                            <Select
-                              onValueChange={(value) => updateMapping(column, value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select target field" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SCHEMA_FIELDS.map(field => (
-                                  <SelectItem key={field.value} value={field.value}>
-                                    {field.label} {field.required && <span className="text-destructive">*</span>}
-                                    <span className="text-xs text-muted-foreground ml-2">({field.type})</span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
 
-                {isImporting && importProgress.total > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Importing to Neo4j...</span>
-                      <span className="font-medium">
-                        {importProgress.current} / {importProgress.total}
-                      </span>
-                    </div>
-                    <Progress 
-                      value={(importProgress.current / importProgress.total) * 100} 
-                      className="h-2" 
-                    />
-                  </div>
-                )}
 
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleImport}
-                    disabled={isImporting || columnMappings.length === 0}
-                    className="flex-1 gap-2"
-                    size="lg"
-                  >
-                    {isImporting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Importing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle size={20} weight="bold" />
-                        Import to Neo4j ({uploadedData.length} records)
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </>
-            )}
-          </TabsContent>
 
-          <TabsContent value="info" className="space-y-4">
-            <Alert>
-              <Info className="h-4 w-4" weight="bold" />
-              <AlertDescription className="ml-2 text-sm">
-                <strong>Import Process:</strong> Upload a file → Auto-map columns → Review mappings → Import to Neo4j
-              </AlertDescription>
-            </Alert>
 
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold mb-2">Supported File Formats</h4>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <FileCsv size={16} className="text-primary" />
-                    <strong>CSV:</strong> Comma-separated values with header row
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <FileCode size={16} className="text-primary" />
-                    <strong>JSON:</strong> Array of objects or object with array property
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <FileCode size={16} className="text-primary" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     <strong>XML:</strong> Structured XML with consistent record elements
                   </li>
                 </ul>
