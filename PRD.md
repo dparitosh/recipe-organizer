@@ -12,33 +12,40 @@ A modern, enterprise-grade Food & Beverage formulation management platform with 
 
 ## Architecture Overview
 
-### Frontend Architecture (React + TypeScript)
-- **UI Layer**: Modern React 19 with TypeScript/TSX, shadcn/ui components, Tailwind CSS v4
+### Frontend Architecture (React + JSX)
+- **UI Layer**: Modern React 19 with JSX, shadcn/ui components, Tailwind CSS v4
 - **State Management**: React hooks (useState, useEffect) + useKV for persistence
 - **Graph Visualization**: Cytoscape.js with physics-based layouts, interactive filtering, zoom/pan controls
-- **API Client**: Centralized API service with clean TypeScript modules for all endpoints
+- **API Client**: Centralized API service communicating with Python backend via REST
 - **Routing**: Single-page app with tab-based navigation
 - **Real-time Updates**: Optimistic UI updates with background sync
+- **Language**: All frontend files are JSX (not TypeScript)
 
 ### Backend Architecture (Python FastAPI)
-- **API Layer**: FastAPI with async/await, Pydantic models for validation, automatic OpenAPI docs
+- **API Layer**: FastAPI with async/await, Pydantic models for validation, automatic OpenAPI docs at /docs
+- **AI Processing**: OpenAI GPT-4 integration for natural language queries, Cypher generation, recommendations
 - **Business Logic**: Services layer for formulations, calculations, BOM processing
 - **Data Access**: Neo4j Python driver for graph operations, async queries
+- **Service Modes**: Online (full AI), Offline (local fallback), Auto (automatic degradation)
 - **External APIs**: USDA FDC client for nutritional data ingestion
 - **Validation**: Comprehensive input validation, business rule enforcement
-- **Error Handling**: Structured error responses with proper HTTP status codes
+- **Error Handling**: Structured error responses with proper HTTP status codes, graceful degradation
 
 ### Integration Points
-- **Frontend ↔ Backend**: REST API over HTTP/HTTPS, JSON payloads, JWT authentication (future)
-- **Backend ↔ Neo4j**: Official Python driver with connection pooling, Cypher queries
+- **Frontend ↔ Backend**: REST API over HTTP/HTTPS (default: http://localhost:8000), JSON payloads, configurable endpoint
+- **Backend ↔ Neo4j**: Official Python driver with connection pooling, Cypher queries, health monitoring
+- **Backend ↔ OpenAI**: GPT-4 API for natural language processing, Cypher generation, recommendations
 - **Backend ↔ USDA FDC**: HTTP client for food data API, rate limiting, caching
-- **Fresh Schema**: API endpoint to clear database and reinitialize with clean schema
+- **Service Modes**: Online (full AI with backend), Offline (local fallback), Auto (seamless degradation)
+- **Configuration**: Backend URL stored in useKV, persisted across sessions, testable connection
 
 ### Data Flow
-1. **User Action** → React component updates local state → Calls API service
-2. **API Request** → FastAPI validates request → Executes business logic → Queries Neo4j/external APIs
-3. **API Response** → Frontend updates UI → Persists to useKV if needed → Shows toast notification
-4. **Graph Visualization** → Fetches graph data from API → Renders with Cytoscape → Enables interactions
+1. **User Action** → React component updates local state → Calls backend REST API
+2. **AI Query (Online)** → Frontend sends natural language query → Backend calls OpenAI GPT-4 → Generates Cypher if needed → Queries Neo4j → Returns structured response with recommendations
+3. **AI Query (Offline)** → Frontend detects backend unavailable → Local keyword search → Returns generic results with limited recommendations
+4. **Auto Mode** → Attempts online first → On failure, seamlessly falls back to offline → User sees mode indicator badge
+5. **API Response** → Frontend updates UI → Persists to useKV if needed → Shows toast notification
+6. **Graph Visualization** → Fetches graph data from backend/Neo4j → Renders with Cytoscape → Enables interactions
 
 ## Essential Features
 

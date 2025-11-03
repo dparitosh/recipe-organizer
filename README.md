@@ -1,53 +1,140 @@
 # Formulation Graph Studio
 
-An enterprise-grade Food & Beverage formulation management platform with integrated PLM, SAP MDG, Neo4j graph relationships, and **AI-powered natural language query assistant**.
+An enterprise-grade Food & Beverage formulation management platform with **Python FastAPI backend**, React JSX frontend, Neo4j graph relationships, and **AI-powered natural language query assistant with offline mode support**.
 
-> ⚠️ **Cleanup Status:** Phase 1 cleanup is 50% complete. Dark mode CSS has been removed. Duplicate .jsx files need to be removed manually. See [CLEANUP_STATUS.md](./CLEANUP_STATUS.md) for details.
+## 🏗️ Architecture
+
+**Frontend:** React 19 + JSX + Tailwind CSS + shadcn/ui + Cytoscape.js  
+**Backend:** Python FastAPI + OpenAI GPT-4 + Neo4j Python Driver  
+**Database:** Neo4j Graph Database  
+**AI:** OpenAI GPT-4 with automatic offline fallback
 
 ## 🚀 Features
 
-- ✨ **NEW: AI Assistant** - Natural language query interface powered by GPT-4 for intelligent formulation analysis, graph exploration, and actionable recommendations
+- ✨ **AI Assistant with Offline Mode** - Natural language queries powered by GPT-4 with automatic fallback to local search when backend unavailable
+- **Python Backend** - FastAPI REST API handling all AI logic, Cypher generation, and business logic
+- **Service Modes** - Online (full AI), Offline (local search), Auto (seamless fallback)
 - **Formulation Management** - Create, edit, and version control F&B formulations
 - **BOM Configuration** - Generate Bills of Materials with process steps and cost calculations
 - **Graph Visualization** - Interactive relationship graphs powered by Neo4j
-- **Backend Integrations** - Connect to real enterprise systems:
+- **Backend Integrations**:
   - **Neo4j** - Graph database for formulation relationships
+  - **OpenAI GPT-4** - Natural language understanding and Cypher generation
   - **PLM** - Product Lifecycle Management for material specifications
   - **SAP MDG** - Master Data Governance for material master data
-- **GenAI Integration** - Natural language queries and intelligent insights
-- **Mock Mode** - Development-ready with realistic sample data (no backend required)
 
 ## 🤖 AI Assistant Capabilities
 
-The AI Assistant enables you to:
+The AI Assistant provides **two modes** for maximum reliability:
 
-- **Ask Natural Language Questions**: "Show all recipes using mango concentrate with yield < 90%"
-- **Get Cost Insights**: "Suggest low-cost substitutes for vanilla extract"
-- **Analyze Trends**: "Summarize yield loss trends for Q4"
-- **Explore Relationships**: "Show relationships between master recipes and plants"
-- **Receive Recommendations**: Intelligent suggestions for cost optimization, yield improvement, and substitution
-- **Query Graph Data**: Automatic Cypher generation from natural language using Neo4j embeddings
+### Online Mode (Full AI)
+- **Natural Language Understanding**: "Show all recipes using mango concentrate with yield < 90%"
+- **Cypher Generation**: Automatically converts questions to Neo4j Cypher queries
+- **Cost Insights**: "Suggest low-cost substitutes for vanilla extract"
+- **Trend Analysis**: "Summarize yield loss trends for Q4"
+- **Relationship Exploration**: "Show relationships between master recipes and plants"
+- **Intelligent Recommendations**: Cost optimization, yield improvement, substitution suggestions
+- **Confidence Scoring**: 80-95% confidence with data source attribution
 
-**📖 Complete AI documentation:** [AI_ASSISTANT_GUIDE.md](./AI_ASSISTANT_GUIDE.md) | [Quick Reference](./AI_ASSISTANT_QUICK_REFERENCE.md)
+### Offline Mode (Local Fallback)
+- **Keyword-Based Search**: Basic filtering of local formulations
+- **No Backend Required**: Works when AI service unavailable
+- **Generic Recommendations**: Simplified suggestions for common tasks
+- **Automatic Fallback**: Seamlessly activates when backend down
+
+### Auto Mode (Recommended)
+- **Best of Both**: Attempts online first, falls back to offline automatically
+- **Transparent**: Mode indicator badge shows current status
+- **Configurable**: Retry attempts and timeout settings
+
+**📖 Documentation:**
+- [AI Assistant Guide](./AI_ASSISTANT_GUIDE.md)
+- [Backend Integration](./BACKEND_INTEGRATION_GUIDE.md)
+- [Backend Setup](./backend/README.md)
 
 ## 🎯 Quick Start
 
-### Using Mock Data (Default)
+### Option 1: Offline Mode (No Setup)
 
-The application works out of the box with realistic mock data:
+The application works immediately with offline AI capabilities:
 
-1. Click **"New Formulation"** to create your first formulation
+1. Open the app
+2. Navigate to **AI Assistant** tab
+3. Ask questions - uses local keyword search
+4. No configuration needed!
+
+### Option 2: Full AI with Backend (Recommended)
+
+For complete AI capabilities with GPT-4:
+
+#### 1. Setup Python Backend
+
+```bash
+# Run automated setup
+chmod +x setup-backend.sh
+./setup-backend.sh
+
+# Or manual setup
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Edit .env and add your OpenAI API key
+```
+
+#### 2. Configure Environment
+
+Edit `backend/.env`:
+
+```env
+NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=tcs12345
+NEO4J_DATABASE=neo4j
+OPENAI_API_KEY=sk-your-openai-api-key-here
+```
+
+Get your OpenAI API key: https://platform.openai.com/api-keys
+
+#### 3. Start Backend Server
+
+```bash
+chmod +x start-backend.sh
+./start-backend.sh
+
+# Or manually
+cd backend
+source venv/bin/activate
+python main.py
+```
+
+Backend runs on `http://localhost:8000`
+
+#### 4. Configure Frontend
+
+1. Open the React app
+2. Navigate to **Settings** → **AI Service** tab
+3. Set Backend URL: `http://localhost:8000`
+4. Click **Test** to verify connection
+5. Click **Save**
+6. Set Service Mode to **Auto** (recommended)
+
+#### 5. Test AI Assistant
+
+1. Navigate to **AI Assistant** tab
+2. Ask: "Show all recipes using mango concentrate"
+3. View answer, Cypher query, node highlights, and recommendations
+4. Mode badge shows "Online" when backend connected
+
+### Using Mock Data (For Development)
+
+The application includes realistic mock data:
+
+1. Click **"New Formulation"** to create formulations
 2. Add ingredients, set quantities, and define specifications
-3. View the **Relationship Graph** tab to see ingredient connections
+3. View the **Relationship Graph** tab to see connections
 4. Create a **BOM** to configure manufacturing details
-
-No backend setup required!
-
-### Connecting to Real Backend Services
-
-To connect to your enterprise systems:
-
-1. Click the **Settings** icon (⚙️) in the top-right
 2. Configure your backend services (Neo4j, PLM, SAP MDG)
 3. Test connections and save configurations
 4. Toggle off Mock Mode for each service
