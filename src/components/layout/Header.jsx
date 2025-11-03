@@ -12,9 +12,14 @@ export function Header({ onMenuClick, backendUrl }) {
         const response = await fetch(`${backendUrl}/health`, { 
           signal: AbortSignal.timeout(3000) 
         })
-        setBackendStatus(response.ok ? 'connected' : 'disconnected')
+        if (response.ok) {
+          const data = await response.json()
+          setBackendStatus(data.mode === 'mock' ? 'mock' : 'connected')
+        } else {
+          setBackendStatus('mock')
+        }
       } catch {
-        setBackendStatus('disconnected')
+        setBackendStatus('mock')
       }
     }
 
@@ -59,11 +64,11 @@ export function Header({ onMenuClick, backendUrl }) {
             <span className={`w-2 h-2 rounded-full ${
               backendStatus === 'connected' ? 'bg-green-500' :
               backendStatus === 'checking' ? 'bg-yellow-500 animate-pulse' :
-              'bg-red-500'
+              'bg-yellow-500'
             }`} />
-            Backend {backendStatus === 'connected' ? 'Connected' : 
-                     backendStatus === 'checking' ? 'Checking...' : 
-                     'Disconnected'}
+            {backendStatus === 'connected' ? 'Backend Connected' : 
+             backendStatus === 'checking' ? 'Checking...' : 
+             'Mock Mode'}
           </Badge>
         </div>
       </div>

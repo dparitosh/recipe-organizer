@@ -68,6 +68,20 @@ export function SettingsView({ backendUrl, onBackendUrlChange }) {
         </Card>
       </div>
 
+      <Card className="p-6 bg-yellow-500/10 border-yellow-500/20">
+        <h3 className="text-lg font-semibold mb-2 text-yellow-900">🟡 Mock Mode Active</h3>
+        <div className="space-y-2 text-sm text-yellow-800">
+          <p>The application is running in <strong>mock mode</strong> because the backend is not available.</p>
+          <p>Sample data is being used for demonstration purposes. To connect to a real backend:</p>
+          <ol className="list-decimal list-inside space-y-1 ml-2">
+            <li>Set up the Python FastAPI backend (instructions below)</li>
+            <li>Configure Neo4j database connection</li>
+            <li>Update the Backend API URL above if needed</li>
+            <li>Restart the application</li>
+          </ol>
+        </div>
+      </Card>
+
       <Card className="p-6 bg-primary/5 border-primary/20">
         <h3 className="text-lg font-semibold mb-2">Backend Setup Instructions</h3>
         <div className="space-y-2 text-sm text-muted-foreground">
