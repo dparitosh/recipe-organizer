@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,11 +19,15 @@ import {
   Database,
   Brain,
   Copy,
-  ArrowRight
+  ArrowRight,
+  Robot,
+  CloudArrowDown
 } from '@phosphor-icons/react'
 import { aiAssistant, AIResponse } from '@/lib/ai'
 import { Formulation } from '@/lib/schemas/formulation'
 import { toast } from 'sonner'
+import { aiServiceConfig, AIServiceMode } from '@/lib/services/ai-service-config'
+import { aiServiceMonitor, ServiceStatus } from '@/lib/services/ai-service-monitor'
 
 interface AIAssistantPanelProps {
   formulations?: Formulation[]
@@ -46,7 +50,53 @@ export function AIAssistantPanel({ formulations = [], activeFormulationId }: AIA
   const [isLoading, setIsLoading] = useState(false)
   const [response, setResponse] = useState<AIResponse | null>(null)
   const [history, setHistory] = useState<Array<{ query: string; response: AIResponse }>>([])
+  const [serviceMode, setServiceMode] = useState<AIServiceMode>('auto')
+  const [serviceStatus, setServiceStatus] = useState<ServiceStatus>('checking')
 
+  useEffect(() => {
+    setServiceMode(aiServiceConfig.getMode())
+    
+    const unsubscribe = aiServiceMonitor.subscribe((health) => {
+      setServiceStatus(health.status)
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [])
+
+  const getModeIcon = () => {
+    const mode = serviceMode
+    const status = serviceStatus
+    
+    if (mode === 'offline' || (mode === 'auto' && status === 'offline')) {
+      return <Robot size={12} weight="fill" />
+    }
+    return <CloudArrowDown size={12} weight="fill" />
+  }
+
+  const getModeText = () => {
+    const mode = serviceMode
+    const status = serviceStatus
+    
+    if (mode === 'offline') {
+      return 'Offline Mode'
+    }
+    if (mode === 'auto' && status === 'offline') {
+      return 'Offline (Auto)'
+    }
+    return 'Online Mode'
+  }
+
+  const getModeVariant = (): "default" | "secondary" | "outline" => {
+    const mode = serviceMode
+    const status = serviceStatus
+    
+    if (mode === 'offline' || (mode === 'auto' && status === 'offline')) {
+      return 'secondary'
+    }
+    return 'default'
+  }
   const handleSubmit = async (queryText?: string) => {
     const questionText = queryText || query
     if (!questionText.trim()) {
@@ -129,6 +179,10 @@ export function AIAssistantPanel({ formulations = [], activeFormulationId }: AIA
           <div className="flex-1">
             <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
               AI Assistant
+              <Badge variant={getModeVariant()} className="text-xs gap-1">
+                {getModeIcon()}
+                {getModeText()}
+              </Badge>
               <Badge variant="secondary" className="text-xs">
                 <Lightning size={12} weight="fill" className="mr-1" />
                 Powered by GPT-4

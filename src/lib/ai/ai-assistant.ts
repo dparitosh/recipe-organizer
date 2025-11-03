@@ -1,6 +1,9 @@
 import { genAIClient } from '@/lib/genai'
 import { neo4jDriver } from '@/lib/drivers/neo4j-driver'
 import { Formulation } from '@/lib/schemas/formulation'
+import { aiServiceConfig } from '@/lib/services/ai-service-config'
+import { aiServiceMonitor } from '@/lib/services/ai-service-monitor'
+import { offlineAIHandler } from './offline-ai-handler'
 
 export interface AIQuery {
   question: string
@@ -58,6 +61,14 @@ export interface DataSource {
 
 class AIAssistantService {
   async query(request: AIQuery): Promise<AIResponse> {
+    const serviceMode = aiServiceConfig.getMode()
+    const serviceStatus = aiServiceMonitor.getStatus()
+
+    if (serviceMode === 'offline' || (serviceMode === 'auto' && serviceStatus === 'offline')) {
+      console.log('AI Assistant: Operating in offline mode')
+      return offlineAIHandler.query(request)
+    }
+
     const startTime = Date.now()
 
     try {
@@ -95,9 +106,14 @@ class AIAssistantService {
     } catch (error) {
       console.error('AI Assistant Error:', error)
       
+      if (aiServiceConfig.shouldAutoFallback()) {
+        console.log('AI Assistant: Falling back to offline mode')
+        return offlineAIHandler.query(request)
+      }
+      
       const executionTime = Date.now() - startTime
       return {
-        answer: `I encountered an error processing your question: ${error instanceof Error ? error.message : 'Unknown error'}. Please try rephrasing your question or check your Neo4j connection.`,
+        answer: `I encountered an error processing your question: ${error instanceof Error ? error.message : 'Unknown error'}. You can switch to offline mode in settings for limited functionality.`,
         executionTime,
         confidence: 0,
         sources: []

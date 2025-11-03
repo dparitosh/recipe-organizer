@@ -198,36 +198,61 @@ A modern, enterprise-grade Food & Beverage formulation management platform with 
   - Compatible JSON responses for React frontend
 
 ### AI Assistant (NEW)
-- **Functionality**: Natural language AI assistant powered by GPT-4 for querying formulations, analyzing graph data, and generating intelligent recommendations
-- **Purpose**: Enable users to ask questions in natural language, retrieve insights from Neo4j graph embeddings, and receive actionable recommendations for optimization
+- **Functionality**: Natural language AI assistant powered by GPT-4 for querying formulations, analyzing graph data, and generating intelligent recommendations with **offline mode support**
+- **Purpose**: Enable users to ask questions in natural language, retrieve insights from Neo4j graph embeddings, and receive actionable recommendations for optimization, with graceful degradation when AI service is unavailable
 - **Trigger**: Navigate to "AI Assistant" tab or use suggested queries
 - **Progression**: 
+  - **Service Mode Configuration**: Configure AI service mode in Settings → AI Service tab → Choose between Online (full AI), Auto (automatic fallback), or Offline (local only) → Auto-fallback toggle for seamless degradation
+  - **Service Status Monitoring**: Real-time service health display → Status indicators for LLM, Neo4j, and GenAI capabilities → Check service health button → Response time and error reporting
+  - **Online Mode Operation**: Enter question in plain English (e.g., "Show all recipes using mango concentrate with yield < 90%") → AI analyzes query intent and entities → Generates appropriate Cypher query if graph data needed → Executes against Neo4j or local formulation data → Provides intelligent synthesis with node highlights and recommendations
+  - **Offline Mode Operation**: Questions processed locally → Keyword-based search in formulations → Rule-based analysis → Generic recommendations → Clear indicators of limited capabilities → No external service dependency
+  - **Auto Mode**: Attempts online processing first → Automatic fallback to offline on service failure → Retry logic with configurable attempts → User notification of mode switch
   - **Natural Language Query**: Enter question in plain English (e.g., "Show all recipes using mango concentrate with yield < 90%") → AI analyzes query intent and entities → Generates appropriate Cypher query if graph data needed → Executes against Neo4j or local formulation data
-  - **Intelligent Response**: AI synthesizes answer from multiple sources (formulations, graph data, calculations) → Provides clear, quantitative answer with specific references → Displays execution time and confidence score → Shows data sources used
+  - **Intelligent Response**: AI synthesizes answer from multiple sources (formulations, graph data, calculations) → Provides clear, quantitative answer with specific references → Displays execution time and confidence score → Shows data sources used → Mode indicator badge (Online/Offline/Auto)
   - **Node Highlights**: Extracts relevant nodes from graph results → Ranks by relevance to query → Displays node type, name, properties, and relevance percentage → Limited to top 10 most relevant nodes
   - **Relationship Summaries**: Analyzes relationship patterns in results → Groups by relationship type (CONTAINS, USES, DERIVED_FROM, etc.) → Counts occurrences → Provides human-readable descriptions → Shows example relationships with source/target
-  - **Recommendations**: Generates actionable recommendations based on query and data → Types: cost_optimization, yield_improvement, substitution, process_optimization, quality_enhancement → Each includes impact level (high/medium/low), description, actionable flag → Sorted by impact and relevance
+  - **Recommendations**: Generates actionable recommendations based on query and data → Types: cost_optimization, yield_improvement, substitution, process_optimization, quality_enhancement → Each includes impact level (high/medium/low), description, actionable flag → Sorted by impact and relevance → Adapts complexity based on mode (detailed in online, generic in offline)
   - **Suggested Queries**: Provides 8 pre-built example queries covering common use cases → Click to execute immediately → Examples: ingredient substitution, cost analysis, yield trends, relationship exploration
   - **Query History**: Maintains last 10 queries with responses → Click to re-execute previous query → Shows execution time and confidence for each
-  - **Graph Context Retrieval**: Uses GenAI client to convert natural language to Cypher → Executes against Neo4j when connected → Falls back to local formulation data when disconnected → Includes graph schema context for accurate query generation
+  - **Graph Context Retrieval**: Uses GenAI client to convert natural language to Cypher → Executes against Neo4j when connected → Falls back to local formulation data when disconnected or in offline mode → Includes graph schema context for accurate query generation
 - **Success criteria**: 
-  - Natural language understanding for formulation-related queries
-  - Accurate Cypher generation for graph database queries (85%+ confidence)
-  - Multi-source data synthesis (formulations + graph + calculations)
-  - Clear, quantitative answers with specific data references
-  - Relevant node highlights with calculated relevance scores
-  - Relationship summaries with counts and examples
-  - 5+ actionable recommendations per query when applicable
-  - 8 suggested queries covering key use cases
-  - Query history with re-execution capability
-  - Response copy functionality
-  - Execution time display (typically <3s)
-  - Confidence scoring for reliability indication
-  - Data source attribution
-  - Generated Cypher query visibility (expandable)
-  - Graceful fallback when Neo4j unavailable
-  - Integration with existing formulation and graph data
-  - Responsive UI with proper loading states
+  - **Configuration & Monitoring**:
+    * AI service mode selection (Online/Auto/Offline) persisted with useKV
+    * Real-time service status monitoring with health checks
+    * Service capabilities display (LLM/Neo4j/GenAI status)
+    * Mode indicator badge visible in AI Assistant panel
+    * Settings tab for AI service configuration with status display
+  - **Online Mode**:
+    * Natural language understanding for formulation-related queries
+    * Accurate Cypher generation for graph database queries (85%+ confidence)
+    * Multi-source data synthesis (formulations + graph + calculations)
+    * Clear, quantitative answers with specific data references
+    * Relevant node highlights with calculated relevance scores
+    * Relationship summaries with counts and examples
+    * 5+ actionable recommendations per query when applicable
+  - **Offline Mode**:
+    * Basic keyword search in local formulations
+    * Simple data summaries and comparisons
+    * Generic optimization recommendations
+    * Clear warnings about limited capabilities
+    * No external service dependency
+    * Graceful degradation messaging
+  - **Auto Mode**:
+    * Seamless fallback from online to offline on service failure
+    * Configurable retry attempts and timeout
+    * User notification of mode switches
+    * Automatic recovery when service returns
+  - **Common Features**:
+    * 8 suggested queries covering key use cases
+    * Query history with re-execution capability
+    * Response copy functionality
+    * Execution time display (typically <3s online, <1s offline)
+    * Confidence scoring for reliability indication
+    * Data source attribution
+    * Generated Cypher query visibility (expandable, online only)
+    * Graceful error handling with helpful messages
+    * Integration with existing formulation and graph data
+    * Responsive UI with proper loading states
 
 ### Sample Data Loader (NEW)
 - **Functionality**: Comprehensive sample data loader for Neo4j database with pre-configured F&B datasets including potato wafer chips, carbonated beverages, and fruit juices with full formulation hierarchies
