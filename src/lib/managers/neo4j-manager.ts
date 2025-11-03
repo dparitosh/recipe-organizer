@@ -6,19 +6,14 @@ import { NEO4J_CONSTANTS } from '@/lib/constants'
 
 export interface ConnectionStatus {
   isConnected: boolean
-  isMockMode: boolean
   config: Neo4jDriverConfig | null
   serverInfo?: any
 }
 
 export class Neo4jManager {
-  private mockMode: boolean = false
-  private mockData: Neo4jResult | null = null
-
   async connect(config: Neo4jDriverConfig): Promise<void> {
     try {
       await neo4jDriver.connect(config)
-      this.mockMode = false
     } catch (error) {
       console.error('Neo4j Manager: Connection failed', error)
       throw error
@@ -48,31 +43,25 @@ export class Neo4jManager {
   }
 
   setMockMode(enabled: boolean) {
-    this.mockMode = enabled
   }
 
   isMockMode(): boolean {
-    return this.mockMode
+    return false
   }
 
   isConnected(): boolean {
-    return neo4jDriver.isConnected() && !this.mockMode
+    return neo4jDriver.isConnected()
   }
 
   getConnectionStatus(): ConnectionStatus {
     return {
       isConnected: this.isConnected(),
-      isMockMode: this.mockMode,
       config: neo4jDriver.getConfig(),
       serverInfo: neo4jDriver.getServerInfo()
     }
   }
 
   async query(cypher: string, parameters?: Record<string, any>): Promise<Neo4jResult> {
-    if (this.mockMode) {
-      return this.executeMockQuery(cypher, parameters)
-    }
-
     const startTime = Date.now()
     
     try {
@@ -209,20 +198,6 @@ export class Neo4jManager {
       console.error('✗ Neo4j Manager: Failed to get node count', error)
       return 0
     }
-  }
-
-  private executeMockQuery(cypher: string, parameters?: Record<string, any>): Promise<Neo4jResult> {
-    console.log('Neo4j Manager: Running in mock mode - no data available')
-    console.log('Please connect to Neo4j or ingest FDC data to see results')
-    
-    return Promise.resolve({
-      nodes: [],
-      relationships: [],
-      metadata: {
-        executionTime: 0,
-        recordCount: 0
-      }
-    })
   }
 }
 

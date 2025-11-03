@@ -29,6 +29,11 @@ export function SettingsView({ backendUrl, onBackendUrlChange }: SettingsViewPro
         </p>
       </div>
 
+      <DataImportMapper 
+        backendUrl={backendUrl}
+        onImportComplete={handleImportComplete}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -77,11 +82,6 @@ export function SettingsView({ backendUrl, onBackendUrlChange }: SettingsViewPro
           </div>
         </Card>
       </div>
-
-      <DataImportMapper 
-        backendUrl={backendUrl}
-        onImportComplete={handleImportComplete}
-      />
 
       <Card className="p-6 bg-primary/5 border-primary/20">
         <h3 className="text-lg font-semibold mb-2">Backend Setup Instructions</h3>

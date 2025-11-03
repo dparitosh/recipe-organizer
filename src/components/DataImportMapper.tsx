@@ -20,15 +20,21 @@ const FDC_SCHEMA_FIELDS = [
   { value: 'description', label: 'Food Description', required: true },
   { value: 'dataType', label: 'Data Type', required: false },
   { value: 'foodCategory', label: 'Food Category', required: false },
+  { value: 'foodCategoryId', label: 'Food Category ID', required: false },
   { value: 'brandOwner', label: 'Brand Owner', required: false },
   { value: 'brandName', label: 'Brand Name', required: false },
+  { value: 'gtinUpc', label: 'GTIN/UPC', required: false },
   { value: 'ingredients', label: 'Ingredients', required: false },
   { value: 'servingSize', label: 'Serving Size', required: false },
   { value: 'servingSizeUnit', label: 'Serving Size Unit', required: false },
+  { value: 'householdServingFullText', label: 'Household Serving', required: false },
+  { value: 'nutrientId', label: 'Nutrient ID', required: false },
   { value: 'nutrientName', label: 'Nutrient Name', required: false },
   { value: 'nutrientNumber', label: 'Nutrient Number', required: false },
   { value: 'nutrientValue', label: 'Nutrient Value', required: false },
   { value: 'nutrientUnit', label: 'Nutrient Unit', required: false },
+  { value: 'publishedDate', label: 'Published Date', required: false },
+  { value: 'modifiedDate', label: 'Modified Date', required: false },
 ]
 
 interface DataImportMapperProps {
@@ -219,10 +225,17 @@ export function DataImportMapper({ onImportComplete, backendUrl }: DataImportMap
           Data Import & Mapping
         </CardTitle>
         <CardDescription>
-          Upload CSV or JSON files and map columns to FDC schema fields for database import
+          Upload CSV or JSON files from <a href="https://fdc.nal.usda.gov/download-datasets" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80">USDA FDC Download Page</a> and map columns to FDC schema fields for database import
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <Alert className="bg-blue-50 border-blue-200">
+          <Database className="h-4 w-4 text-blue-600" weight="bold" />
+          <AlertDescription className="ml-2 text-sm">
+            <strong>Download FDC Datasets:</strong> Visit <a href="https://fdc.nal.usda.gov/download-datasets" target="_blank" rel="noopener noreferrer" className="text-primary underline">fdc.nal.usda.gov/download-datasets</a> to download CSV or JSON files (Branded Foods, Foundation Foods, SR Legacy, etc.)
+          </AlertDescription>
+        </Alert>
+
         <div>
           <Label htmlFor="file-upload">Upload Data File</Label>
           <Input

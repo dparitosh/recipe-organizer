@@ -276,12 +276,6 @@ export function Neo4jSettings() {
                       {status.isConnected ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Mode:</span>
-                    <span className={`font-semibold ${status.isMockMode ? 'text-yellow-600' : 'text-blue-600'}`}>
-                      {status.isMockMode ? 'Mock' : 'Live'}
-                    </span>
-                  </div>
                 </div>
               </div>
         </div>

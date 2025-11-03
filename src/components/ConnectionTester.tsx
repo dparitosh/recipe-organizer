@@ -32,7 +32,7 @@ export function ConnectionTester() {
       results[0] = {
         name: 'Manager Status Check',
         status: 'success',
-        details: `Mock Mode: ${status.isMockMode}, Connected: ${status.isConnected}`
+        details: `Connected: ${status.isConnected}`
       }
       setTestResults([...results])
     } catch (error) {
@@ -157,8 +157,8 @@ export function ConnectionTester() {
             <h3 className="font-semibold text-lg">Connection & Driver Tests</h3>
             <p className="text-sm text-muted-foreground">Test Neo4j driver and GenAI functionality</p>
           </div>
-          <Badge variant={status.isConnected ? 'default' : status.isMockMode ? 'secondary' : 'outline'}>
-            {status.isMockMode ? 'Mock Mode' : status.isConnected ? 'Connected' : 'Disconnected'}
+          <Badge variant={status.isConnected ? 'default' : 'outline'}>
+            {status.isConnected ? 'Connected' : 'Disconnected'}
           </Badge>
         </div>
 
@@ -168,10 +168,6 @@ export function ConnectionTester() {
           <div className="space-y-2">
             <div className="text-xs font-medium text-muted-foreground">Current Configuration</div>
             <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span>Mode:</span>
-                <span className="font-semibold">{status.isMockMode ? 'Mock' : 'Live'}</span>
-              </div>
               <div className="flex justify-between">
                 <span>Connected:</span>
                 <span className="font-semibold">{status.isConnected ? 'Yes' : 'No'}</span>
