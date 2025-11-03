@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DataExportButton } from '@/components/DataExportButton'
 import { apiService, GraphData, GraphNode } from '@/lib/api/service'
 import { toast } from 'sonner'
 import cytoscape, { Core, NodeSingular } from 'cytoscape'
@@ -285,9 +286,18 @@ export function GraphView({ backendUrl }: GraphViewProps) {
             Interactive visualization of formulation relationships
           </p>
         </div>
-        <Button onClick={handleLoadGraph} disabled={loading}>
-          {loading ? 'Loading...' : 'Load Graph Data'}
-        </Button>
+        <div className="flex gap-2">
+          {graphData && (
+            <DataExportButton 
+              data={graphData.nodes}
+              filename="graph-nodes"
+              disabled={loading}
+            />
+          )}
+          <Button onClick={handleLoadGraph} disabled={loading}>
+            {loading ? 'Loading...' : 'Load Graph Data'}
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6">

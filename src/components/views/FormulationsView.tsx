@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { DataExportButton } from '@/components/DataExportButton'
 import { apiService, Formulation } from '@/lib/api/service'
 import { toast } from 'sonner'
 import { Plus, Flask, Trash } from '@phosphor-icons/react'
@@ -75,10 +76,17 @@ export function FormulationsView({ backendUrl }: FormulationsViewProps) {
             Create and manage F&B formulations
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus size={20} weight="bold" />
-          New Formulation
-        </Button>
+        <div className="flex gap-2">
+          <DataExportButton 
+            data={formulations}
+            filename="formulations"
+            disabled={loading}
+          />
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus size={20} weight="bold" />
+            New Formulation
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

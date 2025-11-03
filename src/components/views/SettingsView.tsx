@@ -2,6 +2,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { DataImportMapper } from '@/components/DataImportMapper'
 import { Gear } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -15,12 +16,16 @@ export function SettingsView({ backendUrl, onBackendUrlChange }: SettingsViewPro
     toast.success('Settings saved successfully')
   }
 
+  const handleImportComplete = (data: any[]) => {
+    toast.success(`Import complete! ${data.length} records processed`)
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
         <p className="text-muted-foreground mt-1">
-          Configure backend connections and preferences
+          Configure backend connections and data import
         </p>
       </div>
 
@@ -72,6 +77,11 @@ export function SettingsView({ backendUrl, onBackendUrlChange }: SettingsViewPro
           </div>
         </Card>
       </div>
+
+      <DataImportMapper 
+        backendUrl={backendUrl}
+        onImportComplete={handleImportComplete}
+      />
 
       <Card className="p-6 bg-primary/5 border-primary/20">
         <h3 className="text-lg font-semibold mb-2">Backend Setup Instructions</h3>

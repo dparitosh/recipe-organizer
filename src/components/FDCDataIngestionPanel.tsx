@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { DataExportButton } from '@/components/DataExportButton'
 import { 
   MagnifyingGlass, 
   Database, 
@@ -219,6 +220,11 @@ export function FDCDataIngestionPanel({ onDataIngested }: FDCDataIngestionPanelP
                     {searchResults.length} results found · {selectedFoods.size} selected
                   </div>
                   <div className="flex gap-2">
+                    <DataExportButton 
+                      data={searchResults}
+                      filename={`fdc-search-${searchQuery}`}
+                      disabled={searching}
+                    />
                     <Button size="sm" variant="outline" onClick={selectAll}>
                       Select All
                     </Button>
