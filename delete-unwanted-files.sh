@@ -1,97 +1,190 @@
 #!/bin/bash
 
-# Delete duplicate .jsx files in src/
-rm -f /workspaces/spark-template/src/App.jsx
-rm -f /workspaces/spark-template/src/ErrorFallback.jsx
+# Comprehensive Cleanup Script
+# Removes TypeScript files and excessive documentation
+# Frontend: JavaScript/JSX only (.js/.jsx)
+# Backend: Python only (.py)
 
-# Delete duplicate .jsx files in components/
-rm -f /workspaces/spark-template/src/components/AIAssistantPanel.jsx
-rm -f /workspaces/spark-template/src/components/AIServiceSettings.jsx
-rm -f /workspaces/spark-template/src/components/APITester.jsx
-rm -f /workspaces/spark-template/src/components/DataImportMapper.jsx
-rm -f /workspaces/spark-template/src/components/DataLoaderPanel.jsx
-rm -f /workspaces/spark-template/src/components/EmptyState.jsx
-rm -f /workspaces/spark-template/src/components/FDCDataIngestionPanel.jsx
-rm -f /workspaces/spark-template/src/components/SearchBar.jsx
-rm -f /workspaces/spark-template/src/components/Toolbar.jsx
+set -e
 
-# Delete duplicate .jsx files in layout/
-rm -f /workspaces/spark-template/src/components/layout/Header.jsx
-rm -f /workspaces/spark-template/src/components/layout/MainContent.jsx
-rm -f /workspaces/spark-template/src/components/layout/Sidebar.jsx
+echo "==========================================="
+echo "Comprehensive Project Cleanup"
+echo "==========================================="
+echo ""
+echo "This script will:"
+echo "  1. Remove TypeScript (.tsx/.ts) files"
+echo "  2. Keep JavaScript (.jsx/.js) files"
+echo "  3. Remove excessive documentation"
+echo "  4. Keep Python backend files"
+echo ""
 
-# Delete duplicate .jsx files in views/
-rm -f /workspaces/spark-template/src/components/views/FormulationsView.jsx
-rm -f /workspaces/spark-template/src/components/views/GraphView.jsx
-rm -f /workspaces/spark-template/src/components/views/IngestView.jsx
-rm -f /workspaces/spark-template/src/components/views/SettingsView.jsx
+# Confirm before proceeding
+read -p "Continue with cleanup? (y/N): " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]
+then
+    echo "Cleanup cancelled."
+    exit 1
+fi
+
+echo ""
+echo "Starting cleanup..."
+echo ""
+
+# Track deleted files
+DELETED_COUNT=0
+
+# Function to delete file if it exists
+delete_if_exists() {
+    if [ -f "$1" ]; then
+        rm -f "$1"
+        echo "  ✓ Deleted: $1"
+        ((DELETED_COUNT++))
+    fi
+}
+
+# Delete TypeScript files in src/
+echo "[1/5] Removing TypeScript core files..."
+delete_if_exists "src/App.tsx"
+delete_if_exists "src/ErrorFallback.tsx"
+
+# Delete TypeScript files in components/
+echo "[2/5] Removing TypeScript component files..."
+delete_if_exists "src/components/AIAssistantPanel.tsx"
+delete_if_exists "src/components/AIServiceSettings.tsx"
+delete_if_exists "src/components/APITester.tsx"
+delete_if_exists "src/components/DataImportMapper.tsx"
+delete_if_exists "src/components/DataLoaderPanel.tsx"
+delete_if_exists "src/components/EmptyState.tsx"
+delete_if_exists "src/components/FDCDataIngestionPanel.tsx"
+delete_if_exists "src/components/SearchBar.tsx"
+delete_if_exists "src/components/Toolbar.tsx"
+delete_if_exists "src/components/CalculationEngineInterface.tsx"
+delete_if_exists "src/components/ConnectionTester.tsx"
+delete_if_exists "src/components/DataExportButton.tsx"
+delete_if_exists "src/components/FoodDetailPanel.tsx"
+delete_if_exists "src/components/GraphCanvas.tsx"
+delete_if_exists "src/components/Neo4jSettings.tsx"
+delete_if_exists "src/components/NodeEditor.tsx"
+delete_if_exists "src/components/RecipeCard.tsx"
+delete_if_exists "src/components/RecipeForm.tsx"
+delete_if_exists "src/components/RecipeView.tsx"
+
+# Delete TypeScript files in layout/
+echo "[3/5] Removing TypeScript layout files..."
+delete_if_exists "src/components/layout/Header.tsx"
+delete_if_exists "src/components/layout/MainContent.tsx"
+delete_if_exists "src/components/layout/Sidebar.tsx"
+
+# Delete TypeScript files in views/
+echo "[4/5] Removing TypeScript view files..."
+delete_if_exists "src/components/views/FormulationsView.tsx"
+delete_if_exists "src/components/views/GraphView.tsx"
+delete_if_exists "src/components/views/IngestView.tsx"
+delete_if_exists "src/components/views/SettingsView.tsx"
 
 # Delete duplicate/extra SettingsView files
-rm -f /workspaces/spark-template/src/components/views/SettingsView-new.tsx
-rm -f /workspaces/spark-template/src/components/views/SettingsView2.tsx
+delete_if_exists "src/components/views/SettingsView-new.tsx"
+delete_if_exists "src/components/views/SettingsView2.tsx"
 
-# Delete duplicate .js hook files
-rm -f /workspaces/spark-template/src/hooks/use-mobile.js
+# Delete TypeScript hook files
+delete_if_exists "src/hooks/use-mobile.ts"
 
-# Delete test files
-rm -rf /workspaces/spark-template/src/__tests__
-rm -f /workspaces/spark-template/src/test-setup.ts
+# Delete TypeScript lib files
+delete_if_exists "src/lib/utils.ts"
+delete_if_exists "src/lib/constants.ts"
+delete_if_exists "src/lib/types.ts"
+delete_if_exists "src/lib/foodData.ts"
+
+# Delete test files (not needed for production)
+echo "[5/5] Removing test files..."
+rm -rf /workspaces/spark-template/src/__tests__ 2>/dev/null || true
+delete_if_exists "src/test-setup.ts"
 
 # Delete excessive documentation files
-rm -f /workspaces/spark-template/AI_ASSISTANT_GUIDE.md
-rm -f /workspaces/spark-template/AI_ASSISTANT_QUICK_REFERENCE.md
-rm -f /workspaces/spark-template/API_ARCHITECTURE.md
-rm -f /workspaces/spark-template/API_DOCUMENTATION.md
-rm -f /workspaces/spark-template/API_QUICK_REFERENCE.md
-rm -f /workspaces/spark-template/ARCHITECTURE.md
-rm -f /workspaces/spark-template/ARCHITECTURE_FIXES_SUMMARY.md
-rm -f /workspaces/spark-template/ARCHITECTURE_REVIEW.md
-rm -f /workspaces/spark-template/ARCHITECTURE_REVIEW_SUMMARY.md
-rm -f /workspaces/spark-template/AUDIT_REPORT.md
-rm -f /workspaces/spark-template/BACKEND_IMPLEMENTATION_SUMMARY.md
-rm -f /workspaces/spark-template/BACKEND_INTEGRATION.md
-rm -f /workspaces/spark-template/BACKEND_INTEGRATION_GUIDE.md
-rm -f /workspaces/spark-template/BACKEND_SETUP.md
-rm -f /workspaces/spark-template/CLEANUP_ACTIONS.md
-rm -f /workspaces/spark-template/CLEANUP_COMPLETE.md
-rm -f /workspaces/spark-template/CLEANUP_STATUS.md
-rm -f /workspaces/spark-template/CLEANUP_SUMMARY.md
-rm -f /workspaces/spark-template/CLEANUP_TYPESCRIPT_ACTION.md
-rm -f /workspaces/spark-template/CLEANUP_VERIFICATION.md
-rm -f /workspaces/spark-template/COMPLETE_SETUP_GUIDE.md
-rm -f /workspaces/spark-template/CONNECTING_BACKEND_SERVICES.md
-rm -f /workspaces/spark-template/CONVERSION_COMPLETE.md
-rm -f /workspaces/spark-template/CONVERSION_GUIDE.md
-rm -f /workspaces/spark-template/CONVERSION_SUMMARY.md
-rm -f /workspaces/spark-template/DATA_IMPORT_AND_MOCKUP_REMOVAL.md
-rm -f /workspaces/spark-template/DEPLOYMENT_SUMMARY.md
-rm -f /workspaces/spark-template/FDC_INTEGRATION_GUIDE.md
-rm -f /workspaces/spark-template/FINAL_FIXES_SUMMARY.md
-rm -f /workspaces/spark-template/FIXES_APPLIED.md
-rm -f /workspaces/spark-template/FIXES_EXECUTED.md
-rm -f /workspaces/spark-template/MOCKUP_DATA_DELETION_SUMMARY.md
-rm -f /workspaces/spark-template/MOCKUP_MODE_REMOVAL_SUMMARY.md
-rm -f /workspaces/spark-template/MOCK_MODE_INFO.md
-rm -f /workspaces/spark-template/NEO4J_ARCHITECTURE.md
-rm -f /workspaces/spark-template/PRE_DEPLOYMENT_CHECKLIST.md
-rm -f /workspaces/spark-template/README_NEW.md
-rm -f /workspaces/spark-template/REVIEW_COMPLETE.md
-rm -f /workspaces/spark-template/START_HERE.md
-rm -f /workspaces/spark-template/TESTING_GUIDE.md
-rm -f /workspaces/spark-template/TS_TO_JS_MASTERLIST.md
-rm -f /workspaces/spark-template/TYPESCRIPT_CLEANUP_SUMMARY.md
-rm -f /workspaces/spark-template/TYPESCRIPT_MIGRATION.md
-rm -f /workspaces/spark-template/USDA_FDC_SCHEMA.md
+echo "Removing excessive documentation..."
+delete_if_exists "AI_ASSISTANT_GUIDE.md"
+delete_if_exists "AI_ASSISTANT_QUICK_REFERENCE.md"
+delete_if_exists "API_ARCHITECTURE.md"
+delete_if_exists "API_DOCUMENTATION.md"
+delete_if_exists "API_QUICK_REFERENCE.md"
+delete_if_exists "ARCHITECTURE.md"
+delete_if_exists "ARCHITECTURE_FIXES_SUMMARY.md"
+delete_if_exists "ARCHITECTURE_REVIEW.md"
+delete_if_exists "ARCHITECTURE_REVIEW_SUMMARY.md"
+delete_if_exists "AUDIT_REPORT.md"
+delete_if_exists "BACKEND_IMPLEMENTATION_SUMMARY.md"
+delete_if_exists "BACKEND_INTEGRATION.md"
+delete_if_exists "BACKEND_INTEGRATION_GUIDE.md"
+delete_if_exists "BACKEND_SETUP.md"
+delete_if_exists "CLEANUP_ACTIONS.md"
+delete_if_exists "CLEANUP_COMPLETE.md"
+delete_if_exists "CLEANUP_STATUS.md"
+delete_if_exists "CLEANUP_SUMMARY.md"
+delete_if_exists "CLEANUP_TYPESCRIPT_ACTION.md"
+delete_if_exists "CLEANUP_VERIFICATION.md"
+delete_if_exists "COMPLETE_SETUP_GUIDE.md"
+delete_if_exists "CONNECTING_BACKEND_SERVICES.md"
+delete_if_exists "CONVERSION_COMPLETE.md"
+delete_if_exists "CONVERSION_GUIDE.md"
+delete_if_exists "CONVERSION_SUMMARY.md"
+delete_if_exists "DATA_IMPORT_AND_MOCKUP_REMOVAL.md"
+delete_if_exists "DEPLOYMENT_SUMMARY.md"
+delete_if_exists "FDC_INTEGRATION_GUIDE.md"
+delete_if_exists "FINAL_FIXES_SUMMARY.md"
+delete_if_exists "FIXES_APPLIED.md"
+delete_if_exists "FIXES_EXECUTED.md"
+delete_if_exists "MOCKUP_DATA_DELETION_SUMMARY.md"
+delete_if_exists "MOCKUP_MODE_REMOVAL_SUMMARY.md"
+delete_if_exists "MOCK_MODE_INFO.md"
+delete_if_exists "NEO4J_ARCHITECTURE.md"
+delete_if_exists "PRE_DEPLOYMENT_CHECKLIST.md"
+delete_if_exists "README_NEW.md"
+delete_if_exists "REVIEW_COMPLETE.md"
+delete_if_exists "START_HERE.md"
+delete_if_exists "TESTING_GUIDE.md"
+delete_if_exists "TS_TO_JS_MASTERLIST.md"
+delete_if_exists "TYPESCRIPT_CLEANUP_SUMMARY.md"
+delete_if_exists "TYPESCRIPT_MIGRATION.md"
+delete_if_exists "USDA_FDC_SCHEMA.md"
+delete_if_exists "CLEANUP_EXECUTION_GUIDE.md"
+delete_if_exists "PROJECT_STRUCTURE_NOTES.md"
+delete_if_exists "AZURE_DEPLOYMENT.md"
 
-# Delete cleanup scripts
-rm -f /workspaces/spark-template/cleanup-duplicates.sh
-rm -f /workspaces/spark-template/cleanup-typescript.sh
-rm -f /workspaces/spark-template/cleanup.sh
+# Delete old/deprecated cleanup scripts
+echo "Removing old cleanup scripts..."
+delete_if_exists "cleanup-duplicates.sh"
+delete_if_exists "cleanup-typescript.sh"
+delete_if_exists "cleanup.sh"
+delete_if_exists "remove-jsx-files.sh"
 
 # Delete test scripts
-rm -f /workspaces/spark-template/test-backend.sh
+delete_if_exists "test-backend.sh"
 
 # Delete pids directory if empty or not needed
-rm -rf /workspaces/spark-template/pids
+if [ -d "/workspaces/spark-template/pids" ]; then
+    rm -rf /workspaces/spark-template/pids 2>/dev/null || true
+    echo "  ✓ Deleted: pids directory"
+fi
 
-echo "Cleanup complete!"
+echo ""
+echo "==========================================="
+echo "✅ Cleanup Complete!"
+echo "==========================================="
+echo ""
+echo "Summary:"
+echo "  - Files deleted: $DELETED_COUNT"
+echo "  - Kept: JavaScript/JSX frontend files"
+echo "  - Kept: Python backend files"
+echo "  - Kept: Essential documentation (README.md, PRD.md)"
+echo ""
+echo "Project Structure:"
+echo "  Frontend: .js/.jsx files only"
+echo "  Backend: .py files only"
+echo "  UI Components: shadcn (src/components/ui/)"
+echo ""
+echo "Next steps:"
+echo "  1. Test frontend: npm run dev"
+echo "  2. Test backend: ./start-backend.sh"
+echo "  3. Verify all features work"
+echo ""

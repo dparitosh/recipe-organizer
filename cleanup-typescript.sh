@@ -1,16 +1,19 @@
 #!/bin/bash
 
-# Cleanup Script - Remove TypeScript Files After JS/JSX Migration
-# This script removes all .ts and .tsx files that have been converted to .js/.jsx
+# Remove TypeScript Files - Keep JavaScript/JSX Only
+# This script removes all .ts and .tsx files from the frontend
+# Frontend: JavaScript/JSX only (.js/.jsx)
+# Backend: Python only (.py)
 
 set -e
 
 echo "==========================================="
-echo "TypeScript to JavaScript Migration Cleanup"
+echo "TypeScript File Removal"
 echo "==========================================="
 echo ""
-echo "This script will remove TypeScript files (.ts/.tsx)"
-echo "that have been migrated to JavaScript (.js/.jsx)"
+echo "Removing TypeScript files (.ts/.tsx)"
+echo "Keeping JavaScript files (.js/.jsx)"
+echo "Frontend: JSX/JS | Backend: Python"
 echo ""
 
 # Core src files

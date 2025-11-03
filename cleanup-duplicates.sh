@@ -1,17 +1,30 @@
 #!/bin/bash
 
-# Comprehensive Cleanup Script for Formulation Graph Studio
-# Removes all duplicate .jsx and .js files - TypeScript is the standard
+# DEPRECATED - DO NOT USE
+# This script was designed to remove JSX/JS which are the PRIMARY files
+# Frontend: JavaScript/JSX only (.js/.jsx)
+# Backend: Python only (.py)
 
 set -e  # Exit on error
 
 echo "==========================================="
-echo "Formulation Graph Studio - Cleanup Script"
+echo "⚠️  DEPRECATED SCRIPT - DO NOT USE"
 echo "==========================================="
 echo ""
-echo "Removing duplicate .jsx and .js files..."
-echo "TypeScript (.tsx/.ts) files will be retained."
+echo "This script is outdated and will delete the WRONG files."
 echo ""
+echo "Project Architecture:"
+echo "  Frontend: JavaScript/JSX (.js/.jsx files)"
+echo "  Backend: Python (.py files)"
+echo ""
+echo "To remove TypeScript files, use:"
+echo "  ./remove-typescript-files.sh"
+echo ""
+echo "Exiting without making changes..."
+exit 1
+
+# OLD DEPRECATED CODE BELOW
+: <<'DEPRECATED'
 
 # Track deleted files
 DELETED_COUNT=0
@@ -75,3 +88,4 @@ echo "Next steps:"
 echo "  1. Verify: npm run build"
 echo "  2. Test: npm run dev"
 echo ""
+DEPRECATED
