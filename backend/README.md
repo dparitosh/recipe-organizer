@@ -1,417 +1,471 @@
-# Formulation Graph Studio - Python Backend
+# Formulation Graph Studio - Backend API
 
-Python FastAPI backend handling all AI logic, Cypher generation, and business logic for the Formulation Graph Studio.
+Modern Python FastAPI backend for Food & Beverage formulation management platform.
 
 ## Features
 
-✅ **AI Query Processing** - Online, offline, and auto modes with seamless fallback  
-✅ **Neo4j Integration** - Graph database queries with Cypher generation  
-✅ **OpenAI GPT-4** - Natural language understanding and intelligent recommendations  
-✅ **Health Monitoring** - Real-time service status for LLM, Neo4j, GenAI  
-✅ **Formulation APIs** - REST endpoints for formulation CRUD operations  
-✅ **Calculation Engine** - Scaling, yield, and cost calculations  
-✅ **Auto Documentation** - Swagger UI and ReDoc at /docs and /redoc  
-✅ **CORS Enabled** - Frontend integration ready  
-
-## Quick Start
-
-### Automated Setup (Recommended)
-
-From project root:
-```bash
-chmod +x setup-backend.sh
-./setup-backend.sh
-```
-
-Or on Windows:
-```cmd
-setup-backend.bat
-```
-
-### Manual Setup
-
-```bash
-cd backend
-
-# Create virtual environment
-python3 -m venv venv
-
-# Activate (Unix/Linux/Mac)
-source venv/bin/activate
-
-# Activate (Windows)
-venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment
-cp .env.example .env
-# Edit .env and add your OpenAI API key
-```
-
-### Configure Environment
-
-Edit `.env`:
-
-```env
-NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=tcs12345
-NEO4J_DATABASE=neo4j
-OPENAI_API_KEY=sk-your-openai-api-key-here
-```
-
-**Get OpenAI API key:** https://platform.openai.com/api-keys
-
-### Start Server
-
-```bash
-# Using start script (from project root)
-./start-backend.sh
-
-# Or manually
-cd backend
-source venv/bin/activate  # venv\Scripts\activate on Windows
-python main.py
-```
-
-Server starts on: `http://localhost:8000`
-
-### Verify Setup
-
-```bash
-# Test root endpoint
-curl http://localhost:8000/
-
-# Test health endpoint
-curl http://localhost:8000/api/health
-```
-
-## API Documentation
-
-Once running, access interactive documentation:
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-Both provide:
-- Complete API reference
-- Request/response schemas
-- Interactive testing interface
-- Example requests
-
-## API Endpoints
-
-### Health Check
-
-**GET** `/api/health`
-
-Returns service status:
-
-```json
-{
-  "status": "healthy",
-  "llm_available": true,
-  "neo4j_available": true,
-  "genai_available": true,
-  "response_time_ms": 123
-}
-```
-
-### AI Query Processing
-
-**POST** `/api/ai/query`
-
-Process natural language queries with AI:
-
-**Request:**
-```json
-{
-  "query": "Show all recipes using mango concentrate with yield < 90%",
-  "service_mode": "auto",
-  "include_graph": true
-}
-```
-
-**Response:**
-```json
-{
-  "answer": "Found 3 recipes using mango concentrate...",
-  "mode": "online",
-  "execution_time_ms": 1850,
-  "confidence": 0.85,
-  "data_sources": ["OpenAI GPT-4", "Neo4j Graph"],
-  "cypher_query": "MATCH (r:Recipe)-[:USES]->...",
-  "node_highlights": [...],
-  "relationship_summaries": [...],
-  "recommendations": [...]
-}
-```
-
-### Formulation Management
-
-**POST** `/api/formulations`
-
-Create new formulation:
-
-```json
-{
-  "name": "Potato Chips",
-  "description": "Classic salted potato chips",
-  "ingredients": [
-    {"name": "Potato", "percentage": 85},
-    {"name": "Palm Oil", "percentage": 12},
-    {"name": "Salt", "percentage": 3}
-  ]
-}
-```
-
-**GET** `/api/formulations`
-
-List all formulations.
-
-### Calculation Engine
-
-**POST** `/api/calculations/scale`
-
-Scale formulation to batch size:
-
-```json
-{
-  "formulation_id": "form_1234567890",
-  "batch_size": 1000,
-  "unit": "kg"
-}
-```
-
-## AI Service Modes
-
-### Online Mode
-
-**Requirements:**
-- Backend running
-- Valid OpenAI API key
-- Internet connection
-
-**Capabilities:**
-- Natural language understanding with GPT-4
-- Automatic Cypher query generation
-- Neo4j graph analysis
-- High confidence answers (80-95%)
-- Intelligent, actionable recommendations
-
-**Example:**
-```bash
-curl -X POST http://localhost:8000/api/ai/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What formulations use vanilla extract?",
-    "service_mode": "online",
-    "include_graph": true
-  }'
-```
-
-### Offline Mode
-
-**Requirements:**
-- None - fully local
-
-**Capabilities:**
-- Keyword-based search
-- Simple data filtering
-- Generic recommendations
-- Low confidence (30-40%)
-
-**When Used:**
-- Backend unavailable
-- No OpenAI API key
-- Network issues
-- User selects offline mode
-
-### Auto Mode (Recommended)
-
-**Behavior:**
-1. Attempts online processing
-2. Falls back to offline on failure
-3. Transparent to user
-4. Maximum reliability
-
-**Configuration:**
-- Default mode
-- Configurable retry attempts
-- Configurable timeout
-
-## Dependencies
-
-```txt
-fastapi==0.115.0         # Web framework
-uvicorn==0.32.0          # ASGI server
-pydantic==2.10.0         # Data validation
-neo4j==5.27.0            # Neo4j driver
-openai==1.55.0           # OpenAI client
-python-dotenv==1.0.1     # Environment vars
-python-multipart==0.0.12 # File uploads
-```
-
-## Project Structure
-
-```
-backend/
-├── main.py              # FastAPI application
-├── requirements.txt     # Python dependencies
-├── .env.example        # Environment template
-├── .env                # Your config (create this)
-├── venv/               # Virtual environment (created)
-└── README.md           # This file
-```
-
-## Development
-
-### Run in Development Mode
-
-```bash
-source venv/bin/activate
-python main.py
-```
-
-Server automatically reloads on code changes.
-
-### Run Tests
-
-```bash
-# From project root
-./test-backend.sh
-```
-
-### Add Dependencies
-
-```bash
-pip install <package>
-pip freeze > requirements.txt
-```
-
-## Troubleshooting
-
-### Module Not Found
-
-**Error:** `ModuleNotFoundError: No module named 'fastapi'`
-
-**Fix:**
-```bash
-pip install -r requirements.txt
-```
-
-### Port Already in Use
-
-**Error:** `Address already in use`
-
-**Fix:**
-```bash
-# Unix/Linux/Mac
-lsof -ti:8000 | xargs kill -9
-
-# Windows
-netstat -ano | findstr :8000
-taskkill /PID <PID> /F
-```
-
-### OpenAI Authentication Error
-
-**Error:** `AuthenticationError: Invalid API key`
-
-**Fix:**
-1. Get valid key from https://platform.openai.com/api-keys
-2. Update `OPENAI_API_KEY` in `.env`
-3. Restart backend
-
-### Neo4j Connection Refused
-
-**Error:** `ServiceUnavailable: Connection refused`
-
-**Fix:**
-1. Verify `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD` in `.env`
-2. Check Neo4j instance is running
-3. Test credentials manually
-
-### CORS Errors
-
-If frontend can't connect:
-
-1. Check CORS middleware in `main.py`
-2. Ensure `allow_origins=["*"]` for development
-3. Check frontend URL matches
-
-## Production Deployment
-
-### Use Production Server
-
-```bash
-pip install gunicorn
-gunicorn main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 -w 4
-```
-
-### Security
-
-1. **Restrict CORS** to frontend domain only
-2. **Enable HTTPS** with TLS certificates
-3. **Use environment variables** (no .env in production)
-4. **Rate limiting** for API endpoints
-5. **JWT authentication** (future enhancement)
-
-### Monitoring
-
-1. **Logging**: Configure structured logging
-2. **Health checks**: Monitor `/api/health`
-3. **Metrics**: Track response times, error rates
-4. **Alerts**: Set up alerts for downtime
+- **FastAPI Framework**: Modern, fast web framework with automatic OpenAPI documentation
+- **OLLAMA AI Integration**: Local AI processing with OLLAMA for natural language queries and Cypher generation
+- **Neo4j Graph Database**: Official Neo4j Python driver for graph data management
+- **Pydantic Validation**: Comprehensive request/response validation with OpenAPI standards
+- **Async Operations**: Full async/await support for optimal performance
+- **Service Health Monitoring**: Real-time health checks for all integrated services
+- **Graceful Degradation**: Automatic fallback from online to offline mode when services unavailable
 
 ## Architecture
 
 ```
-┌─────────────────────────────────┐
-│      React Frontend (JSX)       │
-│  - AIAssistantPanel.jsx         │
-│  - AIServiceSettings.jsx        │
-│  - lib/ai.js                    │
-└──────────────┬──────────────────┘
-               │
-               │ HTTP REST API
-               │ JSON payloads
-               │
-┌──────────────▼──────────────────┐
-│    Python FastAPI Backend       │
-│  ┌──────────────────────────┐  │
-│  │  main.py                 │  │
-│  │  - Routes                │  │
-│  │  - AI processing         │  │
-│  │  - Validation            │  │
-│  │  - Business logic        │  │
-│  └──────────────────────────┘  │
-└──────────┬───────────┬──────────┘
-           │           │
-           ▼           ▼
-    ┌──────────┐  ┌──────────┐
-    │  Neo4j   │  │  OpenAI  │
-    │  Graph   │  │   GPT-4  │
-    └──────────┘  └──────────┘
+backend/
+├── app/
+│   ├── api/
+│   │   ├── endpoints/          # API route handlers
+│   │   │   ├── health.py       # Service health checks
+│   │   │   ├── ai.py           # AI query processing (OLLAMA)
+│   │   │   ├── formulations.py # Formulation CRUD operations
+│   │   │   ├── calculations.py # Scaling and cost calculations
+│   │   │   ├── graph.py        # Graph data retrieval
+│   │   │   └── sample_data.py  # Sample data loader
+│   │   └── routes.py           # Router aggregation
+│   ├── core/
+│   │   └── config.py           # Configuration management
+│   ├── db/
+│   │   └── neo4j_client.py     # Neo4j database client
+│   ├── models/
+│   │   └── schemas.py          # Pydantic models
+│   └── services/
+│       └── ollama_service.py   # OLLAMA AI service client
+├── main.py                     # FastAPI application entry point
+├── requirements.txt            # Python dependencies
+└── .env.example                # Environment variables template
 ```
+
+## Prerequisites
+
+### Required Services
+
+1. **Python 3.10+**
+2. **OLLAMA** - Local AI service
+   - Download: https://ollama.ai/
+   - Install and pull model: `ollama pull llama2`
+3. **Neo4j Database** - Graph database
+   - Cloud: Neo4j Aura (https://neo4j.com/cloud/aura/)
+   - Local: Neo4j Desktop or Docker
+
+## Installation
+
+### 1. Clone and Setup
+
+```bash
+cd backend
+python -m venv venv
+```
+
+### 2. Activate Virtual Environment
+
+**Windows:**
+```bash
+venv\Scripts\activate
+```
+
+**Linux/Mac:**
+```bash
+source venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure Environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` file with your configuration:
+
+```env
+# Neo4j Configuration
+NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-password
+NEO4J_DATABASE=neo4j
+
+# OLLAMA Configuration
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama2
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+DEBUG=False
+```
+
+## Running the Server
+
+### Development Mode (with auto-reload)
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Production Mode
+
+```bash
+python main.py
+```
+
+### Using Uvicorn Directly
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+## API Documentation
+
+Once the server is running, access the interactive API documentation:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
+
+## API Endpoints
+
+### Health Check
+- `GET /api/health` - Service health status
+
+### AI Assistant
+- `POST /api/ai/query` - Process natural language queries
+
+### Formulations
+- `POST /api/formulations` - Create formulation
+- `GET /api/formulations` - List formulations
+- `GET /api/formulations/{id}` - Get formulation details
+
+### Calculations
+- `POST /api/calculations/scale` - Scale formulation to batch size
+
+### Graph Data
+- `GET /api/graph/data` - Retrieve graph visualization data
+
+### Sample Data
+- `POST /api/sample-data/load` - Load sample F&B datasets
+- `DELETE /api/sample-data/clear` - Clear database
+
+## OLLAMA Setup
+
+### Installation
+
+**Windows:**
+1. Download OLLAMA from https://ollama.ai/download
+2. Run installer
+3. Open terminal and pull model:
+```bash
+ollama pull llama2
+```
+
+**Linux:**
+```bash
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama pull llama2
+```
+
+### Verify OLLAMA
+
+```bash
+ollama list
+curl http://localhost:11434/api/tags
+```
+
+### Alternative Models
+
+```bash
+# Faster, smaller model
+ollama pull mistral
+
+# Larger, more capable model
+ollama pull llama2:13b
+
+# Update .env to use different model
+OLLAMA_MODEL=mistral
+```
+
+## Neo4j Setup
+
+### Cloud (Neo4j Aura - Recommended)
+
+1. Sign up at https://neo4j.com/cloud/aura/
+2. Create free instance
+3. Note connection URI, username, password
+4. Update `.env` with credentials
+
+### Local (Docker)
+
+```bash
+docker run \
+  --name neo4j \
+  -p 7474:7474 -p 7687:7687 \
+  -e NEO4J_AUTH=neo4j/your-password \
+  neo4j:latest
+```
+
+Update `.env`:
+```env
+NEO4J_URI=neo4j://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-password
+```
+
+## Azure Deployment
+
+### Prerequisites
+- Azure account with Windows VM provisioned
+- Python 3.10+ installed on VM
+- OLLAMA installed on VM
+- Neo4j accessible (cloud or local)
+
+### Deployment Steps
+
+#### 1. Connect to Azure VM
+
+```bash
+# Via RDP or SSH
+ssh azureuser@your-vm-ip
+```
+
+#### 2. Install Dependencies on Windows VM
+
+```powershell
+# Install Python 3.10+
+winget install Python.Python.3.10
+
+# Install OLLAMA
+# Download from https://ollama.ai/download and install
+
+# Verify installations
+python --version
+ollama --version
+```
+
+#### 3. Clone and Setup Application
+
+```powershell
+cd C:\Apps
+git clone <your-repo>
+cd formulation-graph-studio/backend
+
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+#### 4. Configure Environment
+
+```powershell
+copy .env.example .env
+notepad .env
+```
+
+Update with production values:
+```env
+HOST=0.0.0.0
+PORT=8000
+DEBUG=False
+NEO4J_URI=neo4j+s://your-production-instance.databases.neo4j.io
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+#### 5. Run as Windows Service
+
+Create `start-backend.bat`:
+```batch
+@echo off
+cd C:\Apps\formulation-graph-studio\backend
+call venv\Scripts\activate
+python main.py
+```
+
+**Option A: Use NSSM (Non-Sucking Service Manager)**
+```powershell
+# Install NSSM
+choco install nssm
+
+# Create service
+nssm install FormulationAPI "C:\Apps\formulation-graph-studio\backend\venv\Scripts\python.exe" "C:\Apps\formulation-graph-studio\backend\main.py"
+nssm set FormulationAPI AppDirectory "C:\Apps\formulation-graph-studio\backend"
+nssm start FormulationAPI
+```
+
+**Option B: Use Task Scheduler**
+1. Open Task Scheduler
+2. Create Basic Task
+3. Trigger: At startup
+4. Action: Start program `C:\Apps\formulation-graph-studio\backend\start-backend.bat`
+5. Run whether user is logged in or not
+
+#### 6. Configure Firewall
+
+```powershell
+# Allow port 8000
+New-NetFirewallRule -DisplayName "Formulation API" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow
+```
+
+#### 7. Verify Deployment
+
+```powershell
+# Test locally
+curl http://localhost:8000/health
+
+# Test from network
+curl http://your-vm-ip:8000/health
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `HOST` | Server bind address | `0.0.0.0` |
+| `PORT` | Server port | `8000` |
+| `DEBUG` | Debug mode | `False` |
+| `NEO4J_URI` | Neo4j connection URI | `neo4j+s://...` |
+| `NEO4J_USER` | Neo4j username | `neo4j` |
+| `NEO4J_PASSWORD` | Neo4j password | - |
+| `NEO4J_DATABASE` | Neo4j database name | `neo4j` |
+| `OLLAMA_BASE_URL` | OLLAMA service URL | `http://localhost:11434` |
+| `OLLAMA_MODEL` | OLLAMA model name | `llama2` |
+| `OLLAMA_TIMEOUT` | Request timeout (seconds) | `60` |
+| `AI_SERVICE_MODE` | AI mode (online/offline/auto) | `auto` |
+| `AI_RETRY_ATTEMPTS` | Retry attempts | `3` |
+| `AI_TIMEOUT_SECONDS` | AI timeout | `30` |
+
+## Troubleshooting
+
+### OLLAMA Not Connecting
+
+```bash
+# Check OLLAMA status
+ollama list
+
+# Test OLLAMA API
+curl http://localhost:11434/api/tags
+
+# Restart OLLAMA (Windows)
+# Task Manager > Services > Restart OLLAMA
+
+# Check logs
+# Windows: C:\Users\<user>\.ollama\logs\
+```
+
+### Neo4j Connection Failed
+
+```bash
+# Verify credentials in .env
+# Test connection with Neo4j Browser
+# Check firewall rules for port 7687
+```
+
+### Port Already in Use
+
+```powershell
+# Windows: Find process using port 8000
+netstat -ano | findstr :8000
+taskkill /PID <process-id> /F
+
+# Linux/Mac
+lsof -ti:8000 | xargs kill -9
+```
+
+### Import Errors
+
+```bash
+# Reinstall dependencies
+pip install --upgrade -r requirements.txt
+
+# Check Python version
+python --version  # Should be 3.10+
+```
+
+## Testing
+
+### Manual Testing
+
+```bash
+# Health check
+curl http://localhost:8000/api/health
+
+# Create formulation
+curl -X POST http://localhost:8000/api/formulations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Recipe",
+    "status": "draft",
+    "ingredients": [
+      {"name": "Ingredient A", "percentage": 60.0},
+      {"name": "Ingredient B", "percentage": 40.0}
+    ]
+  }'
+
+# AI Query
+curl -X POST http://localhost:8000/api/ai/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Show all formulations",
+    "service_mode": "auto"
+  }'
+```
+
+### Load Sample Data
+
+```bash
+curl -X POST http://localhost:8000/api/sample-data/load \
+  -H "Content-Type: application/json" \
+  -d '{"clear_existing": true, "datasets": ["all"]}'
+```
+
+## Performance Tuning
+
+### Uvicorn Workers
+
+```bash
+# Multiple workers for production
+uvicorn main:app --workers 4 --host 0.0.0.0 --port 8000
+```
+
+### OLLAMA Performance
+
+```bash
+# Use GPU acceleration (if available)
+# Automatically detected by OLLAMA
+
+# Use smaller model for faster responses
+ollama pull mistral
+# Update OLLAMA_MODEL=mistral in .env
+```
+
+### Neo4j Optimization
+
+- Create indexes on frequently queried properties
+- Use appropriate batch sizes
+- Enable connection pooling (handled by driver)
+
+## Security Considerations
+
+1. **Environment Variables**: Never commit `.env` file
+2. **CORS**: Configure `CORS_ORIGINS` for production
+3. **Authentication**: Add authentication middleware for production
+4. **HTTPS**: Use reverse proxy (nginx/IIS) with SSL certificates
+5. **Neo4j**: Use secure connection (neo4j+s://)
+6. **Firewall**: Restrict ports to necessary services only
 
 ## Support
 
-For issues:
-
-1. Check server logs in terminal
-2. Test health endpoint: `curl http://localhost:8000/api/health`
-3. Review API docs: http://localhost:8000/docs
-4. Check `.env` configuration
-5. Verify Python version (3.9+)
-6. Review [BACKEND_INTEGRATION_GUIDE.md](../BACKEND_INTEGRATION_GUIDE.md)
+For issues or questions:
+- Check API documentation: http://localhost:8000/docs
+- Review logs for error details
+- Verify all services are running (OLLAMA, Neo4j)
 
 ## License
 
-MIT
-
----
-
-**Ready to use!** Start the backend, configure the frontend, and enjoy AI-powered formulation management.
+Proprietary - TCS Internal Use
