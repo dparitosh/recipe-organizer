@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { Database, CheckCircle, XCircle, Info, Eye, EyeSlash, Warning, Lightning } from '@phosphor-icons/react'
+import { Database, CheckCircle, XCircle, Info, Eye, EyeSlash, Lightning } from '@phosphor-icons/react'
 import { neo4jManager } from '@/lib/managers/neo4j-manager'
 import { Neo4jDriverConfig } from '@/lib/drivers/neo4j-driver'
 import { toast } from 'sonner'
@@ -22,7 +21,6 @@ const DEFAULT_CONFIG: Neo4jDriverConfig = {
 export function Neo4jSettings() {
   const [savedConfig, setSavedConfig] = useKV<Neo4jDriverConfig>('neo4j-config', DEFAULT_CONFIG)
   
-  const [useMockMode, setUseMockMode] = useKV<boolean>('neo4j-mock-mode', true)
   const [config, setConfig] = useState<Neo4jDriverConfig>(savedConfig || DEFAULT_CONFIG)
   const [testing, setTesting] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'failed'>('unknown')
@@ -33,10 +31,6 @@ export function Neo4jSettings() {
     serverVersion?: string
     serverInfo?: string
   }>({})
-
-  useEffect(() => {
-    neo4jManager.setMockMode(useMockMode ?? true)
-  }, [useMockMode])
 
   const handleTestConnection = async () => {
     if (!config.uri || !config.username || !config.password) {
@@ -59,19 +53,16 @@ export function Neo4jSettings() {
         setConnectionStatus('connected')
         setTestDetails({ latency })
         toast.success(`Connection successful! (${latency}ms)`)
-        neo4jManager.setMockMode(false)
       } else {
         setConnectionStatus('failed')
         setConnectionError('Unable to establish connection')
         toast.error('Connection failed')
-        neo4jManager.setMockMode(true)
       }
     } catch (error) {
       setConnectionStatus('failed')
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setConnectionError(errorMessage)
       toast.error(`Connection error: ${errorMessage}`)
-      neo4jManager.setMockMode(true)
     } finally {
       setTesting(false)
     }
@@ -80,17 +71,6 @@ export function Neo4jSettings() {
   const handleSaveConfig = async () => {
     setSavedConfig(config)
     toast.success('Configuration saved')
-  }
-
-  const handleToggleMockMode = (enabled: boolean) => {
-    setUseMockMode(() => enabled)
-    neo4jManager.setMockMode(enabled)
-    if (enabled) {
-      setConnectionStatus('unknown')
-      toast.info('Mock mode enabled')
-    } else {
-      toast.info('Mock mode disabled - connect to Neo4j')
-    }
   }
 
   const status = neo4jManager.getConnectionStatus()
@@ -108,49 +88,19 @@ export function Neo4jSettings() {
               Configure your Neo4j database connection and settings
             </p>
           </div>
-          <Badge variant={useMockMode ? 'secondary' : connectionStatus === 'connected' ? 'default' : 'outline'}>
-            {useMockMode ? 'Mock Mode' : connectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
+          <Badge variant={connectionStatus === 'connected' ? 'default' : 'outline'}>
+            {connectionStatus === 'connected' ? 'Connected' : 'Not Connected'}
           </Badge>
         </div>
 
         <Separator />
 
         <div className="space-y-6">
-          <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-            <div className="space-y-0.5">
-              <Label className="text-sm font-medium">Mock Mode</Label>
-              <p className="text-xs text-muted-foreground">
-                Use mock data instead of real database connection
-              </p>
-            </div>
-            <Switch
-              checked={useMockMode || false}
-              onCheckedChange={handleToggleMockMode}
-            />
-          </div>
-
-          {useMockMode && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex gap-3">
-              <Warning className="text-yellow-600 flex-shrink-0 mt-0.5" size={20} weight="fill" />
-              <div className="text-xs text-yellow-800">
-                <p className="font-medium mb-1">Mock Mode Active</p>
-                <p>
-                  The application is using simulated mock data. Disable mock mode and configure
-                  your Neo4j connection to use real data.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {!useMockMode && (
-            <>
-              <Separator />
-
-              <div className="space-y-6">
-                <h4 className="font-semibold text-sm flex items-center gap-2">
-                  <Database size={16} weight="bold" />
-                  Connection Settings
-                </h4>
+          <div className="space-y-6">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              <Database size={16} weight="bold" />
+              Connection Settings
+            </h4>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -334,8 +284,6 @@ export function Neo4jSettings() {
                   </div>
                 </div>
               </div>
-            </>
-          )}
         </div>
       </Card>
 

@@ -12,7 +12,7 @@ export interface ConnectionStatus {
 }
 
 export class Neo4jManager {
-  private mockMode: boolean = true
+  private mockMode: boolean = false
   private mockData: Neo4jResult | null = null
 
   async connect(config: Neo4jDriverConfig): Promise<void> {
@@ -162,10 +162,6 @@ export class Neo4jManager {
   }
 
   async naturalLanguageQuery(query: string, context?: Record<string, any>): Promise<any> {
-    if (this.mockMode) {
-      return this.executeMockQuery('MATCH (n) RETURN n LIMIT 10')
-    }
-
     return await genAIClient.executeCypherFromNL(query, context)
   }
 
@@ -197,10 +193,6 @@ export class Neo4jManager {
   }
 
   async clearSchema(): Promise<void> {
-    if (this.mockMode) {
-      throw new Error('Cannot clear schema in mock mode')
-    }
-
     try {
       await this.query('MATCH (n) DETACH DELETE n')
     } catch (error) {
@@ -210,10 +202,6 @@ export class Neo4jManager {
   }
 
   async getNodeCount(): Promise<number> {
-    if (this.mockMode) {
-      return this.mockData?.nodes.length || 0
-    }
-
     try {
       const result = await this.query('MATCH (n) RETURN count(n) as count')
       return result.metadata?.recordCount || 0

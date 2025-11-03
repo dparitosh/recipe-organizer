@@ -152,11 +152,6 @@ export class FDCService {
   }
 
   async cacheFoodInNeo4j(foodData: FoodData): Promise<void> {
-    if (neo4jManager.isMockMode()) {
-      console.log('FDC Service: Skipping Neo4j cache in mock mode')
-      return
-    }
-
     try {
       const cypher = `
         MERGE (f:${NEO4J_CONSTANTS.NODE_LABELS.FOOD} {fdcId: $fdcId})
@@ -220,11 +215,6 @@ export class FDCService {
     percentage: number
     function: string
   }>): Promise<void> {
-    if (neo4jManager.isMockMode()) {
-      console.log('FDC Service: Skipping formulation link in mock mode')
-      return
-    }
-
     try {
       const cypher = `
         MATCH (form:${NEO4J_CONSTANTS.NODE_LABELS.FORMULATION} {id: $formulationId})
@@ -249,11 +239,6 @@ export class FDCService {
   }
 
   async calculateFormulationNutrition(formulationId: string): Promise<any> {
-    if (neo4jManager.isMockMode()) {
-      console.log('FDC Service: Skipping nutrition calculation in mock mode')
-      return null
-    }
-
     try {
       const cypher = `
         MATCH (form:${NEO4J_CONSTANTS.NODE_LABELS.FORMULATION} {id: $formulationId})
@@ -290,11 +275,6 @@ export class FDCService {
   }
 
   async findAlternativeFoods(fdcId: number, similarityThreshold: number = 0.8): Promise<SearchResult[]> {
-    if (neo4jManager.isMockMode()) {
-      console.log('FDC Service: Using mock data for alternatives')
-      return []
-    }
-
     try {
       const cypher = `
         MATCH (food:${NEO4J_CONSTANTS.NODE_LABELS.FOOD} {fdcId: $fdcId})
