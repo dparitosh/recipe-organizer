@@ -34,42 +34,42 @@ Guidelines:
 Return ONLY valid JSON matching this structure:
 {
   "uiConfig": {
-    "layout": "three-column",
-    "components": [
-      {
         "type": "metrics",
-        "title": "Key Metrics",
         "data": {
-          "totalCost": 6700,
-          "yield": 95,
-          "validationScore": 90
+       
         },
-        "config": {},
         "position": {
-          "row": 1,
-          "col": 1,
-          "span": 3
+          "col": 
         }
-      },
       {
-        "type": "chart",
-        "title": "Ingredient Composition",
-        "data": [
-          { "name": "Water", "value": 45.5 }
-        ],
+        "title": "Ingredient Co
+          
         "config": {
-          "chartType": "pie",
-          "colorScheme": "default",
-          "showLegend": true
+          "colorSchem
         },
-        "position": {
           "row": 2,
-          "col": 1
         }
-      },
       {
-        "type": "table",
-        "title": "Scaled Ingredients",
+        
+       
+            { "key": "na
+          ]
+        "position
+          "col": 2
+      }
+    "theme": {
+      "accentColor": "#10b981
+    }
+}`
+    const 
+    
+    
+      uiConfig: va
+  }
+
+
+
+
         "data": [],
         "config": {
           "columns": [
