@@ -7,15 +7,8 @@ import {
   UploadSimple, 
   Gear 
 } from '@phosphor-icons/react'
-import type { View } from '@/App'
 
-interface SidebarProps {
-  open: boolean
-  currentView: View
-  onViewChange: (view: View) => void
-}
-
-const navItems: Array<{ view: View; label: string; icon: typeof House }> = [
+const navItems = [
   { view: 'dashboard', label: 'Dashboard', icon: House },
   { view: 'formulations', label: 'Formulations', icon: Flask },
   { view: 'graph', label: 'Graph Explorer', icon: Graph },
@@ -23,7 +16,7 @@ const navItems: Array<{ view: View; label: string; icon: typeof House }> = [
   { view: 'settings', label: 'Settings', icon: Gear },
 ]
 
-export function Sidebar({ open, currentView, onViewChange }: SidebarProps) {
+export function Sidebar({ open, currentView, onViewChange }) {
   return (
     <>
       <aside className={cn(

@@ -1,14 +1,6 @@
-import { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import type { View } from '@/App'
 
-interface MainContentProps {
-  children: ReactNode
-  view: View
-  sidebarOpen: boolean
-}
-
-export function MainContent({ children, view, sidebarOpen }: MainContentProps) {
+export function MainContent({ children, view, sidebarOpen }) {
   return (
     <main className={cn(
       "flex-1 overflow-auto transition-all duration-300",

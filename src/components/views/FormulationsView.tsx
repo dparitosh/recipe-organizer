@@ -4,18 +4,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { DataExportButton } from '@/components/DataExportButton'
-import { apiService, Formulation } from '@/lib/api/service'
+import { apiService } from '@/lib/api/service'
 import { toast } from 'sonner'
 import { Plus, Flask, Trash } from '@phosphor-icons/react'
 
-interface FormulationsViewProps {
-  backendUrl: string
-}
-
-export function FormulationsView({ backendUrl }: FormulationsViewProps) {
-  const [formulations, setFormulations] = useState<Formulation[]>([])
+export function FormulationsView({ backendUrl }) {
+  const [formulations, setFormulations] = useState([])
   const [loading, setLoading] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState(null)
 
   apiService.setBaseUrl(backendUrl)
 
@@ -55,7 +51,7 @@ export function FormulationsView({ backendUrl }: FormulationsViewProps) {
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id) => {
     try {
       await apiService.deleteFormulation(id)
       setFormulations(formulations.filter(f => f.id !== id))

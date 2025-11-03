@@ -9,12 +9,10 @@ import { IngestView } from '@/components/views/IngestView'
 import { SettingsView } from '@/components/views/SettingsView'
 import { useKV } from '@github/spark/hooks'
 
-export type View = 'dashboard' | 'formulations' | 'graph' | 'ingest' | 'settings'
-
 function App() {
-  const [currentView, setCurrentView] = useState<View>('dashboard')
+  const [currentView, setCurrentView] = useState('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [backendUrl, setBackendUrl] = useKV<string>('backend-url', 'http://localhost:8000')
+  const [backendUrl, setBackendUrl] = useKV('backend-url', 'http://localhost:8000')
 
   const backendUrlValue = backendUrl || 'http://localhost:8000'
 

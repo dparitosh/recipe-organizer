@@ -1,10 +1,6 @@
 import { FDCDataIngestionPanel } from '@/components/FDCDataIngestionPanel'
 
-interface IngestViewProps {
-  backendUrl: string
-}
-
-export function IngestView({ backendUrl }: IngestViewProps) {
+export function IngestView({ backendUrl }) {
   return (
     <div className="space-y-6">
       <div>

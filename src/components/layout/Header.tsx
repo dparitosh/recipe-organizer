@@ -3,13 +3,8 @@ import { Badge } from '@/components/ui/badge'
 import { List, Flask, Gear } from '@phosphor-icons/react'
 import { useState, useEffect } from 'react'
 
-interface HeaderProps {
-  onMenuClick: () => void
-  backendUrl: string
-}
-
-export function Header({ onMenuClick, backendUrl }: HeaderProps) {
-  const [backendStatus, setBackendStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking')
+export function Header({ onMenuClick, backendUrl }) {
+  const [backendStatus, setBackendStatus] = useState('checking')
 
   useEffect(() => {
     const checkBackend = async () => {

@@ -6,17 +6,12 @@ import { DataImportMapper } from '@/components/DataImportMapper'
 import { Gear } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
-interface SettingsViewProps {
-  backendUrl: string
-  onBackendUrlChange: (url: string) => void
-}
-
-export function SettingsView({ backendUrl, onBackendUrlChange }: SettingsViewProps) {
+export function SettingsView({ backendUrl, onBackendUrlChange }) {
   const handleSave = () => {
     toast.success('Settings saved successfully')
   }
 
-  const handleImportComplete = (data: any[]) => {
+  const handleImportComplete = (data) => {
     toast.success(`Import complete! ${data.length} records processed`)
   }
 
@@ -65,7 +60,7 @@ export function SettingsView({ backendUrl, onBackendUrlChange }: SettingsViewPro
           <div className="space-y-3 text-sm">
             <div className="p-3 bg-muted rounded-lg">
               <h4 className="font-semibold mb-1">Frontend</h4>
-              <p className="text-muted-foreground">React 19 + TypeScript + Tailwind CSS v4</p>
+              <p className="text-muted-foreground">React 19 + JavaScript + Tailwind CSS v4</p>
             </div>
             <div className="p-3 bg-muted rounded-lg">
               <h4 className="font-semibold mb-1">Backend</h4>
