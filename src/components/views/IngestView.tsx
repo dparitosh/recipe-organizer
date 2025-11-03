@@ -1,18 +1,19 @@
-import { FDCDataIngestionPanel } from '@/components/FDCDataIngestionPanel'
+import { UnifiedDataImport } from '@/components/UnifiedDataImport'
 
 export function IngestView({ backendUrl }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Data Ingestion</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Data Import</h2>
         <p className="text-muted-foreground mt-1">
-          Import nutritional data from USDA FoodData Central into Neo4j
+          Import data from CSV, JSON, or XML files into Neo4j with intelligent field mapping
         </p>
       </div>
 
-      <FDCDataIngestionPanel 
-        onDataIngested={() => {
-          console.log('Data ingestion completed successfully')
+      <UnifiedDataImport 
+        backendUrl={backendUrl}
+        onImportComplete={(data) => {
+          console.log('Data import completed successfully', data.length, 'records')
         }}
       />
     </div>

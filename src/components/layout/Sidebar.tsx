@@ -14,7 +14,7 @@ const navItems = [
   { view: 'dashboard', label: 'Dashboard', icon: House },
   { view: 'formulations', label: 'Formulations', icon: Flask },
   { view: 'graph', label: 'Graph Explorer', icon: Graph },
-  { view: 'ingest', label: 'Data Ingestion', icon: UploadSimple },
+  { view: 'ingest', label: 'Data Import', icon: UploadSimple },
   { view: 'settings', label: 'Settings', icon: Gear },
 ]
 

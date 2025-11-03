@@ -1,6 +1,6 @@
 # Formulation Graph Studio - Product Requirements Document
 
-A modern, enterprise-grade Food & Beverage formulation management platform with clean architectural separation: React frontend for immersive UX and interactive graph visualizations, Python FastAPI backend for robust business logic and data processing, Neo4j for graph relationships, and USDA FDC for nutritional data ingestion.
+A modern, enterprise-grade Food & Beverage formulation management platform with clean architectural separation: React frontend for immersive UX and interactive graph visualizations, Python FastAPI backend for robust business logic and data processing, and Neo4j for graph relationships with flexible data import capabilities.
 
 **Experience Qualities**:
 1. **Modern & Immersive** - Cutting-edge React frontend with advanced graph visualizations (Cytoscape.js with physics simulations), smooth animations, and intuitive interactions following latest UX trends
@@ -8,7 +8,7 @@ A modern, enterprise-grade Food & Beverage formulation management platform with 
 3. **Well-Architected** - Clear separation of concerns: React (UI/UX) ↔ FastAPI (business logic) ↔ Neo4j (graph data) with standardized API contracts and comprehensive error handling
 
 **Complexity Level**: Complex Application (advanced functionality, microservices architecture)
-  - Modern tech stack: React 19 + TypeScript frontend, Python FastAPI backend, Neo4j graph database, async API architecture, real-time graph visualizations, fresh data ingestion from USDA FDC API
+  - Modern tech stack: React 19 + JavaScript frontend, Python FastAPI backend with Neo4j APOC support, Neo4j graph database, async API architecture, real-time graph visualizations, flexible data import from CSV/JSON/XML
 
 ## Architecture Overview
 
@@ -25,17 +25,17 @@ A modern, enterprise-grade Food & Beverage formulation management platform with 
 - **API Layer**: FastAPI with async/await, Pydantic models for validation, automatic OpenAPI docs at /docs
 - **AI Processing**: OpenAI GPT-4 integration for natural language queries, Cypher generation, recommendations
 - **Business Logic**: Services layer for formulations, calculations, BOM processing
-- **Data Access**: Neo4j Python driver for graph operations, async queries
+- **Data Access**: Neo4j Python driver with APOC support for graph operations, async queries, bulk import/export
+- **APOC Integration**: Advanced data import (CSV/JSON/XML), graph algorithms, path finding, data transformation
 - **Service Modes**: Online (full AI), Offline (local fallback), Auto (automatic degradation)
-- **External APIs**: USDA FDC client for nutritional data ingestion
 - **Validation**: Comprehensive input validation, business rule enforcement
 - **Error Handling**: Structured error responses with proper HTTP status codes, graceful degradation
 
 ### Integration Points
 - **Frontend ↔ Backend**: REST API over HTTP/HTTPS (default: http://localhost:8000), JSON payloads, configurable endpoint
-- **Backend ↔ Neo4j**: Official Python driver with connection pooling, Cypher queries, health monitoring
+- **Backend ↔ Neo4j**: Official Python driver with APOC library support, connection pooling, Cypher queries, health monitoring
 - **Backend ↔ OpenAI**: GPT-4 API for natural language processing, Cypher generation, recommendations
-- **Backend ↔ USDA FDC**: HTTP client for food data API, rate limiting, caching
+- **APOC Capabilities**: Bulk data import/export, graph algorithms, path finding, data transformation, CSV/JSON/XML processing
 - **Service Modes**: Online (full AI with backend), Offline (local fallback), Auto (seamless degradation)
 - **Configuration**: Backend URL stored in useKV, persisted across sessions, testable connection
 
@@ -155,51 +155,52 @@ A modern, enterprise-grade Food & Beverage formulation management platform with 
   - Responsive design: 2-column on desktop (graph + panel), stacked on mobile
   - Performance: Handles 200+ nodes smoothly with 60fps interactions
 
-### Neo4j Integration (ENHANCED - CONFIGURABLE)
-- **Functionality**: Configurable Neo4j connection with credential management, test connectivity, toggle between mock/real mode, Neo4j Driver for direct database access, and support for GenAI plugin natural language queries
-- **Purpose**: Flexible database integration supporting both development (mock mode) and production (real Neo4j connection) with secure credential storage, utilizing official Neo4j JavaScript driver for optimal performance
-- **Trigger**: Open Integrations panel → Configure Neo4j credentials → Toggle mock mode on/off → Execute Cypher queries or natural language queries (with GenAI plugin)
+### Neo4j Integration with APOC (ENHANCED)
+- **Functionality**: Configurable Neo4j connection with credential management, APOC library support for advanced operations, test connectivity, toggle between mock/real mode, and support for GenAI plugin natural language queries
+- **Purpose**: Flexible database integration supporting both development (mock mode) and production (real Neo4j with APOC) with secure credential storage, enabling advanced bulk operations, path finding, and data transformation
+- **Trigger**: Open Integrations panel → Configure Neo4j credentials → Toggle mock mode on/off → Execute Cypher/APOC queries or natural language queries
 - **Progression**: 
-  - **Configuration**: Open Neo4j config panel → Enter connection details (URI: neo4j+s://2cccd05b.databases.neo4j.io, username: neo4j, password: tcs12345, database: neo4j) → Test connection → Save configuration → Toggle mock mode switch
+  - **Configuration**: Open Neo4j config panel → Enter connection details (URI, username, password, database) → Test connection and APOC availability → Save configuration → Toggle mock mode switch
   - **Mock Mode**: Enable mock mode → Use simulated data for all operations → No external connection required → Instant responses → Consistent test data
-  - **Real Mode (Neo4j Driver)**: Disable mock mode → Connect to configured Neo4j instance using official neo4j-driver package → Execute actual Cypher queries → Fetch live graph data → Handle connection errors gracefully → Automatic session management and connection pooling
-  - **Query Execution**: Write Cypher query → Execute against Neo4j (mock or real) → Display nodes and relationships → Show execution metadata → Export results
+  - **Real Mode (Neo4j + APOC)**: Disable mock mode → Connect to configured Neo4j instance → Verify APOC library availability → Execute Cypher and APOC procedures → Fetch live graph data → Handle connection errors gracefully → Automatic session management and connection pooling
+  - **APOC Operations**: 
+    * Bulk import from CSV/JSON/XML with `apoc.load.*`
+    * Path finding with `apoc.path.*` and `apoc.algo.dijkstra`
+    * Data transformation with `apoc.convert.*` and `apoc.refactor.*`
+    * Periodic commit for large datasets with `apoc.periodic.iterate`
+    * Graph export with `apoc.export.*`
+  - **Query Execution**: Write Cypher/APOC query → Execute against Neo4j (mock or real) → Display nodes and relationships → Show execution metadata → Export results
   - **GenAI Plugin Support**: When GenAI plugin is available on Neo4j instance → Enable natural language queries → Convert natural language to Cypher → Execute generated queries → Provide query explanation
-  - **Status Indicator**: System status panel shows current mode (Mock Mode/Connected/Disconnected) with color coding → Yellow for mock, green for connected, red for disconnected → Shows connection URI and database name
+  - **Status Indicator**: System status panel shows current mode (Mock Mode/Connected/Disconnected) with color coding → Yellow for mock, green for connected, red for disconnected → Shows connection URI, database name, and APOC status
 - **Success criteria**: 
   - Persistent credential storage using useKV
-  - Test connection validates credentials before saving
+  - Test connection validates credentials and APOC availability before saving
   - Show/hide password toggle for security
   - Seamless switching between mock and real modes
   - Real queries use official Neo4j driver with proper session management
+  - APOC procedure detection and availability checking
   - Connection pooling and automatic reconnection
-  - Clear connection status indicators
+  - Clear connection status indicators (including APOC status)
   - Error handling with helpful messages
-  - Valid Cypher execution in both modes
+  - Valid Cypher and APOC execution in both modes
   - Export results functionality
   - GenAI plugin detection and natural language query support
-  - Driver version: neo4j-driver 5.x or 6.x (latest)
+  - Backend Python integration with APOC (see NEO4J_APOC_PYTHON_GUIDE.md)
 
-### PLM Integration
-- **Functionality**: Search and sync material master data from PLM system
-- **Purpose**: Access specifications, regulatory info, supplier data for ingredients
-- **Trigger**: Search PLM materials by keyword
-- **Progression**: Enter search term → Query PLM API → Display materials with specs → View certifications, allergens, supplier info → Import to formulation
-- **Success criteria**: Fast search, complete material data, regulatory compliance indicators, mock data available
-
-### SAP MDG Integration
-- **Functionality**: Access SAP Master Data Governance for enterprise material management
-- **Purpose**: Ensure formulations align with SAP material master, costing, and procurement data
-- **Trigger**: Search SAP MDG materials
-- **Progression**: Search by material number/description → View MDG material details (plant, storage, valuation class, cost) → Validate material → Sync to/from SAP → Handle errors gracefully
-- **Success criteria**: Complete MDG material view, cost data synchronized, validation before sync, batch operations
-
-### FDC Nutritional Data
-- **Functionality**: Link ingredients to USDA FDC database for nutritional analysis
-- **Purpose**: Automatic nutritional profiling and compliance with labeling requirements
-- **Trigger**: Add ingredient with FDC ID or search FDC
-- **Progression**: Search USDA FDC → Select food item → Link to ingredient → Import nutrients → Calculate formulation nutritionals → Generate nutrition facts
-- **Success criteria**: Accurate nutrient data, automatic calculations, serving size conversions
+### Data Import & Mapping (UNIFIED)
+- **Functionality**: Unified data import system supporting CSV, JSON, and XML files with intelligent column mapping to database schema
+- **Purpose**: Enable flexible data ingestion from any source format with automatic field detection and type conversion
+- **Trigger**: Navigate to "Data Import" tab and upload file
+- **Progression**: Upload file (CSV/JSON/XML) → System auto-detects columns and suggests mappings → Review/adjust column-to-field mappings → Validate required fields → Import to Neo4j with batch processing → Show progress and results
+- **Success criteria**: 
+  - Support CSV, JSON, XML formats (up to 10MB)
+  - Auto-mapping of columns with 80%+ accuracy
+  - Manual mapping adjustment interface
+  - Data type conversion (string/number/date/boolean)
+  - Required field validation before import
+  - Batch processing with progress indicator
+  - Error handling with detailed messages
+  - Integration with Neo4j APOC for efficient bulk imports
 
 ### REST API Endpoints (NEW)
 - **Functionality**: Comprehensive REST API for BOM and recipe management with validation, testing interface, and complete documentation
