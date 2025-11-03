@@ -13,13 +13,12 @@ export function Header({ onMenuClick, backendUrl }) {
           signal: AbortSignal.timeout(3000) 
         })
         if (response.ok) {
-          const data = await response.json()
-          setBackendStatus(data.mode === 'mock' ? 'mock' : 'connected')
+          setBackendStatus('connected')
         } else {
-          setBackendStatus('mock')
+          setBackendStatus('disconnected')
         }
       } catch {
-        setBackendStatus('mock')
+        setBackendStatus('disconnected')
       }
     }
 
@@ -58,17 +57,17 @@ export function Header({ onMenuClick, backendUrl }) {
 
         <div className="flex items-center gap-3">
           <Badge 
-            variant={backendStatus === 'connected' ? 'default' : 'secondary'}
+            variant={backendStatus === 'connected' ? 'default' : backendStatus === 'checking' ? 'secondary' : 'destructive'}
             className="gap-1.5"
           >
             <span className={`w-2 h-2 rounded-full ${
               backendStatus === 'connected' ? 'bg-green-500' :
               backendStatus === 'checking' ? 'bg-yellow-500 animate-pulse' :
-              'bg-yellow-500'
+              'bg-red-500'
             }`} />
             {backendStatus === 'connected' ? 'Backend Connected' : 
              backendStatus === 'checking' ? 'Checking...' : 
-             'Mock Mode'}
+             'Backend Disconnected'}
           </Badge>
         </div>
       </div>
