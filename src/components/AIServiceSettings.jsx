@@ -16,21 +16,35 @@ import {
   Sparkle,
   ArrowsClockwise
 } from '@phosphor-icons/react'
-import { useKV } from '@github/spark/hooks'
+import { useRecoilState } from 'recoil'
 import { aiAssistant } from '@/lib/ai'
+import { envService } from '@/lib/services/env-service'
 import { toast } from 'sonner'
+import { aiServiceModeAtom, aiAutoFallbackAtom } from '@/state/atoms'
 
 export function AIServiceSettings({ backendUrl, onBackendUrlChange }) {
-  const [serviceMode, setServiceMode] = useKV('ai-service-mode', 'auto')
-  const [autoFallback, setAutoFallback] = useKV('ai-auto-fallback', true)
+  const [serviceMode, setServiceMode] = useRecoilState(aiServiceModeAtom)
+  const [autoFallback, setAutoFallback] = useRecoilState(aiAutoFallbackAtom)
   const [localBackendUrl, setLocalBackendUrl] = useState(backendUrl || 'http://localhost:8000')
   const [isTestingHealth, setIsTestingHealth] = useState(false)
+  const [isSavingBackend, setIsSavingBackend] = useState(false)
   const [healthStatus, setHealthStatus] = useState(null)
+
+  useEffect(() => {
+    if (typeof aiAssistant?.setAutoFallback !== 'function') {
+      console.error('aiAssistant debug', aiAssistant, typeof aiAssistant?.setAutoFallback)
+    }
+  }, [])
 
   useEffect(() => {
     aiAssistant.setBackendUrl(backendUrl)
     aiAssistant.setServiceMode(serviceMode)
-  }, [backendUrl, serviceMode])
+    aiAssistant.setAutoFallback(autoFallback)
+  }, [backendUrl, serviceMode, autoFallback])
+
+  useEffect(() => {
+    setLocalBackendUrl(backendUrl || 'http://localhost:8000')
+  }, [backendUrl])
 
   const handleTestHealth = async () => {
     setIsTestingHealth(true)
@@ -59,10 +73,31 @@ export function AIServiceSettings({ backendUrl, onBackendUrlChange }) {
     }
   }
 
-  const handleSaveBackendUrl = () => {
-    if (onBackendUrlChange) {
-      onBackendUrlChange(localBackendUrl)
-      toast.success('Backend URL saved')
+  const handleSaveBackendUrl = async () => {
+    const sanitizedUrl = (localBackendUrl || '').trim().replace(/\/$/, '')
+
+    if (!sanitizedUrl) {
+      toast.error('Please enter a valid backend URL')
+      return
+    }
+
+    setLocalBackendUrl(sanitizedUrl)
+    setIsSavingBackend(true)
+
+    try {
+      await envService.updateEnvSettings({ BACKEND_API_URL: sanitizedUrl })
+      envService.setBackendUrl(sanitizedUrl)
+      aiAssistant.setBackendUrl(sanitizedUrl)
+
+      if (onBackendUrlChange) {
+        onBackendUrlChange(sanitizedUrl)
+      }
+
+      toast.success('Backend URL saved to env.local.json')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save backend URL')
+    } finally {
+      setIsSavingBackend(false)
     }
   }
 
@@ -131,9 +166,17 @@ export function AIServiceSettings({ backendUrl, onBackendUrlChange }) {
               <Button 
                 onClick={handleSaveBackendUrl}
                 variant="outline"
-                disabled={localBackendUrl === backendUrl}
+                disabled={isSavingBackend || !localBackendUrl?.trim()}
+                className="gap-2"
               >
-                Save
+                {isSavingBackend ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Saving
+                  </>
+                ) : (
+                  'Save'
+                )}
               </Button>
               <Button
                 onClick={handleTestHealth}

@@ -29,7 +29,31 @@ class APIService {
   }
 
   async getGraph() {
-    return this.request('/api/graph')
+    return this.request('/api/graph/data')
+  }
+
+  async getGraphSchema() {
+    return this.request('/api/graph/schema')
+  }
+
+  async installDefaultGraphSchema() {
+    return this.request('/api/graph/schema/install-default', {
+      method: 'POST',
+    })
+  }
+
+  async exportGraphSchemaGraphML() {
+    return this._requestText(
+      '/api/graph/schema/export/graphml',
+      'application/graphml+xml'
+    )
+  }
+
+  async exportGraphSchemaSVG() {
+    return this._requestText(
+      '/api/graph/schema/export/svg',
+      'image/svg+xml'
+    )
   }
 
   async getFormulations() {
@@ -116,6 +140,21 @@ class APIService {
     }
 
     return response.json()
+  }
+
+  async _requestText(endpoint, accept = 'text/plain') {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      headers: {
+        Accept: accept,
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
+      throw new Error(error.detail || `HTTP ${response.status}`)
+    }
+
+    return response.text()
   }
 }
 

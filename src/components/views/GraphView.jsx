@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DataExportButton } from '@/components/DataExportButton'
 import { apiService } from '@/lib/api/service'
 import { toast } from 'sonner'
 import cytoscape from 'cytoscape'
@@ -13,10 +14,12 @@ import {
   MagnifyingGlass, 
   FunnelSimple,
   DownloadSimple,
+  FileArrowDown,
+  ImageSquare,
   Circle,
 } from '@phosphor-icons/react'
 
-const nodeTypeColors = {
+const FALLBACK_NODE_COLORS = {
   Formulation: '#3b82f6',
   Ingredient: '#8b5cf6',
   Food: '#8b5cf6',
@@ -29,7 +32,7 @@ const nodeTypeColors = {
   SalesOrder: '#f59e0b',
 }
 
-const nodeTypeShapes = {
+const FALLBACK_NODE_SHAPES = {
   Formulation: 'ellipse',
   Ingredient: 'ellipse',
   Food: 'ellipse',
@@ -42,6 +45,38 @@ const nodeTypeShapes = {
   SalesOrder: 'tag',
 }
 
+const DEFAULT_NODE_COLOR = '#64748b'
+const DEFAULT_NODE_SHAPE = 'ellipse'
+
+const layoutPresets = {
+  hierarchical: {
+    name: 'breadthfirst',
+    directed: true,
+    spacingFactor: 1.5,
+    animate: true,
+    animationDuration: 500,
+  },
+  force: {
+    name: 'cose',
+    animate: true,
+    animationDuration: 500,
+    nodeRepulsion: 8000,
+    idealEdgeLength: 100,
+  },
+  circular: {
+    name: 'circle',
+    animate: true,
+    animationDuration: 500,
+  },
+  grid: {
+    name: 'grid',
+    animate: true,
+    animationDuration: 500,
+  },
+}
+
+const getLayoutOptions = (layoutType) => layoutPresets[layoutType] || layoutPresets.hierarchical
+
 export function GraphView({ backendUrl }) {
   const [loading, setLoading] = useState(false)
   const [graphData, setGraphData] = useState(null)
@@ -50,6 +85,8 @@ export function GraphView({ backendUrl }) {
   const [filterNodeType, setFilterNodeType] = useState('all')
   const [layout, setLayout] = useState('hierarchical')
   const [showFilters, setShowFilters] = useState(false)
+  const [schema, setSchema] = useState(null)
+  const [installingSchema, setInstallingSchema] = useState(false)
   
   const containerRef = useRef(null)
   const cyRef = useRef(null)
@@ -57,42 +94,116 @@ export function GraphView({ backendUrl }) {
   apiService.setBaseUrl(backendUrl)
 
   useEffect(() => {
-    if (graphData && containerRef.current) {
-      initializeGraph()
+    let cancelled = false
+
+    const fetchSchema = async () => {
+      try {
+        const payload = await apiService.getGraphSchema()
+        if (!cancelled) {
+          setSchema(payload)
+        }
+      } catch (error) {
+        console.warn('Failed to load graph schema metadata', error)
+      }
     }
+
+    fetchSchema()
+
+    return () => {
+      cancelled = true
+    }
+  }, [backendUrl])
+
+  const nodeStyleMap = useMemo(() => {
+    const defaults = {
+      color: schema?.defaults?.node?.color || DEFAULT_NODE_COLOR,
+      shape: schema?.defaults?.node?.shape || DEFAULT_NODE_SHAPE,
+    }
+
+    const colors = { ...FALLBACK_NODE_COLORS }
+    const shapes = { ...FALLBACK_NODE_SHAPES }
+
+    if (schema?.node_types) {
+      schema.node_types.forEach((typeConfig) => {
+        if (!typeConfig?.type) {
+          return
+        }
+
+        if (typeConfig.color) {
+          colors[typeConfig.type] = typeConfig.color
+        }
+
+        if (typeConfig.shape) {
+          shapes[typeConfig.type] = typeConfig.shape
+        }
+      })
+    }
+
+    return { colors, shapes, defaults }
+  }, [schema])
+
+  const getNodeColor = useCallback(
+    (type) => nodeStyleMap.colors[type] || nodeStyleMap.defaults.color,
+    [nodeStyleMap]
+  )
+
+  const getNodeShape = useCallback(
+    (type) => nodeStyleMap.shapes[type] || nodeStyleMap.defaults.shape,
+    [nodeStyleMap]
+  )
+
+  const normalizedNodes = useMemo(() => {
+    if (!graphData?.nodes) {
+      return []
+    }
+    return graphData.nodes.map((node) => ({
+      id: node.id,
+      label: node.properties?.name || node.id,
+      type: node.labels?.[0] || 'Unknown',
+      properties: node.properties ?? {},
+    }))
   }, [graphData])
 
-  const initializeGraph = () => {
-    if (!containerRef.current || !graphData) return
+  const normalizedEdges = useMemo(() => {
+    const rawEdges = graphData?.edges ?? graphData?.relationships ?? []
+    return rawEdges.map((edge, index) => {
+      const source = edge.source ?? edge.startNode ?? edge.from
+      const target = edge.target ?? edge.endNode ?? edge.to
+      return {
+        id: edge.id ?? `${source || 'src'}-${target || 'tgt'}-${edge.type || index}`,
+        source,
+        target,
+        label: edge.label ?? edge.type ?? 'RELATES_TO',
+        type: edge.type ?? edge.label ?? 'RELATES_TO',
+        properties: edge.properties ?? {},
+      }
+    })
+  }, [graphData])
+
+  useEffect(() => {
+    if (!graphData || !containerRef.current) {
+      return
+    }
 
     const elements = [
-      ...graphData.nodes.map(node => ({
-        data: {
-          id: node.id,
-          label: node.properties.name || node.id,
-          type: node.labels[0] || 'Unknown',
-          properties: node.properties,
-        },
+      ...normalizedNodes.map((node) => ({
+        data: node,
       })),
-      ...graphData.relationships.map(rel => ({
-        data: {
-          id: rel.id,
-          source: rel.startNode,
-          target: rel.endNode,
-          label: rel.type,
-          type: rel.type,
-        },
-      })),
+      ...normalizedEdges
+        .filter((edge) => edge.source && edge.target)
+        .map((edge) => ({
+          data: edge,
+        })),
     ]
 
-    cyRef.current = cytoscape({
+    const cyInstance = cytoscape({
       container: containerRef.current,
       elements,
       style: [
         {
           selector: 'node',
           style: {
-            'background-color': (ele) => nodeTypeColors[ele.data('type')] || '#64748b',
+            'background-color': (ele) => getNodeColor(ele.data('type')),
             'label': 'data(label)',
             'color': '#fff',
             'text-valign': 'center',
@@ -101,10 +212,10 @@ export function GraphView({ backendUrl }) {
             'font-weight': 600,
             'width': '60px',
             'height': '60px',
-            'shape': (ele) => nodeTypeShapes[ele.data('type')] || 'ellipse',
+            'shape': (ele) => getNodeShape(ele.data('type')),
             'border-width': '2px',
             'border-color': '#fff',
-            'text-outline-color': (ele) => nodeTypeColors[ele.data('type')] || '#64748b',
+            'text-outline-color': (ele) => getNodeColor(ele.data('type')),
             'text-outline-width': '2px',
           },
         },
@@ -151,58 +262,43 @@ export function GraphView({ backendUrl }) {
       wheelSensitivity: 0.2,
     })
 
-    cyRef.current.on('tap', 'node', (event) => {
+    cyInstance.on('tap', 'node', (event) => {
       const node = event.target
-      const nodeData = graphData.nodes.find(n => n.id === node.id())
+      const nodeData = normalizedNodes.find((n) => n.id === node.id())
       if (nodeData) {
         setSelectedNode(nodeData)
       }
     })
 
-    cyRef.current.on('tap', (event) => {
-      if (event.target === cyRef.current) {
+    cyInstance.on('tap', (event) => {
+      if (event.target === cyInstance) {
         setSelectedNode(null)
-        cyRef.current?.elements().removeClass('highlighted dimmed')
+        cyInstance?.elements().removeClass('highlighted dimmed')
       }
     })
-  }
 
-  const getLayoutOptions = (layoutType) => {
-    const layouts = {
-      hierarchical: {
-        name: 'breadthfirst',
-        directed: true,
-        spacingFactor: 1.5,
-        animate: true,
-        animationDuration: 500,
-      },
-      force: {
-        name: 'cose',
-        animate: true,
-        animationDuration: 500,
-        nodeRepulsion: 8000,
-        idealEdgeLength: 100,
-      },
-      circular: {
-        name: 'circle',
-        animate: true,
-        animationDuration: 500,
-      },
-      grid: {
-        name: 'grid',
-        animate: true,
-        animationDuration: 500,
-      },
+    cyRef.current = cyInstance
+
+    return () => {
+      cyInstance.destroy()
+      cyRef.current = null
     }
-    return layouts[layoutType] || layouts.hierarchical
-  }
+  }, [graphData, layout, normalizedNodes, normalizedEdges, getNodeColor, getNodeShape])
+
+  useEffect(() => {
+    if (cyRef.current) {
+      cyRef.current.layout(getLayoutOptions(layout)).run()
+    }
+  }, [layout])
 
   const handleLoadGraph = async () => {
     setLoading(true)
     try {
       const data = await apiService.getGraph()
       setGraphData(data)
-      toast.success(`Loaded ${data.nodes.length} nodes and ${data.relationships.length} relationships`)
+      const nodeCount = data?.node_count ?? data?.nodes?.length ?? 0
+      const edgeCount = data?.edge_count ?? data?.edges?.length ?? data?.relationships?.length ?? 0
+      toast.success(`Loaded ${nodeCount} nodes and ${edgeCount} relationships`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to load graph')
     } finally {
@@ -265,7 +361,84 @@ export function GraphView({ backendUrl }) {
     }
   }
 
-  const nodeTypes = graphData ? Array.from(new Set(graphData.nodes.map(n => n.labels[0]))) : []
+  const handleDownloadGraphML = async () => {
+    try {
+      const graphml = await apiService.exportGraphSchemaGraphML()
+      const blob = new Blob([graphml], { type: 'application/graphml+xml' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'graph-schema.graphml'
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success('Schema exported as GraphML')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export GraphML')
+    }
+  }
+
+  const handleDownloadSchemaSVG = async () => {
+    try {
+      const svgContent = await apiService.exportGraphSchemaSVG()
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'graph-schema.svg'
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success('Schema legend exported as SVG')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to export SVG')
+    }
+  }
+
+  const handleInstallDefaultSchema = async () => {
+    setInstallingSchema(true)
+    try {
+      const payload = await apiService.installDefaultGraphSchema()
+      setSchema(payload)
+      toast.success('Default schema installed')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to install default schema')
+    } finally {
+      setInstallingSchema(false)
+    }
+  }
+
+  const observedTypes = useMemo(() => {
+    if (!normalizedNodes.length) {
+      return []
+    }
+    return Array.from(new Set(normalizedNodes.map((node) => node.type))).filter(Boolean)
+  }, [normalizedNodes])
+
+  const schemaTypes = useMemo(() => {
+    if (!schema?.node_types?.length) {
+      return []
+    }
+    return schema.node_types.map((typeConfig) => typeConfig.type).filter(Boolean)
+  }, [schema])
+
+  const nodeTypes = useMemo(() => {
+    if (observedTypes.length) {
+      return observedTypes
+    }
+    if (schemaTypes.length) {
+      return schemaTypes
+    }
+    return Object.keys(nodeStyleMap.colors)
+  }, [observedTypes, schemaTypes, nodeStyleMap.colors])
+
+  const legendTypes = useMemo(() => {
+    if (observedTypes.length) {
+      return observedTypes
+    }
+    if (schemaTypes.length) {
+      return schemaTypes
+    }
+    return Object.keys(nodeStyleMap.colors)
+  }, [observedTypes, schemaTypes, nodeStyleMap.colors])
 
   return (
     <div className="space-y-6">
@@ -276,9 +449,29 @@ export function GraphView({ backendUrl }) {
             Interactive visualization of formulation relationships
           </p>
         </div>
-        <Button onClick={handleLoadGraph} disabled={loading}>
-          {loading ? 'Loading...' : 'Load Graph Data'}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleInstallDefaultSchema} disabled={loading || installingSchema}>
+            {installingSchema ? 'Installing...' : 'Install Default Schema'}
+          </Button>
+          <Button variant="outline" onClick={handleDownloadGraphML} disabled={loading}>
+            <FileArrowDown size={18} className="mr-2" />
+            GraphML
+          </Button>
+          <Button variant="outline" onClick={handleDownloadSchemaSVG} disabled={loading}>
+            <ImageSquare size={18} className="mr-2" />
+            Schema SVG
+          </Button>
+          {graphData && (
+            <DataExportButton
+              data={normalizedNodes}
+              filename="graph-nodes"
+              disabled={loading}
+            />
+          )}
+          <Button onClick={handleLoadGraph} disabled={loading}>
+            {loading ? 'Loading...' : 'Load Graph Data'}
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6">
@@ -349,8 +542,8 @@ export function GraphView({ backendUrl }) {
                   className="cursor-pointer"
                   onClick={() => setFilterNodeType(type)}
                   style={{ 
-                    backgroundColor: filterNodeType === type ? nodeTypeColors[type] : undefined,
-                    borderColor: nodeTypeColors[type]
+                    backgroundColor: filterNodeType === type ? getNodeColor(type) : undefined,
+                    borderColor: getNodeColor(type)
                   }}
                 >
                   {type}
@@ -372,15 +565,16 @@ export function GraphView({ backendUrl }) {
             {selectedNode ? (
               <Card className="p-4">
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <Badge style={{ backgroundColor: nodeTypeColors[selectedNode.labels[0]] }}>
-                    {selectedNode.labels[0]}
+                  <Badge style={{ backgroundColor: getNodeColor(selectedNode.type) }}>
+                    {selectedNode.type}
                   </Badge>
                 </h3>
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="font-medium">Name:</span> {selectedNode.properties.name || selectedNode.id}
+                    <span className="font-medium">Name:</span>{' '}
+                    {selectedNode.properties?.name || selectedNode.label || selectedNode.id}
                   </div>
-                  {Object.entries(selectedNode.properties).map(([key, value]) => (
+                  {Object.entries(selectedNode.properties ?? {}).map(([key, value]) => (
                     <div key={key}>
                       <span className="font-medium">{key}:</span> {String(value)}
                     </div>
@@ -396,11 +590,11 @@ export function GraphView({ backendUrl }) {
             <Card className="p-4">
               <h3 className="font-semibold mb-3">Legend</h3>
               <div className="space-y-2">
-                {Object.entries(nodeTypeColors).map(([type, color]) => (
+                {legendTypes.map((type) => (
                   <div key={type} className="flex items-center gap-2 text-sm">
-                    <div 
+                    <div
                       className="w-4 h-4 rounded-full border-2 border-white"
-                      style={{ backgroundColor: color }}
+                      style={{ backgroundColor: getNodeColor(type) }}
                     />
                     <span>{type}</span>
                   </div>
@@ -414,11 +608,11 @@ export function GraphView({ backendUrl }) {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Nodes:</span>
-                    <Badge variant="secondary">{graphData.nodes.length}</Badge>
+                    <Badge variant="secondary">{normalizedNodes.length}</Badge>
                   </div>
                   <div className="flex justify-between">
                     <span>Relationships:</span>
-                    <Badge variant="secondary">{graphData.relationships.length}</Badge>
+                    <Badge variant="secondary">{normalizedEdges.length}</Badge>
                   </div>
                 </div>
               </Card>

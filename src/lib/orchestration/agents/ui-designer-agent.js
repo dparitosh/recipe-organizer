@@ -1,103 +1,72 @@
 import { UIConfigSchema } from '../agent-schemas'
+import { runPromptWithFallback } from '../utils/prompt-runner'
 
 export class UIDesignerAgent {
   name = 'UI Designer'
   description = 'Generates React component configurations for data visualization'
 
   async execute(input) {
-    const prompt = window.spark.llmPrompt`You are a UI Designer agent specializing in React component configuration.
+    const promptSections = [
+      'You are a UI Designer agent specializing in data-rich dashboard layouts for food & beverage operations.',
+      '',
+      'Recipe Data:',
+      JSON.stringify(input.recipe, null, 2),
+      '',
+      'Calculation Data:',
+      JSON.stringify(input.calculation, null, 2),
+      '',
+      'Validation Data:',
+      JSON.stringify(input.validation, null, 2),
+      '',
+      'Design Requirements:',
+      '1. Choose an optimal layout (single-column, two-column, three-column, or grid).',
+      '2. Select component types (metrics, chart, table, card, list, badge, alert) that highlight the most important insights.',
+      '3. Provide data bindings for each component and suggest chart/table configurations where appropriate.',
+      '4. Position components so that related information is grouped together and key insights appear first.',
+      '5. Include optional theme guidance when it improves clarity.',
+      '',
+      'Return ONLY valid JSON matching this schema:',
+      '{',
+      '  "uiConfig": {',
+      '    "layout": "two-column",',
+      '    "components": [',
+      '      {',
+      '        "type": "metrics",',
+      '        "title": "Key Metrics",',
+      '        "data": {',
+      '          "totalCost": 0,',
+      '          "yield": 0,',
+      '          "validationScore": 0',
+      '        },',
+      '        "position": { "row": 1, "col": 1, "span": 2 }',
+      '      }',
+      '    ],',
+      '    "theme": {',
+      '      "primaryColor": "#3b82f6",',
+      '      "accentColor": "#10b981",',
+      '      "spacing": "comfortable"',
+      '    }',
+      '  },',
+      '  "reasoning": "Why this layout works"',
+      '}',
+    ]
 
-Recipe Data:
-${JSON.stringify(input.recipe, null, 2)}
+    const promptText = promptSections.join('\n')
 
-Calculation Data:
-${JSON.stringify(input.calculation, null, 2)}
+    const response = await runPromptWithFallback(promptText, { temperature: 0.6, maxTokens: 1000 })
 
-Validation Data:
-${JSON.stringify(input.validation, null, 2)}
-
-Your task:
-1. Design optimal UI layout (single-column, two-column, three-column, grid)
-2. Select appropriate component types (card, chart, table, badge, alert, list, metrics)
-3. Configure charts (pie, bar, line, donut) with proper data mapping
-4. Organize components for intuitive flow
-5. Position components for best UX
-
-Guidelines:
-- Use metrics cards for key numbers (cost, yield, score)
-- Use pie/donut charts for ingredient composition
-- Use bar charts for cost breakdown
-- Use tables for detailed ingredient lists
-- Use alerts for validation errors/warnings
-- Use badges for status indicators
-
-Return ONLY valid JSON matching this structure:
-{
-  "uiConfig": {
-        "type": "metrics",
-        "data": {
-       
-        },
-        "position": {
-          "col": 
-        }
-      {
-        "title": "Ingredient Co
-          
-        "config": {
-          "colorSchem
-        },
-          "row": 2,
-        }
-      {
-        
-       
-            { "key": "na
-          ]
-        "position
-          "col": 2
-      }
-    "theme": {
-      "accentColor": "#10b981
+    let parsed
+    try {
+      parsed = JSON.parse(response)
+    } catch (error) {
+      throw new Error('UI Designer agent returned invalid JSON.')
     }
-}`
-    const 
-    
-    
-      uiConfig: va
-  }
 
-
-
-
-        "data": [],
-        "config": {
-          "columns": [
-            { "key": "name", "label": "Ingredient", "format": "text" },
-            { "key": "quantity", "label": "Quantity", "format": "number" }
-          ]
-        },
-        "position": {
-          "row": 2,
-          "col": 2
-        }
-      }
-    ],
-    "theme": {
-      "primaryColor": "#3b82f6",
-      "accentColor": "#10b981",
-      "spacing": "comfortable"
-    }
-  }
-}`
-
-    const response = await window.spark.llm(prompt, 'gpt-4o', true)
-    const parsed = JSON.parse(response)
-    
     const validatedConfig = UIConfigSchema.parse(parsed.uiConfig)
-    
+
     return {
       uiConfig: validatedConfig,
+      reasoning: parsed.reasoning ?? 'No reasoning provided',
     }
   }
 }

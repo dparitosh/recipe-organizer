@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils'
+import { cn } from '@/lib/utils.js'
 
 export function MainContent({ children, view, sidebarOpen }) {
   return (

@@ -52,81 +52,32 @@ export interface FormulationMetadata {
   claims?: string[]
 }
 
-export const INGREDIENT_FUNCTIONS = [
+export declare const INGREDIENT_FUNCTIONS: readonly [
   'base',
   'flavor',
   'preservative',
   'sweetener',
   'colorant',
   'other'
-] as const
+]
 
-export const FORMULATION_TYPES = [
+export declare const FORMULATION_TYPES: readonly [
   'concentrate',
   'final_product',
   'intermediate'
-] as const
+]
 
-export const FORMULATION_STATUS = [
+export declare const FORMULATION_STATUS: readonly [
   'draft',
   'review',
   'approved',
   'archived'
-] as const
+]
 
-export function createEmptyFormulation(owner: string): Formulation {
-  return {
-    id: `formula-${Date.now()}`,
-    name: 'New Formulation',
-    version: '1.0',
-    type: 'final_product',
-    status: 'draft',
-    ingredients: [],
-    targetYield: 100,
-    yieldUnit: 'kg',
-    costPerUnit: 0,
-    metadata: {
-      owner,
-      department: '',
-      tags: [],
-      notes: ''
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-}
+export declare function createEmptyFormulation(owner: string): Formulation
 
-export function calculateTotalPercentage(ingredients: Ingredient[]): number {
-  return ingredients.reduce((sum, ing) => sum + ing.percentage, 0)
-}
+export declare function calculateTotalPercentage(ingredients: Ingredient[]): number
 
-export function validateFormulation(formulation: Formulation): string[] {
-  const errors: string[] = []
+export declare function validateFormulation(formulation: Formulation): string[]
 
-  if (!formulation.name.trim()) {
-    errors.push('Formulation name is required')
-  }
-
-  if (formulation.ingredients.length === 0) {
-    errors.push('At least one ingredient is required')
-  }
-
-  const totalPercentage = calculateTotalPercentage(formulation.ingredients)
-  if (Math.abs(totalPercentage - 100) > 0.1) {
-    errors.push(`Total percentage must equal 100% (currently ${totalPercentage.toFixed(2)}%)`)
-  }
-
-  formulation.ingredients.forEach((ing, idx) => {
-    if (!ing.name.trim()) {
-      errors.push(`Ingredient ${idx + 1} is missing a name`)
-    }
-    if (ing.quantity <= 0) {
-      errors.push(`Ingredient "${ing.name}" must have a positive quantity`)
-    }
-    if (ing.percentage < 0 || ing.percentage > 100) {
-      errors.push(`Ingredient "${ing.name}" percentage must be between 0-100%`)
-    }
-  })
-
-  return errors
-}
+export * from './formulation.js'

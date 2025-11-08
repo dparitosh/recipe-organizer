@@ -1,6 +1,14 @@
-from neo4j import GraphDatabase, Driver
-from typing import Optional, List, Dict, Any
+from datetime import date, datetime, time
+from decimal import Decimal
 import logging
+from typing import Optional, List, Dict, Any
+
+from neo4j import GraphDatabase, Driver
+
+try:  # Neo4j temporal helpers are optional depending on driver version
+    from neo4j.time import Date as Neo4jDate, DateTime as Neo4jDateTime, Duration as Neo4jDuration, Time as Neo4jTime
+except ImportError:  # pragma: no cover - older driver fallback
+    Neo4jDate = Neo4jDateTime = Neo4jDuration = Neo4jTime = None
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +67,42 @@ class Neo4jClient:
         except:
             return False
     
+    @staticmethod
+    def _jsonify(value: Any) -> Any:
+        """Convert Neo4j driver values into JSON-serializable primitives."""
+
+        if isinstance(value, (list, tuple, set)):
+            return [Neo4jClient._jsonify(item) for item in value]
+
+        if isinstance(value, dict):
+            return {key: Neo4jClient._jsonify(val) for key, val in value.items()}
+
+        if isinstance(value, (datetime, date, time)):
+            return value.isoformat()
+
+        if Neo4jDateTime and isinstance(value, Neo4jDateTime):
+            return value.iso_format()
+
+        if Neo4jDate and isinstance(value, Neo4jDate):
+            return value.iso_format()
+
+        if Neo4jTime and isinstance(value, Neo4jTime):
+            return value.iso_format()
+
+        if Neo4jDuration and isinstance(value, Neo4jDuration):
+            return value.total_seconds()
+
+        if isinstance(value, Decimal):
+            return float(value)
+
+        if hasattr(value, "isoformat"):
+            try:
+                return value.isoformat()
+            except (TypeError, ValueError):  # pragma: no cover - defensive
+                return str(value)
+
+        return value
+
     def get_graph_data(self, limit: int = 100) -> Dict[str, Any]:
         query = f"""
         MATCH (n)
@@ -81,7 +125,7 @@ class Neo4jClient:
                 node_id = str(n.id)
                 if node_id not in nodes_dict:
                     labels = list(n.labels) if hasattr(n, 'labels') else []
-                    props = dict(n) if n else {}
+                    props = self._jsonify(dict(n)) if n else {}
                     nodes_dict[node_id] = {
                         "id": node_id,
                         "label": labels[0] if labels else "Unknown",
@@ -93,7 +137,7 @@ class Neo4jClient:
                 node_id = str(m.id)
                 if node_id not in nodes_dict:
                     labels = list(m.labels) if hasattr(m, 'labels') else []
-                    props = dict(m) if m else {}
+                    props = self._jsonify(dict(m)) if m else {}
                     nodes_dict[node_id] = {
                         "id": node_id,
                         "label": labels[0] if labels else "Unknown",
@@ -106,7 +150,7 @@ class Neo4jClient:
                     "source": str(r.start_node.id) if hasattr(r.start_node, 'id') else None,
                     "target": str(r.end_node.id) if hasattr(r.end_node, 'id') else None,
                     "type": r.type,
-                    "properties": dict(r) if r else {}
+                    "properties": self._jsonify(dict(r)) if r else {}
                 })
         
         return {

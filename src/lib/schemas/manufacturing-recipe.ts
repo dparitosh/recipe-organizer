@@ -230,115 +230,15 @@ export interface ManufacturingMetadata {
   notes?: string
 }
 
-export const MANUFACTURING_STATUSES = ['planned', 'released', 'in_progress', 'completed', 'cancelled'] as const
-export const OPERATION_STATUSES = ['pending', 'ready', 'in_progress', 'completed', 'confirmed', 'cancelled'] as const
-export const DEVIATION_TYPES = ['process', 'material', 'equipment', 'quality', 'safety'] as const
-export const SEVERITIES = ['minor', 'major', 'critical'] as const
+export declare const MANUFACTURING_STATUSES: readonly ['planned', 'released', 'in_progress', 'completed', 'cancelled']
+export declare const OPERATION_STATUSES: readonly ['pending', 'ready', 'in_progress', 'completed', 'confirmed', 'cancelled']
+export declare const DEVIATION_TYPES: readonly ['process', 'material', 'equipment', 'quality', 'safety']
+export declare const SEVERITIES: readonly ['minor', 'major', 'critical']
 
-export function createEmptyManufacturingRecipe(masterRecipeId: string, creator: string): ManufacturingRecipe {
-  return {
-    id: `mfg-${Date.now()}`,
-    manufacturingOrderNumber: '',
-    masterRecipeId,
-    name: 'New Manufacturing Order',
-    plant: '',
-    productionLine: '',
-    status: 'planned',
-    scheduledStartDate: new Date(),
-    scheduledEndDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    outputMaterial: {
-      materialId: '',
-      materialNumber: '',
-      description: '',
-      plannedQuantity: 0,
-      unit: 'KG',
-      batchNumber: ''
-    },
-    ingredients: [],
-    operations: [],
-    resourceAllocation: {
-      equipment: [],
-      labor: [],
-      utilities: []
-    },
-    actualYields: {
-      totalInput: 0,
-      totalOutput: 0,
-      scrap: 0,
-      rework: 0,
-      byproducts: [],
-      unit: 'KG',
-      overallYieldPercentage: 0,
-      varianceFromStandard: 0
-    },
-    qualityResults: [],
-    deviations: [],
-    costTracking: {
-      materialCost: 0,
-      laborCost: 0,
-      equipmentCost: 0,
-      utilityCost: 0,
-      overheadCost: 0,
-      scrapCost: 0,
-      reworkCost: 0,
-      totalCost: 0,
-      costPerUnit: 0,
-      varianceFromStandard: 0,
-      currency: 'USD'
-    },
-    metadata: {
-      orderType: 'PP01',
-      priority: 'normal',
-      createdBy: creator,
-      regulatoryBatch: false
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-}
+export declare function createEmptyManufacturingRecipe(masterRecipeId: string, creator: string): ManufacturingRecipe
 
-export function calculateManufacturingYield(recipe: ManufacturingRecipe): number {
-  if (recipe.actualYields.totalInput === 0) return 0
-  return (recipe.actualYields.totalOutput / recipe.actualYields.totalInput) * 100
-}
+export declare function calculateManufacturingYield(recipe: ManufacturingRecipe): number
 
-export function validateManufacturingRecipe(recipe: ManufacturingRecipe): string[] {
-  const errors: string[] = []
+export declare function validateManufacturingRecipe(recipe: ManufacturingRecipe): string[]
 
-  if (!recipe.manufacturingOrderNumber || recipe.manufacturingOrderNumber.trim() === '') {
-    errors.push('Manufacturing order number is required')
-  }
-
-  if (!recipe.plant || recipe.plant.trim() === '') {
-    errors.push('Plant is required')
-  }
-
-  if (!recipe.outputMaterial.materialId) {
-    errors.push('Output material is required')
-  }
-
-  if (recipe.outputMaterial.plannedQuantity <= 0) {
-    errors.push('Planned output quantity must be positive')
-  }
-
-  if (recipe.ingredients.length === 0) {
-    errors.push('At least one ingredient is required')
-  }
-
-  if (recipe.operations.length === 0) {
-    errors.push('At least one operation is required')
-  }
-
-  const operations = [...recipe.operations].sort((a, b) => a.sequence - b.sequence)
-  operations.forEach((op, idx) => {
-    if (op.sequence !== idx + 1) {
-      errors.push(`Operations must be sequential (found sequence ${op.sequence} at position ${idx + 1})`)
-    }
-  })
-
-  if (recipe.scheduledStartDate >= recipe.scheduledEndDate) {
-    errors.push('Scheduled start date must be before end date')
-  }
-
-  return errors
-}
+export * from './manufacturing-recipe.js'

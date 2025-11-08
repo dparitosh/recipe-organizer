@@ -4,11 +4,13 @@ from typing import Dict, Any, List
 import logging
 
 from app.models.schemas import (
+    AICompletionRequest,
+    AICompletionResponse,
     AIQueryRequest,
     AIQueryResponse,
     NodeHighlight,
     RelationshipSummary,
-    Recommendation
+    Recommendation,
 )
 
 router = APIRouter()
@@ -57,6 +59,32 @@ async def process_ai_query(request_data: AIQueryRequest, request: Request):
         response.execution_time_ms = execution_time
         response.mode = "offline"
         return response
+
+
+@router.post("/completion", response_model=AICompletionResponse, summary="Run raw AI completion")
+async def generate_completion(payload: AICompletionRequest, request: Request) -> AICompletionResponse:
+    """Expose a thin wrapper around the Ollama completion API for structured agent prompts."""
+
+    start_time = datetime.now()
+
+    ollama_service = getattr(request.app.state, "ollama_service", None)
+    if ollama_service is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OLLAMA service not initialized")
+
+    try:
+        completion = await ollama_service.generate_completion(
+            prompt=payload.prompt,
+            system_prompt=payload.system_prompt,
+            temperature=payload.temperature,
+            max_tokens=payload.max_tokens,
+        )
+    except Exception as exc:  # pragma: no cover - passthrough to caller with context
+        logger.error("OLLAMA completion failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+    duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
+
+    return AICompletionResponse(completion=completion.strip(), model=ollama_service.model, duration_ms=duration_ms)
 
 
 async def process_online_query(query: str, include_graph: bool, request: Request) -> AIQueryResponse:

@@ -46,7 +46,7 @@ backend/
 1. **Python 3.10+**
 2. **OLLAMA** - Local AI service
    - Download: https://ollama.ai/
-   - Install and pull model: `ollama pull llama2`
+   - Install and pull model: `ollama pull llama3`
 3. **Neo4j Database** - Graph database
    - Cloud: Neo4j Aura (https://neo4j.com/cloud/aura/)
    - Local: Neo4j Desktop or Docker
@@ -76,6 +76,7 @@ source venv/bin/activate
 
 ```bash
 pip install -r requirements.txt
+pip install -r requirements-dev.txt  # tooling for testing/linting
 ```
 
 ### 4. Configure Environment
@@ -414,6 +415,12 @@ curl -X POST http://localhost:8000/api/ai/query \
     "query": "Show all formulations",
     "service_mode": "auto"
   }'
+```
+
+### Automated Testing
+
+```bash
+pytest
 ```
 
 ### Load Sample Data

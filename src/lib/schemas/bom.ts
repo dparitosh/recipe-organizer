@@ -66,81 +66,14 @@ export interface BOMMetadata {
   notes?: string
 }
 
-export const BOM_PHASES = ['procurement', 'production', 'packaging'] as const
+export declare const BOM_PHASES: readonly ['procurement', 'production', 'packaging']
 
-export function createEmptyBOM(formulationId: string): BOM {
-  return {
-    id: `bom-${Date.now()}`,
-    formulationId,
-    name: 'New BOM',
-    batchSize: 100,
-    batchUnit: 'kg',
-    components: [],
-    process: [],
-    totalCost: 0,
-    leadTime: 0,
-    metadata: {
-      productionSite: '',
-      validFrom: new Date(),
-      revisionNumber: 1
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-}
+export declare function createEmptyBOM(formulationId: string): BOM
 
-export function calculateBOMCost(bom: BOM): number {
-  return bom.components.reduce((sum, comp) => sum + comp.cost * comp.quantity, 0)
-}
+export declare function calculateBOMCost(bom: BOM): number
 
-export function calculateLeadTime(bom: BOM): number {
-  const procurementTime = Math.max(
-    ...bom.components
-      .filter(c => c.phase === 'procurement')
-      .map(c => c.leadTime || 0),
-    0
-  )
+export declare function calculateLeadTime(bom: BOM): number
 
-  const processTime = bom.process.reduce((sum, step) => {
-    const hours = step.durationUnit === 'hours' ? step.duration :
-                  step.durationUnit === 'days' ? step.duration * 24 :
-                  step.duration / 60
-    return sum + hours
-  }, 0)
+export declare function validateBOM(bom: BOM): string[]
 
-  return procurementTime + processTime / 24
-}
-
-export function validateBOM(bom: BOM): string[] {
-  const errors: string[] = []
-
-  if (!bom.name.trim()) {
-    errors.push('BOM name is required')
-  }
-
-  if (bom.batchSize <= 0) {
-    errors.push('Batch size must be positive')
-  }
-
-  if (bom.components.length === 0) {
-    errors.push('At least one component is required')
-  }
-
-  bom.components.forEach((comp, idx) => {
-    if (!comp.description.trim()) {
-      errors.push(`Component ${idx + 1} is missing a description`)
-    }
-    if (comp.quantity <= 0) {
-      errors.push(`Component "${comp.description}" must have positive quantity`)
-    }
-  })
-
-  const processSteps = [...bom.process].sort((a, b) => a.order - b.order)
-  processSteps.forEach((step, idx) => {
-    if (step.order !== idx + 1) {
-      errors.push(`Process step orders must be sequential (found ${step.order} at position ${idx + 1})`)
-    }
-  })
-
-  return errors
-}
+export * from './bom.js'

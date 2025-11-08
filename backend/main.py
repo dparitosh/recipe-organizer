@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from contextlib import asynccontextmanager
 import logging
 
@@ -7,16 +8,21 @@ from app.api.routes import router
 from app.core.config import settings
 from app.db.neo4j_client import Neo4jClient
 from app.services.ollama_service import OllamaService
+from app.services.fdc_service import FDCService
+from app.services.graph_schema_service import GraphSchemaService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 neo4j_client = None
 ollama_service = None
+fdc_service = None
+graph_schema_service = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global neo4j_client, ollama_service
+    global neo4j_client, ollama_service, fdc_service
+    global graph_schema_service
     
     logger.info("Starting up Formulation Graph Studio API...")
     
@@ -34,22 +40,47 @@ async def lifespan(app: FastAPI):
         neo4j_client = None
     
     try:
-        ollama_service = OllamaService(base_url=settings.OLLAMA_BASE_URL)
+        ollama_service = OllamaService(
+            base_url=settings.OLLAMA_BASE_URL,
+            model=settings.OLLAMA_MODEL,
+        )
         if await ollama_service.check_health():
             logger.info("✓ OLLAMA service connected")
         else:
             logger.warning("⚠ OLLAMA service not available")
     except Exception as e:
         logger.warning(f"⚠ OLLAMA service failed: {e}")
+        ollama_service = None
+
+    try:
+        fdc_service = FDCService(
+            base_url=settings.FDC_API_BASE_URL,
+            timeout=settings.FDC_REQUEST_TIMEOUT,
+        )
+        await fdc_service.start()
+        logger.info("✓ FDC service client initialized")
+    except Exception as e:
+        logger.warning(f"⚠ FDC service initialization failed: {e}")
+        fdc_service = None
+
+    graph_schema_service = GraphSchemaService(
+        neo4j_client=neo4j_client,
+        schema_name=settings.GRAPH_SCHEMA_NAME,
+    )
     
     app.state.neo4j_client = neo4j_client
     app.state.ollama_service = ollama_service
+    app.state.fdc_service = fdc_service
+    app.state.graph_schema_service = graph_schema_service
     
     yield
     
     if neo4j_client:
         neo4j_client.close()
         logger.info("Neo4j connection closed")
+    if fdc_service:
+        await fdc_service.close()
+        logger.info("FDC service client closed")
 
 app = FastAPI(
     title="Formulation Graph Studio API",
@@ -83,6 +114,12 @@ async def read_root():
 @app.get("/health", tags=["Health"])
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon_handler() -> Response:
+    """Return a 204 so favicon fetches from API clients do not log 404s."""
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 if __name__ == "__main__":
     import uvicorn

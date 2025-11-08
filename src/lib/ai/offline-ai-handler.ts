@@ -14,7 +14,10 @@ export class OfflineAIHandler {
 
       return {
         answer: answer,
+        nodeHighlights: [],
+        relationshipSummaries: [],
         recommendations: recommendations,
+        cypher: null,
         executionTime,
         confidence: 0.7,
         sources: [
@@ -29,6 +32,10 @@ export class OfflineAIHandler {
       const executionTime = Date.now() - startTime
       return {
         answer: `Unable to process your question in offline mode: ${error instanceof Error ? error.message : 'Unknown error'}. Limited functionality is available without AI service.`,
+        nodeHighlights: [],
+        relationshipSummaries: [],
+        recommendations: [],
+        cypher: null,
         executionTime,
         confidence: 0,
         sources: []
@@ -190,7 +197,7 @@ export class OfflineAIHandler {
   private generateSearchResults(formulations: Formulation[], analysis: OfflineAnalysis): string {
     const keywords = analysis.keywords
     const matchingFormulations = formulations.filter(f => {
-      const searchText = `${f.name} ${f.description || ''} ${f.type || ''}`.toLowerCase()
+      const searchText = `${f.name} ${f.metadata?.notes || ''} ${f.type || ''}`.toLowerCase()
       return keywords.some(kw => searchText.includes(kw))
     })
 
@@ -201,8 +208,8 @@ export class OfflineAIHandler {
     let results = `🔍 **Search Results** (Offline Mode)\n\nFound ${matchingFormulations.length} matching formulation(s):\n\n`
     
     matchingFormulations.slice(0, 5).forEach((f, idx) => {
-      results += `${idx + 1}. **${f.name}** (${f.status})\n`
-      if (f.description) results += `   ${f.description}\n`
+  results += `${idx + 1}. **${f.name}** (${f.status})\n`
+  if (f.metadata?.notes) results += `   ${f.metadata.notes}\n`
       if (f.ingredients) results += `   Ingredients: ${f.ingredients.length}\n`
       results += `\n`
     })

@@ -1,7 +1,15 @@
-from fastapi import APIRouter, Request
 from datetime import datetime
-from app.models.schemas import ServiceHealthResponse
+
+from fastapi import APIRouter, Request
+from neo4j import GraphDatabase
+from neo4j.exceptions import Neo4jError
+
 from app.core.config import settings
+from app.models.schemas import (
+    Neo4jConnectionTest,
+    Neo4jConnectionTestResponse,
+    ServiceHealthResponse,
+)
 
 router = APIRouter()
 
@@ -46,5 +54,38 @@ async def check_service_health(request: Request):
         neo4j_available=neo4j_available,
         genai_available=genai_available,
         response_time_ms=execution_time,
-        ollama_model=settings.OLLAMA_MODEL if llm_available else None
+        ollama_model=settings.OLLAMA_MODEL if llm_available else None,
     )
+
+
+@router.post("/neo4j", response_model=Neo4jConnectionTestResponse, summary="Test Neo4j connection")
+async def test_neo4j_connection(payload: Neo4jConnectionTest) -> Neo4jConnectionTestResponse:
+    """Attempt a one-off Neo4j connection using the supplied credentials."""
+
+    driver = None
+    try:
+        driver = GraphDatabase.driver(payload.uri, auth=(payload.username, payload.password))
+        driver.verify_connectivity()
+
+        server_version = None
+        try:
+            with driver.session(database=payload.database) as session:
+                record = session.run(
+                    "CALL dbms.components() YIELD versions RETURN versions[0] AS version LIMIT 1"
+                ).single()
+                if record:
+                    server_version = record.get("version")
+        except Neo4jError:
+            # Best effort – version info is optional and not worth failing the test over.
+            server_version = None
+
+        return Neo4jConnectionTestResponse(
+            success=True,
+            message="Neo4j connection successful.",
+            server_version=server_version,
+        )
+    except Exception as exc:  # pragma: no cover - network/auth errors vary
+        return Neo4jConnectionTestResponse(success=False, message=str(exc))
+    finally:
+        if driver is not None:
+            driver.close()

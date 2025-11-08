@@ -56,7 +56,7 @@ class OllamaService:
                         raise Exception(f"OLLAMA API error: {error_text}")
         
         except Exception as e:
-            logger.error(f"OLLAMA generation failed: {e}")
+            logger.error("OLLAMA generation failed", exc_info=True)
             raise
     
     async def generate_cypher_query(self, natural_language: str) -> str:

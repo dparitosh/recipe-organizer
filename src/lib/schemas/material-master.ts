@@ -137,97 +137,12 @@ export interface MaterialMetadata {
   externalIds: Record<string, string>
 }
 
-export const MATERIAL_TYPES = ['raw', 'semi-finished', 'finished', 'packaging'] as const
-export const LIFECYCLE_STATUSES = ['active', 'restricted', 'obsolete', 'blocked'] as const
-export const VALUATION_TYPES = ['standard', 'moving_average', 'market'] as const
+export declare const MATERIAL_TYPES: readonly ['raw', 'semi-finished', 'finished', 'packaging']
+export declare const LIFECYCLE_STATUSES: readonly ['active', 'restricted', 'obsolete', 'blocked']
+export declare const VALUATION_TYPES: readonly ['standard', 'moving_average', 'market']
 
-export function createEmptyMaterialMaster(creator: string): MaterialMaster {
-  return {
-    id: `mat-${Date.now()}`,
-    materialNumber: '',
-    description: '',
-    type: 'raw',
-    baseUnit: 'KG',
-    alternateUnits: [],
-    specifications: [],
-    cost: {
-      standardCost: 0,
-      currency: 'USD',
-      costingDate: new Date(),
-      priceUnit: 1,
-      valuationType: 'standard',
-      history: []
-    },
-    procurement: {
-      purchasingGroup: '',
-      suppliers: [],
-      leadTimeDays: 0,
-      minimumOrderQuantity: 0,
-      lotSizeKey: 'EX',
-      plantSpecific: []
-    },
-    regulatory: {
-      region: 'US',
-      certifications: [],
-      allergens: [],
-      claims: [],
-      restrictions: [],
-      complianceStatus: 'pending'
-    },
-    quality: {
-      inspectionType: 'sampling',
-      shelfLifeDays: 365,
-      storageConditions: 'Cool, dry place',
-      testingRequirements: []
-    },
-    lifecycle: {
-      status: 'active',
-      effectiveDate: new Date()
-    },
-    metadata: {
-      sapMaterialType: 'ROH',
-      createdBy: creator,
-      lastModifiedBy: creator,
-      version: '1.0',
-      externalIds: {}
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-}
+export declare function createEmptyMaterialMaster(creator: string): MaterialMaster
 
-export function validateMaterialMaster(material: MaterialMaster): string[] {
-  const errors: string[] = []
+export declare function validateMaterialMaster(material: MaterialMaster): string[]
 
-  if (!material.materialNumber || material.materialNumber.trim() === '') {
-    errors.push('Material number is required')
-  }
-
-  if (!material.description || material.description.trim() === '') {
-    errors.push('Material description is required')
-  }
-
-  if (!material.baseUnit || material.baseUnit.trim() === '') {
-    errors.push('Base unit is required')
-  }
-
-  if (material.cost.standardCost < 0) {
-    errors.push('Standard cost cannot be negative')
-  }
-
-  if (material.procurement.leadTimeDays < 0) {
-    errors.push('Lead time cannot be negative')
-  }
-
-  if (material.quality.shelfLifeDays <= 0) {
-    errors.push('Shelf life must be positive')
-  }
-
-  material.alternateUnits.forEach((unit, idx) => {
-    if (unit.conversionFactor <= 0) {
-      errors.push(`Alternate unit ${idx + 1} conversion factor must be positive`)
-    }
-  })
-
-  return errors
-}
+export * from './material-master.js'

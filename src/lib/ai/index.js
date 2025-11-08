@@ -1,1 +1,1 @@
-export { aiAssistant } from './ai-assistant'
+export { aiAssistant } from './ai-assistant.runtime.js'

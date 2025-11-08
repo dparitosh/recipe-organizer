@@ -6,12 +6,22 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Sparkle, Play, CircleNotch } from '@phosphor-icons/react'
+import {
+  Sparkle,
+  Play,
+  CircleNotch,
+  Wrench,
+  ChartLine,
+  ShareNetwork,
+  CheckCircle,
+  PaintBrush,
+} from '@phosphor-icons/react'
 import { AgentOrchestrator } from '@/lib/orchestration/orchestrator'
-import { useKV } from '@github/spark/hooks'
 import { toast } from 'sonner'
 import { OrchestrationResultView } from './OrchestrationResultView'
 import { AgentHistoryPanel } from './AgentHistoryPanel'
+import { useRecoilState } from 'recoil'
+import { orchestrationHistoryAtom } from '@/state/atoms'
 
 export function OrchestrationView() {
   const [isRunning, setIsRunning] = useState(false)
@@ -20,7 +30,7 @@ export function OrchestrationView() {
   const [targetUnit, setTargetUnit] = useState('kg')
   
   const [currentResult, setCurrentResult] = useState(null)
-  const [orchestrationHistory, setOrchestrationHistory] = useKV('orchestration-history', [])
+  const [orchestrationHistory, setOrchestrationHistory] = useRecoilState(orchestrationHistoryAtom)
   const [showHistory, setShowHistory] = useState(false)
 
   const handleRunOrchestration = async () => {
@@ -71,6 +81,14 @@ export function OrchestrationView() {
     'Design a protein smoothie with 25g protein per serving',
     'Formulate a natural energy drink with green tea extract',
     'Create a probiotic yogurt drink with live cultures',
+  ]
+
+  const agentPipeline = [
+    { name: 'Recipe Engineer', desc: 'Parses structure & validates yields', Icon: Wrench },
+    { name: 'Scaling Calculator', desc: 'Computes quantities & costs', Icon: ChartLine },
+    { name: 'Graph Builder', desc: 'Prepares Neo4j visualization', Icon: ShareNetwork },
+    { name: 'QA Validator', desc: 'Checks consistency & constraints', Icon: CheckCircle },
+    { name: 'UI Designer', desc: 'Generates component configs', Icon: PaintBrush },
   ]
 
   return (
@@ -191,15 +209,9 @@ export function OrchestrationView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  { name: 'Recipe Engineer', desc: 'Parses structure & validates yields', icon: '🔧' },
-                  { name: 'Scaling Calculator', desc: 'Computes quantities & costs', icon: '📊' },
-                  { name: 'Graph Builder', desc: 'Prepares Neo4j visualization', icon: '🕸️' },
-                  { name: 'QA Validator', desc: 'Checks consistency & constraints', icon: '✅' },
-                  { name: 'UI Designer', desc: 'Generates component configs', icon: '🎨' },
-                ].map((agent, idx) => (
+                {agentPipeline.map((agent, idx) => (
                   <div key={idx} className="flex items-start gap-3 p-3 rounded-lg border">
-                    <span className="text-2xl">{agent.icon}</span>
+                    <agent.Icon size={28} className="text-primary" weight="bold" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm">{agent.name}</div>
                       <div className="text-xs text-muted-foreground">{agent.desc}</div>

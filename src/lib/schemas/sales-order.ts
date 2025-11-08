@@ -133,118 +133,16 @@ export interface SalesOrderMetadata {
   notes?: string
 }
 
-export const SALES_ORDER_STATUSES = ['draft', 'confirmed', 'in_production', 'ready_to_ship', 'shipped', 'delivered', 'cancelled'] as const
-export const PRODUCTION_STATUSES = ['not_started', 'scheduled', 'in_progress', 'completed'] as const
-export const INCOTERMS = ['EXW', 'FCA', 'FAS', 'FOB', 'CFR', 'CIF', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP'] as const
+export declare const SALES_ORDER_STATUSES: readonly ['draft', 'confirmed', 'in_production', 'ready_to_ship', 'shipped', 'delivered', 'cancelled']
+export declare const PRODUCTION_STATUSES: readonly ['not_started', 'scheduled', 'in_progress', 'completed']
+export declare const INCOTERMS: readonly ['EXW', 'FCA', 'FAS', 'FOB', 'CFR', 'CIF', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP']
 
-export function createEmptySalesOrder(creator: string): SalesOrder {
-  return {
-    id: `so-${Date.now()}`,
-    salesOrderNumber: '',
-    customerPO: '',
-    customerId: '',
-    customerName: '',
-    orderDate: new Date(),
-    requestedDeliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    status: 'draft',
-    items: [],
-    totalValue: 0,
-    currency: 'USD',
-    paymentTerms: 'Net 30',
-    shippingDetails: {
-      shippingAddress: {
-        name: '',
-        street: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: ''
-      },
-      billingAddress: {
-        name: '',
-        street: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: ''
-      },
-      shippingMethod: 'Standard Ground',
-      freightCost: 0,
-      incoterms: 'FCA'
-    },
-    derivedRecipes: [],
-    fulfillmentTracking: {
-      overallProgress: 0,
-      items: [],
-      milestones: []
-    },
-    metadata: {
-      salesOrganization: '',
-      distributionChannel: '',
-      division: '',
-      salesPerson: creator,
-      customerPriority: 'standard',
-      orderSource: 'manual'
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-}
+export declare function createEmptySalesOrder(creator: string): SalesOrder
 
-export function calculateOrderTotal(order: SalesOrder): number {
-  return order.items.reduce((sum, item) => sum + item.totalPrice, 0)
-}
+export declare function calculateOrderTotal(order: SalesOrder): number
 
-export function calculateFulfillmentProgress(order: SalesOrder): number {
-  if (order.items.length === 0) return 0
-  
-  const totalOrdered = order.items.reduce((sum, item) => sum + item.orderedQuantity, 0)
-  const totalProduced = order.items.reduce((sum, item) => {
-    const fulfillment = order.fulfillmentTracking.items.find(f => f.lineNumber === item.lineNumber)
-    return sum + (fulfillment?.producedQuantity || 0)
-  }, 0)
-  
-  return totalOrdered > 0 ? (totalProduced / totalOrdered) * 100 : 0
-}
+export declare function calculateFulfillmentProgress(order: SalesOrder): number
 
-export function validateSalesOrder(order: SalesOrder): string[] {
-  const errors: string[] = []
+export declare function validateSalesOrder(order: SalesOrder): string[]
 
-  if (!order.salesOrderNumber || order.salesOrderNumber.trim() === '') {
-    errors.push('Sales order number is required')
-  }
-
-  if (!order.customerId || order.customerId.trim() === '') {
-    errors.push('Customer ID is required')
-  }
-
-  if (!order.customerName || order.customerName.trim() === '') {
-    errors.push('Customer name is required')
-  }
-
-  if (order.items.length === 0) {
-    errors.push('At least one order item is required')
-  }
-
-  order.items.forEach((item, idx) => {
-    if (!item.materialId || item.materialId.trim() === '') {
-      errors.push(`Item ${idx + 1}: Material ID is required`)
-    }
-    if (item.orderedQuantity <= 0) {
-      errors.push(`Item ${idx + 1}: Ordered quantity must be positive`)
-    }
-    if (item.unitPrice < 0) {
-      errors.push(`Item ${idx + 1}: Unit price cannot be negative`)
-    }
-  })
-
-  if (order.requestedDeliveryDate < order.orderDate) {
-    errors.push('Requested delivery date cannot be before order date')
-  }
-
-  if (!order.shippingDetails.shippingAddress.country) {
-    errors.push('Shipping country is required')
-  }
-
-  return errors
-}
+export * from './sales-order.js'

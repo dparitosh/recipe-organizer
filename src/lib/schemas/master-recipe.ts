@@ -147,125 +147,14 @@ export interface RecipeMetadata {
   notes: string
 }
 
-export const RECIPE_TYPES = ['standard', 'alternative', 'trial', 'template'] as const
-export const RECIPE_STATUSES = ['draft', 'review', 'approved', 'active', 'obsolete'] as const
-export const RECIPE_PHASES = ['preparation', 'mixing', 'processing', 'cooling', 'packaging'] as const
+export declare const RECIPE_TYPES: readonly ['standard', 'alternative', 'trial', 'template']
+export declare const RECIPE_STATUSES: readonly ['draft', 'review', 'approved', 'active', 'obsolete']
+export declare const RECIPE_PHASES: readonly ['preparation', 'mixing', 'processing', 'cooling', 'packaging']
 
-export function createEmptyMasterRecipe(creator: string): MasterRecipe {
-  return {
-    id: `recipe-${Date.now()}`,
-    recipeNumber: '',
-    name: 'New Master Recipe',
-    type: 'standard',
-    status: 'draft',
-    outputMaterial: {
-      materialId: '',
-      materialNumber: '',
-      description: '',
-      quantity: 0,
-      unit: 'KG',
-      batchSize: 0
-    },
-    ingredients: [],
-    processInstructions: [],
-    controlParameters: [],
-    qualityChecks: [],
-    packaging: [],
-    yields: {
-      theoreticalYield: 100,
-      expectedYield: 95,
-      unit: 'KG',
-      yieldPercentage: 95,
-      lossFactors: [],
-      byproducts: []
-    },
-    scaleRange: {
-      minimumBatch: 50,
-      maximumBatch: 5000,
-      standardBatch: 1000,
-      unit: 'KG',
-      scalingFactor: 1.0
-    },
-    metadata: {
-      plant: '',
-      developedBy: creator,
-      validFrom: new Date(),
-      version: '1.0',
-      revisionNumber: 1,
-      regulatoryApprovalRequired: false,
-      productCategory: '',
-      allergenInfo: [],
-      certifications: [],
-      notes: ''
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-}
+export declare function createEmptyMasterRecipe(creator: string): MasterRecipe
 
-export function calculateRecipeYield(recipe: MasterRecipe): number {
-  const totalLoss = recipe.yields.lossFactors.reduce(
-    (sum, factor) => sum + factor.lossPercentage,
-    0
-  )
-  return Math.max(0, 100 - totalLoss)
-}
+export declare function calculateRecipeYield(recipe: MasterRecipe): number
 
-export function validateMasterRecipe(recipe: MasterRecipe): string[] {
-  const errors: string[] = []
+export declare function validateMasterRecipe(recipe: MasterRecipe): string[]
 
-  if (!recipe.recipeNumber || recipe.recipeNumber.trim() === '') {
-    errors.push('Recipe number is required')
-  }
-
-  if (!recipe.name || recipe.name.trim() === '') {
-    errors.push('Recipe name is required')
-  }
-
-  if (!recipe.outputMaterial.materialId) {
-    errors.push('Output material is required')
-  }
-
-  if (recipe.outputMaterial.quantity <= 0) {
-    errors.push('Output quantity must be positive')
-  }
-
-  if (recipe.ingredients.length === 0) {
-    errors.push('At least one ingredient is required')
-  }
-
-  const totalPercentage = recipe.ingredients.reduce((sum, ing) => sum + ing.percentage, 0)
-  if (Math.abs(totalPercentage - 100) > 0.1) {
-    errors.push(`Total ingredient percentage must equal 100% (currently ${totalPercentage.toFixed(2)}%)`)
-  }
-
-  recipe.ingredients.forEach((ing, idx) => {
-    if (ing.quantity <= 0) {
-      errors.push(`Ingredient ${idx + 1} quantity must be positive`)
-    }
-    if (ing.percentage < 0 || ing.percentage > 100) {
-      errors.push(`Ingredient ${idx + 1} percentage must be between 0-100%`)
-    }
-  })
-
-  if (recipe.processInstructions.length === 0) {
-    errors.push('At least one process instruction is required')
-  }
-
-  const steps = [...recipe.processInstructions].sort((a, b) => a.step - b.step)
-  steps.forEach((instruction, idx) => {
-    if (instruction.step !== idx + 1) {
-      errors.push(`Process steps must be sequential (found step ${instruction.step} at position ${idx + 1})`)
-    }
-  })
-
-  if (recipe.yields.yieldPercentage < 0 || recipe.yields.yieldPercentage > 100) {
-    errors.push('Yield percentage must be between 0-100%')
-  }
-
-  if (recipe.scaleRange.minimumBatch > recipe.scaleRange.maximumBatch) {
-    errors.push('Minimum batch size cannot exceed maximum batch size')
-  }
-
-  return errors
-}
+export * from './master-recipe.js'

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { DataExportButton } from '@/components/DataExportButton'
+import ParetoAnalysis from '@/components/formulation/ParetoAnalysis'
 import { apiService } from '@/lib/api/service'
 import { toast } from 'sonner'
 import { Plus, Flask, Trash } from '@phosphor-icons/react'
@@ -21,7 +23,11 @@ export function FormulationsView({ backendUrl }) {
     setLoading(true)
     try {
       const data = await apiService.getFormulations()
-      setFormulations(data)
+      const items = Array.isArray(data?.formulations) ? data.formulations : []
+      setFormulations(items)
+      if (!selectedId && items.length > 0) {
+        setSelectedId(items[0].id)
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to load formulations')
     } finally {
@@ -29,9 +35,18 @@ export function FormulationsView({ backendUrl }) {
     }
   }
 
+  const resolveCurrentUser = async () => {
+    const storedLogin = typeof window !== 'undefined' ? window.localStorage?.getItem('app-user-login') : null
+    if (storedLogin) {
+      return { login: storedLogin }
+    }
+
+    return { login: 'local-developer', name: 'Local Developer' }
+  }
+
   const handleCreate = async () => {
     try {
-      const user = await window.spark.user()
+      const user = await resolveCurrentUser()
       const newFormulation = await apiService.createFormulation({
         name: 'New Formulation',
         version: '1.0',
@@ -40,7 +55,7 @@ export function FormulationsView({ backendUrl }) {
         ingredients: [],
         targetYield: 100,
         yieldUnit: 'kg',
-        createdBy: user?.login || 'unknown',
+        createdBy: user?.login || user?.name || 'local-developer',
       })
       setFormulations([...formulations, newFormulation])
       toast.success('Formulation created')
@@ -52,7 +67,11 @@ export function FormulationsView({ backendUrl }) {
   const handleDelete = async (id) => {
     try {
       await apiService.deleteFormulation(id)
-      setFormulations(formulations.filter(f => f.id !== id))
+      const updated = formulations.filter(f => f.id !== id)
+      setFormulations(updated)
+      if (selectedId === id) {
+        setSelectedId(updated.length > 0 ? updated[0].id : null)
+      }
       toast.success('Formulation deleted')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete formulation')
@@ -70,10 +89,17 @@ export function FormulationsView({ backendUrl }) {
             Create and manage F&B formulations
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus size={20} weight="bold" />
-          New Formulation
-        </Button>
+        <div className="flex gap-2">
+          <DataExportButton
+            data={formulations}
+            filename="formulations"
+            disabled={loading}
+          />
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus size={20} weight="bold" />
+            New Formulation
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -176,6 +202,10 @@ export function FormulationsView({ backendUrl }) {
                     </div>
                   )}
                 </div>
+
+                {selectedFormulation.ingredients.length > 0 && (
+                  <ParetoAnalysis ingredients={selectedFormulation.ingredients} />
+                )}
               </div>
             </Card>
           ) : (

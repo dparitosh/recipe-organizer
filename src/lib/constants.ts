@@ -80,7 +80,7 @@ export const GRAPH_COLORS = {
 
 export const FDC_CONSTANTS = {
   API_BASE_URL: 'https://api.nal.usda.gov/fdc/v1',
-  DEFAULT_API_KEY: 'axHdO7CFrKh2wBPBSHKRaASp9m8lanCIaDY5W9ya',
+  DEFAULT_API_KEY: '',
   DEFAULT_PAGE_SIZE: 25,
   MAX_PAGE_SIZE: 200,
   RATE_LIMIT_PER_HOUR: 1000,

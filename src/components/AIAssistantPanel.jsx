@@ -6,11 +6,11 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { 
-  MagnifyingGlass, 
-  Sparkle, 
-  Lightning, 
-  CheckCircle, 
-  Warning, 
+  MagnifyingGlass,
+  Sparkle,
+  Lightning,
+  CheckCircle,
+  Warning,
   Info,
   TrendUp,
   TrendDown,
@@ -19,7 +19,11 @@ import {
   Database,
   Brain,
   Copy,
-  ArrowRight
+  ArrowRight,
+  CurrencyDollarSimple,
+  ArrowsClockwise,
+  GearSix,
+  Lightbulb
 } from '@phosphor-icons/react'
 import { aiAssistant } from '@/lib/ai'
 import { toast } from 'sonner'
@@ -102,15 +106,17 @@ export function AIAssistantPanel({ formulations = [], activeFormulationId }) {
     }
   }
 
+  const recommendationIconMap = {
+    cost_optimization: CurrencyDollarSimple,
+    yield_improvement: TrendUp,
+    substitution: ArrowsClockwise,
+    process_optimization: GearSix,
+    quality_enhancement: Sparkle,
+  }
+
   const getRecommendationIcon = (type) => {
-    switch (type) {
-      case 'cost_optimization': return '💰'
-      case 'yield_improvement': return '📈'
-      case 'substitution': return '🔄'
-      case 'process_optimization': return '⚙️'
-      case 'quality_enhancement': return '✨'
-      default: return '💡'
-    }
+    const IconComponent = recommendationIconMap[type] || Lightbulb
+    return <IconComponent size={18} weight="bold" className="text-primary" />
   }
 
   return (
@@ -324,7 +330,7 @@ export function AIAssistantPanel({ formulations = [], activeFormulationId }) {
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{getRecommendationIcon(rec.type)}</span>
+                        <span className="text-lg flex items-center">{getRecommendationIcon(rec.type)}</span>
                         <h4 className="font-semibold text-sm">{rec.title}</h4>
                       </div>
                       <div className="flex items-center gap-2">

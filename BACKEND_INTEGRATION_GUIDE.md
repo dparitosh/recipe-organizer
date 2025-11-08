@@ -69,6 +69,57 @@ OPENAI_API_KEY=sk-your-actual-openai-api-key-here
 
 **Important:** Get your OpenAI API key from https://platform.openai.com/api-keys
 
+### 2.1 Neo4j GenAI Plugin Prerequisites
+
+Apps that interact with Neo4j through an LLM depend on the **Neo4j GenAI plugin**. Complete the following before starting the backend.
+
+**Version / licensing requirements**
+- Neo4j 5.16 or newer.
+- Neo4j AuraDS or Aura Professional (includes GenAI toggle) *or* a self-managed Enterprise build with plugin support enabled.
+
+**Neo4j Aura (preferred path)**
+1. Sign in to the Aura console and choose the target instance.
+2. Open **Plugins → GenAI**, switch the plugin to **Enabled**.
+3. Under **Settings → GenAI**, choose your provider (OpenAI or Azure OpenAI) and add the API key, endpoint, and deployment/model name you plan to use.
+4. Click **Save** and restart the instance if Aura prompts you.
+
+**Self-managed Neo4j server**
+1. Download the latest `neo4j-genai` plugin jar from the [Neo4j Download Center](https://neo4j.com/download-center/).
+2. Place the jar inside the Neo4j `plugins/` directory (owned by the Neo4j service account).
+3. Edit `neo4j.conf` and add:
+  ```
+  dbms.security.procedures.unrestricted=genai.*
+  dbms.security.procedures.allowlist=genai.*
+  dbms.security.procedures.roles=genai.*
+  ```
+4. Supply LLM credentials (pick one provider):
+  - **OpenAI**
+    ```
+    genai.openai.apikey=<openai-api-key>
+    genai.openai.model=gpt-4o-mini
+    ```
+  - **Azure OpenAI**
+    ```
+    genai.azureopenai.endpoint=https://<resource-name>.openai.azure.com/
+    genai.azureopenai.deployment=<deployment-name>
+    genai.azureopenai.apikey=<azure-openai-key>
+    genai.azureopenai.api_version=2024-08-01-preview
+    ```
+  You can place these entries directly in `neo4j.conf` or export them as `NEO4J_dbms_connector_bolt_advertised__address` style environment variables (see docs for exact naming).
+5. Restart Neo4j, then validate inside Neo4j Browser:
+  ```cypher
+  CALL genai.listProviders();
+  ```
+  The chosen provider should appear with status `READY`.
+
+**Backend dependency**
+```bash
+pip install neo4j-genai
+```
+This Python helper lets the FastAPI service call the plugin procedures.
+
+> For advanced configuration (e.g., Anthropic, Vertex AI), review the [Neo4j GenAI documentation](https://neo4j.com/docs/genai/current/).
+
 ### 3. Run the Backend Server
 
 ```bash

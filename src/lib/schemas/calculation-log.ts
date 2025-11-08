@@ -179,120 +179,23 @@ export interface NutritionCalculationInput extends CalculationInput {
   }
 }
 
-export const CALCULATION_TYPES = ['scale', 'yield', 'cost', 'nutrition', 'manufacturing_derive', 'sales_order_derive'] as const
-export const ENTITY_TYPES = ['formulation', 'bom', 'master_recipe', 'manufacturing_recipe', 'sales_order'] as const
-export const CALCULATION_STATUSES = ['success', 'warning', 'error'] as const
-export const VALIDATION_SEVERITIES = ['info', 'warning', 'error'] as const
+export declare const CALCULATION_TYPES: readonly ['scale', 'yield', 'cost', 'nutrition', 'manufacturing_derive', 'sales_order_derive']
+export declare const ENTITY_TYPES: readonly ['formulation', 'bom', 'master_recipe', 'manufacturing_recipe', 'sales_order']
+export declare const CALCULATION_STATUSES: readonly ['success', 'warning', 'error']
+export declare const VALIDATION_SEVERITIES: readonly ['info', 'warning', 'error']
 
-export function createCalculationLog(
+export declare function createCalculationLog(
   type: typeof CALCULATION_TYPES[number],
   entityType: typeof ENTITY_TYPES[number],
   entityId: string,
   entityName: string,
   userId: string,
   userName: string
-): CalculationLog {
-  return {
-    id: `calc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    calculationType: type,
-    entityType,
-    entityId,
-    entityName,
-    inputParameters: {
-      baseValues: {},
-      constraints: {},
-      rules: {},
-      options: {}
-    },
-    outputResults: {
-      results: {},
-      intermediateSteps: [],
-      summary: {
-        totalItems: 0,
-        successCount: 0,
-        warningCount: 0,
-        errorCount: 0,
-        keyMetrics: {}
-      }
-    },
-    validationResults: [],
-    executionMetrics: {
-      startTime: new Date(),
-      endTime: new Date(),
-      durationMs: 0,
-      operationsPerformed: 0
-    },
-    status: 'success',
-    metadata: {
-      userId,
-      userName,
-      triggerSource: 'manual',
-      environment: 'development',
-      version: '1.0.0',
-      tags: []
-    },
-    createdAt: new Date()
-  }
-}
+): CalculationLog
 
-export function validateCalculationInput(
+export declare function validateCalculationInput(
   type: typeof CALCULATION_TYPES[number],
   input: CalculationInput
-): ValidationResult[] {
-  const results: ValidationResult[] = []
+): ValidationResult[]
 
-  switch (type) {
-    case 'scale':
-      const scaleInput = input as ScaleCalculationInput
-      if (!scaleInput.baseValues.sourceQuantity || scaleInput.baseValues.sourceQuantity <= 0) {
-        results.push({
-          rule: 'positive_source_quantity',
-          field: 'sourceQuantity',
-          severity: 'error',
-          message: 'Source quantity must be positive',
-          actualValue: scaleInput.baseValues.sourceQuantity,
-          passed: false
-        })
-      }
-      if (!scaleInput.baseValues.targetQuantity || scaleInput.baseValues.targetQuantity <= 0) {
-        results.push({
-          rule: 'positive_target_quantity',
-          field: 'targetQuantity',
-          severity: 'error',
-          message: 'Target quantity must be positive',
-          actualValue: scaleInput.baseValues.targetQuantity,
-          passed: false
-        })
-      }
-      break
-
-    case 'yield':
-      const yieldInput = input as YieldCalculationInput
-      if (!yieldInput.baseValues.inputQuantity || yieldInput.baseValues.inputQuantity <= 0) {
-        results.push({
-          rule: 'positive_input_quantity',
-          field: 'inputQuantity',
-          severity: 'error',
-          message: 'Input quantity must be positive',
-          actualValue: yieldInput.baseValues.inputQuantity,
-          passed: false
-        })
-      }
-      break
-
-    case 'cost':
-      const costInput = input as CostCalculationInput
-      if (!costInput.baseValues.materials || costInput.baseValues.materials.length === 0) {
-        results.push({
-          rule: 'materials_required',
-          field: 'materials',
-          severity: 'error',
-          message: 'At least one material is required',
-          passed: false
-        })
-      }
-      break
-  }
-
-  return results
-}
+export * from './calculation-log.js'
