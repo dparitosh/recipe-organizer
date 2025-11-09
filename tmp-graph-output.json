@@ -1,0 +1,156 @@
+﻿{
+  "graph": {
+    "nodes": [
+      {
+        "id": "RT001",
+        "label": "Formulation",
+        "type": "formulation",
+        "properties": {
+          "name": "Green Tree Extract Beverage Recipe"
+        }
+      },
+      {
+        "id": "GT001",
+        "label": "Ingredient",
+        "type": "ingredient",
+        "properties": {
+          "name": "Green Tree Extract",
+          "percentage": 60,
+          "function": "flavor",
+          "category": "natural"
+        }
+      },
+      {
+        "id": "WV001",
+        "label": "Ingredient",
+        "type": "ingredient",
+        "properties": {
+          "name": "Water",
+          "percentage": 30,
+          "function": "base",
+          "category": "water"
+        }
+      },
+      {
+        "id": "AS001",
+        "label": "Ingredient",
+        "type": "ingredient",
+        "properties": {
+          "name": "Ascorbic Acid (Vitamin C)",
+          "percentage": 5,
+          "function": "preservative",
+          "category": "vitamin"
+        }
+      },
+      {
+        "id": "ST001",
+        "label": "Ingredient",
+        "type": "ingredient",
+        "properties": {
+          "name": "Sucrose (Sugar)",
+          "percentage": 5,
+          "function": "sweetener",
+          "category": "sugar"
+        }
+      },
+      {
+        "id": "RT001_scaled",
+        "label": "Formulation",
+        "type": "formulation",
+        "properties": {
+          "name": "Green Tree Extract Beverage Recipe (scaled)"
+        }
+      },
+      {
+        "id": "GT001_scaled",
+        "label": "Ingredient",
+        "type": "ingredient",
+        "properties": {
+          "name": "Green Tree Extract",
+          "percentage": 60,
+          "function": "flavor",
+          "category": "natural"
+        }
+      },
+      {
+        "id": "WV001_scaled",
+        "label": "Ingredient",
+        "type": "ingredient",
+        "properties": {
+          "name": "Water",
+          "percentage": 30,
+          "function": "base",
+          "category": "water"
+        }
+      },
+      {
+        "id": "AS001_scaled",
+        "label": "Ingredient",
+        "type": "ingredient",
+        "properties": {
+          "name": "Ascorbic Acid (Vitamin C)",
+          "percentage": 5,
+          "function": "preservative",
+          "category": "vitamin"
+        }
+      },
+      {
+        "id": "ST001_scaled",
+        "label": "Ingredient",
+        "type": "ingredient",
+        "properties": {
+          "name": "Sucrose (Sugar)",
+          "percentage": 5,
+          "function": "sweetener",
+          "category": "sugar"
+        }
+      },
+      {
+        "id": "cost_rawMaterials",
+        "label": "Cost",
+        "type": "cost",
+        "properties": {
+          "name": "Raw Materials",
+          "amount": 3200
+        }
+      },
+      {
+        "id": "cost_labor",
+        "label": "Cost",
+        "type": "cost",
+        "properties": {
+          "name": "Labor",
+          "amount": 800
+        }
+      },
+      {
+        "id": "cost_overhead",
+        "label": "Cost",
+        "type": "cost",
+        "properties": {
+          "name": "Overhead",
+          "amount": 600
+        }
+      },
+      {
+        "id": "cost_packaging",
+        "label": "Cost",
+        "type": "cost",
+        "properties": {
+          "name": "Packaging",
+          "amount": 300
+        }
+      },
+      {
+        "id": "cost_total",
+        "label": "Cost",
+        "type": "cost",
+        "properties": {
+          "name": "Total",
+          "amount": 4300
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "RT001_CONTAINS_GT001",

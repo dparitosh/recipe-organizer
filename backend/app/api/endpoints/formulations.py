@@ -70,8 +70,8 @@ async def create_formulation(formulation: FormulationCreate, request: Request):
                     "form_id": formulation_id,
                     "name": ing.name,
                     "percentage": ing.percentage,
-                    "cost_per_kg": ing.cost_per_kg,
-                    "function": ing.function
+                    "cost_per_kg": ing.cost_per_kg if ing.cost_per_kg is not None else 0.0,
+                    "function": ing.function or "unspecified"
                 }
                 
                 neo4j_client.execute_query(ing_query, ing_params)
@@ -113,9 +113,9 @@ async def list_formulations(request: Request, limit: int = 50, skip: int = 0):
         OPTIONAL MATCH (f)-[c:CONTAINS]->(i:Food)
         RETURN f, collect({
             name: i.name,
-            percentage: c.percentage,
-            cost_per_kg: c.cost_per_kg,
-            function: c.function
+            percentage: coalesce(c['percentage'], 0.0),
+            cost_per_kg: coalesce(c['cost_per_kg'], 0.0),
+            function: coalesce(c['function'], i['function'], 'unspecified')
         }) as ingredients
         ORDER BY f.created_at DESC
         SKIP $skip
@@ -181,9 +181,9 @@ async def get_formulation(formulation_id: str, request: Request):
         OPTIONAL MATCH (f)-[c:CONTAINS]->(i:Food)
         RETURN f, collect({
             name: i.name,
-            percentage: c.percentage,
-            cost_per_kg: c.cost_per_kg,
-            function: c.function
+            percentage: coalesce(c['percentage'], 0.0),
+            cost_per_kg: coalesce(c['cost_per_kg'], 0.0),
+            function: coalesce(c['function'], i['function'], 'unspecified')
         }) as ingredients
         """
         

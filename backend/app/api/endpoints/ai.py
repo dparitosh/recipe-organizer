@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, status
 from datetime import datetime
 from typing import Dict, Any, List
+import asyncio
 import logging
 
 from app.models.schemas import (
@@ -78,6 +79,9 @@ async def generate_completion(payload: AICompletionRequest, request: Request) ->
             temperature=payload.temperature,
             max_tokens=payload.max_tokens,
         )
+    except asyncio.TimeoutError as exc:
+        logger.error("OLLAMA completion timed out: %s", exc)
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="OLLAMA request timed out")
     except Exception as exc:  # pragma: no cover - passthrough to caller with context
         logger.error("OLLAMA completion failed: %s", exc)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))

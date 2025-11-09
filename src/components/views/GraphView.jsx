@@ -8,10 +8,10 @@ import { DataExportButton } from '@/components/DataExportButton'
 import { apiService } from '@/lib/api/service'
 import { toast } from 'sonner'
 import cytoscape from 'cytoscape'
-import { 
-  ArrowsIn, 
-  ArrowsOut, 
-  MagnifyingGlass, 
+import {
+  ArrowsIn,
+  ArrowsOut,
+  MagnifyingGlass,
   FunnelSimple,
   DownloadSimple,
   FileArrowDown,
@@ -19,34 +19,189 @@ import {
   Circle,
 } from '@phosphor-icons/react'
 
-const FALLBACK_NODE_COLORS = {
-  Formulation: '#3b82f6',
-  Ingredient: '#8b5cf6',
-  Food: '#8b5cf6',
-  Nutrient: '#f59e0b',
-  Process: '#6366f1',
-  Recipe: '#3b82f6',
-  MasterRecipe: '#0ea5e9',
-  ManufacturingRecipe: '#7c3aed',
-  Plant: '#14b8a6',
-  SalesOrder: '#f59e0b',
+const CORPORATE_PALETTE = {
+  background: '#f8fafc',
+  backgroundDark: '#0f172a',
+  border: 'rgba(15, 23, 42, 0.18)',
+  edgeLabelBorder: 'rgba(148, 163, 184, 0.6)',
+  edgeLabelBackground: '#f1f5f9',
+  edgeLabelText: '#1f2937',
+  blue600: '#2563eb',
+  blue700: '#1d4ed8',
+  sky500: '#0ea5e9',
+  sky600: '#0284c7',
+  teal600: '#0f766e',
+  indigo700: '#4338ca',
+  violet600: '#7c3aed',
+  violet800: '#4c1d95',
+  slate600: '#475569',
+}
+
+const CORPORATE_NODE_COLORS = {
+  __default__: '#1e293b',
+  Formulation: CORPORATE_PALETTE.blue700,
+  Ingredient: CORPORATE_PALETTE.sky500,
+  Food: CORPORATE_PALETTE.sky500,
+  Nutrient: CORPORATE_PALETTE.teal600,
+  ProcessStep: CORPORATE_PALETTE.indigo700,
+  Process: CORPORATE_PALETTE.indigo700,
+  Supplier: CORPORATE_PALETTE.blue600,
+  Plant: CORPORATE_PALETTE.sky600,
+  Recipe: CORPORATE_PALETTE.blue700,
+  MasterRecipe: CORPORATE_PALETTE.blue600,
+  ManufacturingRecipe: CORPORATE_PALETTE.indigo700,
+  AIInsight: CORPORATE_PALETTE.violet600,
+  CalculationSnapshot: CORPORATE_PALETTE.violet800,
+  SalesOrder: CORPORATE_PALETTE.violet600,
 }
 
 const FALLBACK_NODE_SHAPES = {
-  Formulation: 'ellipse',
-  Ingredient: 'ellipse',
-  Food: 'ellipse',
-  Nutrient: 'ellipse',
+  Formulation: 'hexagon',
+  Ingredient: 'roundrectangle',
+  Food: 'roundrectangle',
+  Nutrient: 'diamond',
   Process: 'rectangle',
+  ProcessStep: 'hexagon',
   Recipe: 'round-rectangle',
   MasterRecipe: 'hexagon',
   ManufacturingRecipe: 'hexagon',
-  Plant: 'diamond',
+  Plant: 'round-diamond',
   SalesOrder: 'tag',
 }
 
-const DEFAULT_NODE_COLOR = '#64748b'
-const DEFAULT_NODE_SHAPE = 'ellipse'
+const CORPORATE_RELATIONSHIP_COLORS = {
+  __default__: CORPORATE_PALETTE.blue600,
+  USES: CORPORATE_PALETTE.blue600,
+  HAS_NUTRIENT: CORPORATE_PALETTE.teal600,
+  EXECUTES: CORPORATE_PALETTE.indigo700,
+  PRODUCED_AT: CORPORATE_PALETTE.sky600,
+  PROCURED_FROM: CORPORATE_PALETTE.blue700,
+  APPLIES_TO: CORPORATE_PALETTE.violet600,
+  SUPPORTS: CORPORATE_PALETTE.slate600,
+}
+
+const DEFAULT_NODE_COLOR = CORPORATE_NODE_COLORS.__default__
+const DEFAULT_NODE_SHAPE = 'round-rectangle'
+const DEFAULT_NODE_TEXT_COLOR = '#f8fafc'
+const DEFAULT_NODE_BORDER_COLOR = CORPORATE_PALETTE.border
+const DEFAULT_EDGE_COLOR = CORPORATE_RELATIONSHIP_COLORS.__default__
+const DEFAULT_EDGE_STYLE = 'solid'
+const DEFAULT_EDGE_WIDTH = 2
+const DEFAULT_EDGE_TARGET_ARROW = 'triangle'
+const DEFAULT_EDGE_SOURCE_ARROW = 'none'
+
+const HEX_6_DIGIT = /^#(?:[0-9a-fA-F]{6})$/
+const HEX_3_DIGIT = /^#(?:[0-9a-fA-F]{3})$/
+
+const clamp01 = (value) => Math.min(Math.max(value, 0), 1)
+
+const normalizeHexColor = (value, fallback = null) => {
+  if (typeof value !== 'string') {
+    return fallback
+  }
+
+  const trimmed = value.trim()
+  if (HEX_6_DIGIT.test(trimmed)) {
+    return trimmed.toLowerCase()
+  }
+
+  if (HEX_3_DIGIT.test(trimmed)) {
+    const hex = trimmed.slice(1)
+    const expanded = `#${hex
+      .split('')
+      .map((char) => char + char)
+      .join('')}`
+    return expanded.toLowerCase()
+  }
+
+  return fallback
+}
+
+const hexToRgb = (hex) => {
+  const normalized = normalizeHexColor(hex)
+  if (!normalized) {
+    return null
+  }
+
+  const value = normalized.slice(1)
+  const int = parseInt(value, 16)
+  const r = (int >> 16) & 255
+  const g = (int >> 8) & 255
+  const b = int & 255
+  return { r, g, b }
+}
+
+const mixHexColors = (colorA, colorB, amountA = 0.5) => {
+  const rgbA = hexToRgb(colorA)
+  const rgbB = hexToRgb(colorB)
+  if (!rgbA || !rgbB) {
+    return normalizeHexColor(colorA) || normalizeHexColor(colorB)
+  }
+
+  const ratioA = clamp01(amountA)
+  const ratioB = 1 - ratioA
+  const mixed = {
+    r: Math.round(rgbA.r * ratioA + rgbB.r * ratioB),
+    g: Math.round(rgbA.g * ratioA + rgbB.g * ratioB),
+    b: Math.round(rgbA.b * ratioA + rgbB.b * ratioB),
+  }
+
+  const toHex = (value) => value.toString(16).padStart(2, '0')
+  return `#${toHex(mixed.r)}${toHex(mixed.g)}${toHex(mixed.b)}`
+}
+
+const calculateLuminance = (hexColor) => {
+  const rgb = hexToRgb(hexColor)
+  if (!rgb) {
+    return 0
+  }
+
+  const channelToLinear = (channel) => {
+    const value = channel / 255
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  }
+
+  const r = channelToLinear(rgb.r)
+  const g = channelToLinear(rgb.g)
+  const b = channelToLinear(rgb.b)
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+const pickAccessibleTextColor = (hexColor) => {
+  const luminance = calculateLuminance(hexColor)
+  return luminance > 0.55 ? '#0f172a' : '#f8fafc'
+}
+
+const buildBorderColor = (hexColor) => {
+  const normalized = normalizeHexColor(hexColor)
+  if (!normalized) {
+    return DEFAULT_NODE_BORDER_COLOR
+  }
+  return mixHexColors(normalized, '#ffffff', 0.3)
+}
+
+const getCorporateNodeColor = (type, candidate) => {
+  if (CORPORATE_NODE_COLORS[type]) {
+    return CORPORATE_NODE_COLORS[type]
+  }
+  const normalized = normalizeHexColor(candidate)
+  if (normalized) {
+    return normalized
+  }
+  return DEFAULT_NODE_COLOR
+}
+
+const getCorporateRelationshipColor = (type, candidate) => {
+  if (CORPORATE_RELATIONSHIP_COLORS[type]) {
+    return CORPORATE_RELATIONSHIP_COLORS[type]
+  }
+  const normalized = normalizeHexColor(candidate)
+  if (normalized) {
+    return normalized
+  }
+  return DEFAULT_EDGE_COLOR
+}
 
 const layoutPresets = {
   hierarchical: {
@@ -115,13 +270,29 @@ export function GraphView({ backendUrl }) {
   }, [backendUrl])
 
   const nodeStyleMap = useMemo(() => {
+    const defaultsColor = getCorporateNodeColor('__default__', schema?.defaults?.node?.color)
+    const defaultsShape = schema?.defaults?.node?.shape || DEFAULT_NODE_SHAPE
+
     const defaults = {
-      color: schema?.defaults?.node?.color || DEFAULT_NODE_COLOR,
-      shape: schema?.defaults?.node?.shape || DEFAULT_NODE_SHAPE,
+      color: defaultsColor,
+      shape: defaultsShape,
+      textColor: pickAccessibleTextColor(defaultsColor),
+      borderColor: buildBorderColor(defaultsColor),
     }
 
-    const colors = { ...FALLBACK_NODE_COLORS }
+    const colors = {}
     const shapes = { ...FALLBACK_NODE_SHAPES }
+    const textColors = {}
+    const borderColors = {}
+
+    Object.entries(CORPORATE_NODE_COLORS).forEach(([type, color]) => {
+      if (type === '__default__') {
+        return
+      }
+      colors[type] = color
+      textColors[type] = pickAccessibleTextColor(color)
+      borderColors[type] = buildBorderColor(color)
+    })
 
     if (schema?.node_types) {
       schema.node_types.forEach((typeConfig) => {
@@ -129,9 +300,10 @@ export function GraphView({ backendUrl }) {
           return
         }
 
-        if (typeConfig.color) {
-          colors[typeConfig.type] = typeConfig.color
-        }
+        const paletteColor = getCorporateNodeColor(typeConfig.type, typeConfig.color)
+        colors[typeConfig.type] = paletteColor
+        textColors[typeConfig.type] = pickAccessibleTextColor(paletteColor)
+        borderColors[typeConfig.type] = buildBorderColor(paletteColor)
 
         if (typeConfig.shape) {
           shapes[typeConfig.type] = typeConfig.shape
@@ -139,7 +311,41 @@ export function GraphView({ backendUrl }) {
       })
     }
 
-    return { colors, shapes, defaults }
+    return { colors, shapes, textColors, borderColors, defaults }
+  }, [schema])
+
+  const edgeStyleMap = useMemo(() => {
+    const defaultsColor = getCorporateRelationshipColor('__default__', schema?.defaults?.edge?.color)
+    const defaults = {
+      color: defaultsColor,
+      style: schema?.defaults?.edge?.style || DEFAULT_EDGE_STYLE,
+      width: schema?.defaults?.edge?.width || DEFAULT_EDGE_WIDTH,
+      target_arrow: schema?.defaults?.edge?.target_arrow || DEFAULT_EDGE_TARGET_ARROW,
+      source_arrow: schema?.defaults?.edge?.source_arrow || DEFAULT_EDGE_SOURCE_ARROW,
+    }
+
+    const lookup = {}
+
+    if (schema?.relationship_types) {
+      schema.relationship_types.forEach((relConfig) => {
+        if (!relConfig?.type) {
+          return
+        }
+
+        lookup[relConfig.type] = {
+          color: getCorporateRelationshipColor(relConfig.type, relConfig.color),
+          style: relConfig.style || defaults.style,
+          width: relConfig.width || defaults.width,
+          target_arrow: relConfig.target_arrow || defaults.target_arrow,
+          source_arrow: relConfig.source_arrow || defaults.source_arrow,
+          label: relConfig.label || relConfig.type,
+          sources: relConfig.allowed_source_types || [],
+          targets: relConfig.allowed_target_types || [],
+        }
+      })
+    }
+
+    return { defaults, lookup }
   }, [schema])
 
   const getNodeColor = useCallback(
@@ -150,6 +356,41 @@ export function GraphView({ backendUrl }) {
   const getNodeShape = useCallback(
     (type) => nodeStyleMap.shapes[type] || nodeStyleMap.defaults.shape,
     [nodeStyleMap]
+  )
+
+  const getNodeTextColor = useCallback(
+    (type) => nodeStyleMap.textColors?.[type] || nodeStyleMap.defaults.textColor || DEFAULT_NODE_TEXT_COLOR,
+    [nodeStyleMap]
+  )
+
+  const getNodeBorderColor = useCallback(
+    (type) => nodeStyleMap.borderColors?.[type] || nodeStyleMap.defaults.borderColor || DEFAULT_NODE_BORDER_COLOR,
+    [nodeStyleMap]
+  )
+
+  const getEdgeColor = useCallback(
+    (type) => edgeStyleMap.lookup[type]?.color || edgeStyleMap.defaults.color,
+    [edgeStyleMap]
+  )
+
+  const getEdgeStyle = useCallback(
+    (type) => edgeStyleMap.lookup[type]?.style || edgeStyleMap.defaults.style,
+    [edgeStyleMap]
+  )
+
+  const getEdgeWidth = useCallback(
+    (type) => edgeStyleMap.lookup[type]?.width || edgeStyleMap.defaults.width,
+    [edgeStyleMap]
+  )
+
+  const getEdgeArrow = useCallback(
+    (type) => edgeStyleMap.lookup[type]?.target_arrow || edgeStyleMap.defaults.target_arrow,
+    [edgeStyleMap]
+  )
+
+  const getEdgeSourceArrow = useCallback(
+    (type) => edgeStyleMap.lookup[type]?.source_arrow || edgeStyleMap.defaults.source_arrow,
+    [edgeStyleMap]
   )
 
   const normalizedNodes = useMemo(() => {
@@ -205,54 +446,113 @@ export function GraphView({ backendUrl }) {
           style: {
             'background-color': (ele) => getNodeColor(ele.data('type')),
             'label': 'data(label)',
-            'color': '#fff',
+            'color': (ele) => getNodeTextColor(ele.data('type')),
             'text-valign': 'center',
             'text-halign': 'center',
             'font-size': '12px',
             'font-weight': 600,
-            'width': '60px',
-            'height': '60px',
+            'width': '64px',
+            'height': '64px',
             'shape': (ele) => getNodeShape(ele.data('type')),
             'border-width': '2px',
-            'border-color': '#fff',
-            'text-outline-color': (ele) => getNodeColor(ele.data('type')),
-            'text-outline-width': '2px',
+            'border-color': (ele) => getNodeBorderColor(ele.data('type')),
+            'text-outline-color': (ele) => getNodeBorderColor(ele.data('type')),
+            'text-outline-width': '1.5px',
+            'background-opacity': 0.98,
+            'shadow-blur': 18,
+            'shadow-color': 'rgba(15, 23, 42, 0.2)',
+            'shadow-opacity': 0.7,
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 6,
+            'overlay-padding': 4,
           },
         },
         {
           selector: 'edge',
           style: {
-            'width': 2,
-            'line-color': '#cbd5e1',
-            'target-arrow-color': '#cbd5e1',
-            'target-arrow-shape': 'triangle',
+            'width': (ele) => getEdgeWidth(ele.data('type')),
+            'line-color': (ele) => getEdgeColor(ele.data('type')),
+            'target-arrow-color': (ele) => getEdgeColor(ele.data('type')),
+            'target-arrow-shape': (ele) => getEdgeArrow(ele.data('type')),
+            'source-arrow-color': (ele) => getEdgeColor(ele.data('type')),
+            'source-arrow-shape': (ele) => getEdgeSourceArrow(ele.data('type')),
+            'arrow-scale': 1.05,
+            'line-style': (ele) => getEdgeStyle(ele.data('type')),
             'curve-style': 'bezier',
+            'line-cap': 'round',
+            'opacity': 0.92,
             'label': 'data(label)',
+            'color': CORPORATE_PALETTE.edgeLabelText,
             'font-size': '10px',
+            'font-weight': 500,
             'text-rotation': 'autorotate',
-            'text-background-color': '#fff',
-            'text-background-opacity': 1,
-            'text-background-padding': '3px',
+            'text-background-color': CORPORATE_PALETTE.edgeLabelBackground,
+            'text-background-opacity': 0.95,
+            'text-background-padding': '4px',
+            'text-border-width': 1,
+            'text-border-color': CORPORATE_PALETTE.edgeLabelBorder,
+            'text-border-opacity': 0.5,
           },
         },
         {
           selector: 'node:selected',
           style: {
             'border-width': '4px',
-            'border-color': '#3b82f6',
+            'border-color': CORPORATE_PALETTE.blue600,
+            'shadow-blur': 24,
+            'shadow-color': 'rgba(37, 99, 235, 0.35)',
+            'shadow-opacity': 0.9,
             'z-index': 999,
+          },
+        },
+        {
+          selector: 'edge:selected',
+          style: {
+            'line-color': CORPORATE_PALETTE.blue600,
+            'target-arrow-color': CORPORATE_PALETTE.blue600,
+            'source-arrow-color': CORPORATE_PALETTE.blue600,
+            'width': 4,
+            'opacity': 1,
           },
         },
         {
           selector: '.highlighted',
           style: {
             'opacity': 1,
+            'border-color': CORPORATE_PALETTE.blue600,
+            'border-width': '3px',
           },
         },
         {
           selector: '.dimmed',
           style: {
-            'opacity': 0.3,
+            'opacity': 0.12,
+          },
+        },
+        {
+          selector: '.filter-dim',
+          style: {
+            'opacity': 0.1,
+          },
+        },
+        {
+          selector: 'node.filter-focus',
+          style: {
+            'border-color': CORPORATE_PALETTE.blue600,
+            'border-width': '4px',
+            'opacity': 1,
+            'shadow-blur': 28,
+            'shadow-color': 'rgba(37, 99, 235, 0.3)',
+          },
+        },
+        {
+          selector: 'edge.filter-edge',
+          style: {
+            'line-color': CORPORATE_PALETTE.blue600,
+            'target-arrow-color': CORPORATE_PALETTE.blue600,
+            'source-arrow-color': CORPORATE_PALETTE.blue600,
+            'width': (ele) => Math.max(getEdgeWidth(ele.data('type')), 3),
+            'opacity': 1,
           },
         },
       ],
@@ -283,13 +583,58 @@ export function GraphView({ backendUrl }) {
       cyInstance.destroy()
       cyRef.current = null
     }
-  }, [graphData, layout, normalizedNodes, normalizedEdges, getNodeColor, getNodeShape])
+  }, [
+    graphData,
+    layout,
+    normalizedNodes,
+    normalizedEdges,
+    getNodeColor,
+    getNodeShape,
+    getNodeTextColor,
+    getNodeBorderColor,
+    getEdgeColor,
+    getEdgeStyle,
+    getEdgeWidth,
+    getEdgeArrow,
+    getEdgeSourceArrow,
+  ])
 
   useEffect(() => {
     if (cyRef.current) {
       cyRef.current.layout(getLayoutOptions(layout)).run()
     }
   }, [layout])
+
+  useEffect(() => {
+    const cy = cyRef.current
+    if (!cy) {
+      return
+    }
+
+    cy.batch(() => {
+      cy.elements().removeClass('filter-dim filter-focus filter-edge')
+
+      if (filterNodeType === 'all') {
+        return
+      }
+
+      const matchingNodes = cy
+        .nodes()
+        .filter((node) => node.data('type') === filterNodeType)
+
+      if (matchingNodes.length === 0) {
+        return
+      }
+
+      const connectedEdges = matchingNodes.connectedEdges()
+
+      matchingNodes.addClass('filter-focus')
+      connectedEdges.addClass('filter-edge')
+
+      cy.nodes().difference(matchingNodes).addClass('filter-dim')
+      cy.edges().difference(connectedEdges).addClass('filter-dim')
+    })
+  }, [filterNodeType, normalizedNodes, normalizedEdges])
 
   const handleLoadGraph = async () => {
     setLoading(true)
@@ -440,16 +785,40 @@ export function GraphView({ backendUrl }) {
     return Object.keys(nodeStyleMap.colors)
   }, [observedTypes, schemaTypes, nodeStyleMap.colors])
 
+  const observedRelationshipTypes = useMemo(() => {
+    if (!normalizedEdges.length) {
+      return []
+    }
+    return Array.from(new Set(normalizedEdges.map((edge) => edge.type).filter(Boolean)))
+  }, [normalizedEdges])
+
+  const schemaRelationshipTypes = useMemo(() => {
+    if (!schema?.relationship_types?.length) {
+      return []
+    }
+    return schema.relationship_types.map((relConfig) => relConfig.type).filter(Boolean)
+  }, [schema])
+
+  const relationshipLegendTypes = useMemo(() => {
+    if (observedRelationshipTypes.length) {
+      return observedRelationshipTypes
+    }
+    if (schemaRelationshipTypes.length) {
+      return schemaRelationshipTypes
+    }
+    return Object.keys(edgeStyleMap.lookup)
+  }, [observedRelationshipTypes, schemaRelationshipTypes, edgeStyleMap.lookup])
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
           <h2 className="text-3xl font-bold tracking-tight">Graph Explorer</h2>
           <p className="text-muted-foreground mt-1">
             Interactive visualization of formulation relationships
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Button variant="outline" onClick={handleInstallDefaultSchema} disabled={loading || installingSchema}>
             {installingSchema ? 'Installing...' : 'Install Default Schema'}
           </Button>
@@ -471,12 +840,17 @@ export function GraphView({ backendUrl }) {
           <Button onClick={handleLoadGraph} disabled={loading}>
             {loading ? 'Loading...' : 'Load Graph Data'}
           </Button>
+          {filterNodeType !== 'all' && (
+            <Badge variant="outline" className="border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+              Filter: {filterNodeType}
+            </Badge>
+          )}
         </div>
       </div>
 
-      <Card className="p-6">
+      <Card className="p-6 border border-border/70 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 shadow-sm">
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
-          <div className="flex-1 flex gap-2">
+          <div className="flex-1 flex flex-wrap gap-2">
             <div className="relative flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
               <Input
@@ -496,7 +870,7 @@ export function GraphView({ backendUrl }) {
             </Button>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={layout} onValueChange={handleLayoutChange}>
               <SelectTrigger className="w-40">
                 <SelectValue />
@@ -528,27 +902,31 @@ export function GraphView({ backendUrl }) {
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">
             <h4 className="font-semibold mb-3">Filters</h4>
             <div className="flex flex-wrap gap-2">
-              <Badge 
-                variant={filterNodeType === 'all' ? 'default' : 'outline'}
-                className="cursor-pointer"
+              <Badge
+                variant="outline"
+                className={`cursor-pointer border transition-colors dark:border-slate-700 ${filterNodeType === 'all' ? 'bg-slate-100 text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-100' : 'bg-transparent text-muted-foreground'}`}
                 onClick={() => setFilterNodeType('all')}
               >
                 All Types
               </Badge>
-              {nodeTypes.map(type => (
-                <Badge 
-                  key={type}
-                  variant={filterNodeType === type ? 'default' : 'outline'}
-                  className="cursor-pointer"
-                  onClick={() => setFilterNodeType(type)}
-                  style={{ 
-                    backgroundColor: filterNodeType === type ? getNodeColor(type) : undefined,
-                    borderColor: getNodeColor(type)
-                  }}
-                >
-                  {type}
-                </Badge>
-              ))}
+              {nodeTypes.map((type) => {
+                const isActive = filterNodeType === type
+                return (
+                  <Badge
+                    key={type}
+                    variant="outline"
+                    className={`cursor-pointer border transition-colors dark:border-slate-700 ${isActive ? 'shadow-sm' : ''}`}
+                    onClick={() => setFilterNodeType(type)}
+                    style={{
+                      backgroundColor: isActive ? getNodeColor(type) : 'transparent',
+                      color: isActive ? getNodeTextColor(type) : undefined,
+                      borderColor: getNodeBorderColor(type),
+                    }}
+                  >
+                    {type}
+                  </Badge>
+                )
+              })}
             </div>
           </div>
         )}
@@ -557,7 +935,7 @@ export function GraphView({ backendUrl }) {
           <div className="lg:col-span-2">
             <div 
               ref={containerRef}
-              className="w-full h-[600px] rounded-lg border border-border bg-background"
+              className="w-full h-[620px] rounded-xl border border-border/60 bg-[#f8fafc] dark:bg-[#0f172a] shadow-inner transition-colors"
             />
           </div>
 
@@ -565,7 +943,15 @@ export function GraphView({ backendUrl }) {
             {selectedNode ? (
               <Card className="p-4">
                 <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <Badge style={{ backgroundColor: getNodeColor(selectedNode.type) }}>
+                  <Badge
+                    variant="outline"
+                    className="border"
+                    style={{
+                      backgroundColor: getNodeColor(selectedNode.type),
+                      color: getNodeTextColor(selectedNode.type),
+                      borderColor: getNodeBorderColor(selectedNode.type),
+                    }}
+                  >
                     {selectedNode.type}
                   </Badge>
                 </h3>
@@ -589,18 +975,80 @@ export function GraphView({ backendUrl }) {
 
             <Card className="p-4">
               <h3 className="font-semibold mb-3">Legend</h3>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {legendTypes.map((type) => (
-                  <div key={type} className="flex items-center gap-2 text-sm">
-                    <div
-                      className="w-4 h-4 rounded-full border-2 border-white"
-                      style={{ backgroundColor: getNodeColor(type) }}
-                    />
-                    <span>{type}</span>
+                  <div key={type} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-4 w-4 rounded border"
+                        style={{
+                          backgroundColor: getNodeColor(type),
+                          borderColor: getNodeBorderColor(type),
+                        }}
+                      />
+                      <span className="font-medium">{type}</span>
+                    </div>
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {getNodeShape(type)}
+                    </span>
                   </div>
                 ))}
               </div>
             </Card>
+
+            {relationshipLegendTypes.length > 0 && (
+              <Card className="p-4">
+                <h3 className="font-semibold mb-3">Relationship Styles</h3>
+                <div className="space-y-3">
+                  {relationshipLegendTypes.map((type) => {
+                    const config = edgeStyleMap.lookup[type]
+                    const label = config?.label || type
+                    const sources = (config?.sources?.length ? config.sources : ['Any'])
+                    const targets = (config?.targets?.length ? config.targets : ['Any'])
+                    const color = getEdgeColor(type)
+                    const style = getEdgeStyle(type)
+                    return (
+                      <div key={type} className="space-y-2 rounded-md border border-border/60 bg-white/80 p-3 text-xs shadow-sm dark:bg-slate-950/50">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">{label}</span>
+                          <Badge variant="outline" className="border-slate-300 text-[10px] uppercase tracking-wide dark:border-slate-700 dark:text-slate-200">
+                            {type}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: color, opacity: 0.9 }} />
+                          <span className="text-muted-foreground capitalize">{style}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className="font-medium uppercase tracking-wide text-slate-600">From</span>
+                          {sources.map((source) => (
+                            <Badge
+                              key={`${type}-source-${source}`}
+                              variant="outline"
+                              className="border-slate-300 bg-white/70 text-[10px] dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200"
+                            >
+                              {source}
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className="font-medium uppercase tracking-wide text-slate-600">To</span>
+                          {targets.map((target) => (
+                            <Badge
+                              key={`${type}-target-${target}`}
+                              variant="outline"
+                              className="border-slate-300 bg-white/70 text-[10px] dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200"
+                            >
+                              {target}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Card>
+            )}
 
             {graphData && (
               <Card className="p-4">

@@ -1,18 +1,20 @@
-import { RecipeEngineerAgent } from './agents/recipe-engineer-agent'
-import { ScalingCalculatorAgent } from './agents/scaling-calculator-agent'
-import { GraphBuilderAgent } from './agents/graph-builder-agent'
-import { QAValidatorAgent } from './agents/qa-validator-agent'
-import { UIDesignerAgent } from './agents/ui-designer-agent'
-import { OrchestrationResultSchema } from './agent-schemas'
+import { RecipeEngineerAgent } from './agents/recipe-engineer-agent.js'
+import { ScalingCalculatorAgent } from './agents/scaling-calculator-agent.js'
+import { GraphBuilderAgent } from './agents/graph-builder-agent.js'
+import { QAValidatorAgent } from './agents/qa-validator-agent.js'
+import { UIDesignerAgent } from './agents/ui-designer-agent.js'
+import { OrchestrationResultSchema } from './agent-schemas.js'
 
 export class AgentOrchestrator {
-  constructor() {
+  constructor(options = {}) {
     this.recipeEngineer = new RecipeEngineerAgent()
     this.scalingCalculator = new ScalingCalculatorAgent()
     this.graphBuilder = new GraphBuilderAgent()
     this.qaValidator = new QAValidatorAgent()
     this.uiDesigner = new UIDesignerAgent()
     this.history = []
+    this.onAgentStart = options.onAgentStart
+    this.onAgentComplete = options.onAgentComplete
   }
 
   async orchestrate(config) {
@@ -29,7 +31,8 @@ export class AgentOrchestrator {
             context: config.context,
           }
           return await this.recipeEngineer.execute(input)
-        }
+        },
+        0
       )
 
       if (!recipeResult) {
@@ -47,7 +50,8 @@ export class AgentOrchestrator {
             costMap: config.context?.costMap,
           }
           return await this.scalingCalculator.execute(input)
-        }
+        },
+        1
       )
 
       if (!calculationResult) {
@@ -64,7 +68,8 @@ export class AgentOrchestrator {
             includeCosts: config.includeCosts ?? true,
           }
           return await this.graphBuilder.execute(input)
-        }
+        },
+        2
       )
 
       if (!graphResult) {
@@ -80,7 +85,8 @@ export class AgentOrchestrator {
             graph: graphResult.graph,
           }
           return await this.qaValidator.execute(input)
-        }
+        },
+        3
       )
 
       if (!validationResult) {
@@ -96,7 +102,8 @@ export class AgentOrchestrator {
             validation: validationResult.validation,
           }
           return await this.uiDesigner.execute(input)
-        }
+        },
+        4
       )
 
       if (!uiResult) {
@@ -166,9 +173,17 @@ export class AgentOrchestrator {
     }
   }
 
-  async runAgent(agentName, executor) {
+  async runAgent(agentName, executor, index) {
     const startTime = Date.now()
     const timestamp = new Date().toISOString()
+
+    try {
+      if (typeof this.onAgentStart === 'function') {
+        this.onAgentStart({ agent: agentName, index })
+      }
+    } catch (callbackError) {
+      console.warn('Agent start callback error:', callbackError)
+    }
 
     try {
       const output = await executor()
@@ -183,6 +198,14 @@ export class AgentOrchestrator {
         status: 'success',
       })
 
+      try {
+        if (typeof this.onAgentComplete === 'function') {
+          this.onAgentComplete({ agent: agentName, index, status: 'success', duration })
+        }
+      } catch (callbackError) {
+        console.warn('Agent complete callback error:', callbackError)
+      }
+
       return output
     } catch (error) {
       const duration = Date.now() - startTime
@@ -196,6 +219,20 @@ export class AgentOrchestrator {
         status: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error',
       })
+
+      try {
+        if (typeof this.onAgentComplete === 'function') {
+          this.onAgentComplete({
+            agent: agentName,
+            index,
+            status: 'failed',
+            duration,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          })
+        }
+      } catch (callbackError) {
+        console.warn('Agent complete callback error:', callbackError)
+      }
 
       return null
     }

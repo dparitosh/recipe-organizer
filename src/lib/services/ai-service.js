@@ -1,4 +1,4 @@
-import { envService } from './env-service'
+import { envService } from './env-service.js'
 
 class AIService {
   constructor() {

@@ -15,55 +15,69 @@ This document describes the comprehensive testing and validation framework for t
 ### Test Files Location
 ```
 src/
-├── lib/
-│   ├── engines/
-│   │   ├── __tests__/
-│   │   │   ├── scaling.test.ts         # Scaling logic tests
-│   │   │   ├── yield.test.ts           # Yield calculation tests
-│   │   │   └── integration.test.ts     # Integration tests
-│   ├── validation/
-│   │   ├── rules.ts                    # Validation rules implementation
-│   │   └── __tests__/
-│   │       └── rules.test.ts           # Validation rules tests
+└── lib/
+    ├── engines/
+    │   └── __tests__/
+    │       ├── scaling.test.js         # Scaling logic tests
+    │       ├── yield.test.js           # Yield calculation tests
+    │       ├── uom-conversions.test.js # Unit conversion tests
+    │       └── integration.test.js     # End-to-end batch scenarios
+    ├── orchestration/
+    │   └── __tests__/orchestrator.e2e.test.js  # Agent pipeline orchestration
+    └── validation/
+        └── __tests__/rules.test.js     # Validation rules tests
+
+backend/
+└── tests/
+    └── services/test_graph_schema_service.py   # Graph schema service tests
 ```
 
 ## Running Tests
 
-### Basic Commands
+### Frontend (Vitest) Commands
 ```bash
-# Run all tests
+# Run all frontend unit and integration tests
 npm test
 
-# Run tests once (CI mode)
-npm run test:run
+# Run tests once in CI-friendly mode
+npx vitest run
 
 # Run tests with coverage report
-npm run test:coverage
+npx vitest run --coverage
 
-# Run tests with UI
-npm run test:ui
+# Launch the Vitest UI runner
+npx vitest --ui
 
 # Run tests in watch mode
-npm run test:watch
+npx vitest --watch
+```
+
+### Backend (Pytest) Commands
+```bash
+# Install backend development dependencies (from backend/)
+venv\Scripts\pip install -r requirements-dev.txt
+
+# Execute backend service tests
+venv\Scripts\python -m pytest
 ```
 
 ### Running Specific Test Suites
 ```bash
 # Run only scaling tests
-npx vitest src/lib/engines/__tests__/scaling.test.ts
+npx vitest src/lib/engines/__tests__/scaling.test.js
 
 # Run only validation tests
-npx vitest src/lib/validation/__tests__/rules.test.ts
+npx vitest src/lib/validation/__tests__/rules.test.js
 
 # Run only yield tests
-npx vitest src/lib/engines/__tests__/yield.test.ts
+npx vitest src/lib/engines/__tests__/yield.test.js
 ```
 
 ## Calculation Engine Tests
 
 ### Scaling Logic Tests
 
-**File**: `src/lib/engines/__tests__/scaling.test.ts`
+**File**: `src/lib/engines/__tests__/scaling.test.js`
 
 #### Test Coverage
 - ✅ Scale formulation by integer factors (2x, 10x, 100x)
@@ -86,8 +100,8 @@ npx vitest src/lib/engines/__tests__/yield.test.ts
 - Pilot batch (5kg with high precision)
 
 #### Example Test
-```typescript
-it('should scale formulation by factor of 2', () => {
+```javascript
+it('scales formulation by factor of 2', () => {
   const formulation = createMockFormulation()
   const result = scaleFormulation({
     formulation,
@@ -102,7 +116,7 @@ it('should scale formulation by factor of 2', () => {
 
 ### Yield Calculation Tests
 
-**File**: `src/lib/engines/__tests__/yield.test.ts`
+**File**: `src/lib/engines/__tests__/yield.test.js`
 
 #### Test Coverage
 - ✅ Calculate yield with no losses (100%)
@@ -127,8 +141,8 @@ it('should scale formulation by factor of 2', () => {
 - Low-yield warning scenario (<80%)
 
 #### Example Test
-```typescript
-it('should calculate yield with multiple loss factors', () => {
+```javascript
+it('calculates yield with multiple loss factors', () => {
   const formulation = createMockFormulation()
   const result = calculateYield({
     formulation,
@@ -147,7 +161,7 @@ it('should calculate yield with multiple loss factors', () => {
 
 ### Integration Tests
 
-**File**: `src/lib/engines/__tests__/integration.test.ts`
+**File**: `src/lib/engines/__tests__/integration.test.js`
 
 #### Test Coverage
 - ✅ End-to-end production scaling (100kg → 10,000kg)
@@ -167,9 +181,42 @@ it('should calculate yield with multiple loss factors', () => {
 - 10,000L industrial batch
 - Pilot batch with high precision
 
+### Orchestration End-to-End Tests
+
+**File**: `src/lib/orchestration/__tests__/orchestrator.e2e.test.js`
+
+#### Test Coverage
+- ✅ Full agent pipeline success path (recipe engineer → UI designer)
+- ✅ Failure reporting when downstream agents throw errors
+- ✅ Agent history bookkeeping and status propagation
+- ✅ Preservation of recipe, calculation, graph, validation, and UI outputs
+
+#### Key Scenarios
+- Ensures mocked agents hand off consistent domain objects through the orchestrator
+- Verifies failed runs surface validation flags and captured error messages
+
+
+## Backend Tests
+
+**Location**: `backend/tests/services/test_graph_schema_service.py`
+
+### Graph Schema Service Tests
+- ✅ GraphML export includes expected nodes, edges, and metadata keys
+- ✅ Edge payloads capture type, source, and target descriptors
+- ✅ SVG export emits core shapes, markers, and connection lines
+
+### Execution
+```bash
+cd backend
+venv\Scripts\pip install -r requirements-dev.txt
+venv\Scripts\python -m pytest
+```
+
+> Tip: rerun `venv\Scripts\pip install -r requirements-dev.txt` whenever new backend test dependencies are added.
+
 ## Validation Rules Tests
 
-**File**: `src/lib/validation/__tests__/rules.test.ts`
+**File**: `src/lib/validation/__tests__/rules.test.js`
 
 ### Quantity Validation
 - ✅ Validate positive quantities
@@ -255,24 +302,24 @@ it('should calculate yield with multiple loss factors', () => {
 ### Data Validation Rules
 
 #### 1. Non-Zero Quantity Rule
-```typescript
-validateQuantity(quantity: number): ValidationResult
+```javascript
+validateQuantity(quantity) -> ValidationResult
 ```
 - **Rule**: Quantity must be > 0
 - **Error Code**: `NON_POSITIVE_QUANTITY`
 - **Severity**: Error
 
 #### 2. Valid UoM Rule
-```typescript
-validateUnitOfMeasure(unit: string): ValidationResult
+```javascript
+validateUnitOfMeasure(unit) -> ValidationResult
 ```
 - **Rule**: Unit must be one of: kg, g, lb, oz, mg, t, L, ml, gal, fl_oz, kl, pcs, units, ea, dozen
 - **Error Code**: `INVALID_UOM`
 - **Severity**: Error
 
 #### 3. Numeric Yield Percentage Rule
-```typescript
-validateYieldPercentage(yieldPercentage: number): ValidationResult
+```javascript
+validateYieldPercentage(yieldPercentage) -> ValidationResult
 ```
 - **Rule**: Yield must be numeric between 0-100
 - **Error Code**: `YIELD_OUT_OF_RANGE`
@@ -282,8 +329,8 @@ validateYieldPercentage(yieldPercentage: number): ValidationResult
   - < 80%: Warning (`LOW_YIELD_WARNING`)
 
 #### 4. Rounding Rule
-```typescript
-validateRounding(value: number, maxDecimalPlaces: number): ValidationResult
+```javascript
+validateRounding(value, maxDecimalPlaces) -> ValidationResult
 ```
 - **Rule**: Value should not exceed max decimal places (default: 3)
 - **Warning Code**: `EXCESSIVE_PRECISION`
@@ -291,8 +338,8 @@ validateRounding(value: number, maxDecimalPlaces: number): ValidationResult
 - **Rounding Error**: Warn if difference > 0.001
 
 #### 5. Byproduct Mass Balance Rule
-```typescript
-validateByproductMassBalance(input, output, byproduct, tolerance): ValidationResult
+```javascript
+validateByproductMassBalance(input, output, byproduct, tolerance) -> ValidationResult
 ```
 - **Rule**: input = output + byproduct (±tolerance)
 - **Error Code**: `MASS_BALANCE_ERROR`
@@ -323,7 +370,7 @@ Snapshot tests capture expected output for complex scenarios and ensure consiste
 npx vitest -u
 
 # Update specific test file snapshots
-npx vitest src/lib/engines/__tests__/scaling.test.ts -u
+npx vitest src/lib/engines/__tests__/scaling.test.js -u
 ```
 
 ### When to Update Snapshots
@@ -347,7 +394,7 @@ npx vitest src/lib/engines/__tests__/scaling.test.ts -u
 
 ### Coverage Report
 ```bash
-npm run test:coverage
+npx vitest run --coverage
 ```
 
 Coverage reports are generated in:
@@ -373,15 +420,15 @@ All tests use realistic mock data:
 ### CI Pipeline Tests
 ```yaml
 test:
-  - npm run test:run
-  - npm run test:coverage
+  - npx vitest run
+  - npx vitest run --coverage
   - Upload coverage to CI platform
 ```
 
 ### Pre-commit Hooks (Recommended)
 ```bash
 # .husky/pre-commit
-npm run test:run
+npx vitest run
 npm run lint
 ```
 
@@ -389,7 +436,7 @@ npm run lint
 
 ### Run Single Test
 ```bash
-npx vitest -t "should scale formulation by factor of 2"
+npx vitest -t "scales formulation by factor of 2"
 ```
 
 ### Run Tests in Debug Mode
@@ -416,7 +463,7 @@ npx vitest --reporter=verbose
 1. Group related tests with `describe` blocks
 2. Use nested `describe` for sub-categories
 3. Keep test files near implementation files
-4. Maintain consistent naming: `*.test.ts`
+4. Maintain consistent naming: `*.test.js`
 
 ### Performance
 1. Avoid slow operations in tests
@@ -427,8 +474,8 @@ npx vitest --reporter=verbose
 ## Common Issues & Solutions
 
 ### Issue: Test Timeout
-**Solution**: Increase timeout in vitest.config.ts
-```typescript
+**Solution**: Increase timeout in vitest.config.js
+```javascript
 test: {
   testTimeout: 10000
 }
@@ -442,7 +489,7 @@ npx vitest -u
 
 ### Issue: Mock Not Working
 **Solution**: Clear mocks in afterEach
-```typescript
+```javascript
 afterEach(() => {
   vi.clearAllMocks()
 })
@@ -482,6 +529,6 @@ For questions or issues with tests:
 
 ---
 
-**Last Updated**: February 2024  
-**Version**: 1.0  
+**Last Updated**: November 2025  
+**Version**: 1.1  
 **Maintainer**: Development Team

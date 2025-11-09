@@ -1,5 +1,5 @@
-import { ValidationReportSchema } from '../agent-schemas'
-import { runPromptWithFallback } from '../utils/prompt-runner'
+import { ValidationReportSchema } from '../agent-schemas.js'
+import { requestJsonResponse } from '../utils/prompt-runner.js'
 
 export class QAValidatorAgent {
   name = 'QA Validator'
@@ -76,8 +76,12 @@ export class QAValidatorAgent {
 
     const promptText = promptSections.join('\n')
 
-    const responseText = await runPromptWithFallback(promptText, { temperature: 0.2, maxTokens: 1200 })
-    const parsed = JSON.parse(responseText)
+    const parsed = await requestJsonResponse(promptText, {
+      temperature: 0.15,
+      maxTokens: 1200,
+      systemPrompt: 'You are a QA validation agent. Return JSON only that conforms exactly to the specified schema.',
+      maxAttempts: 3,
+    })
     
     const validatedReport = ValidationReportSchema.parse(parsed.validation)
     

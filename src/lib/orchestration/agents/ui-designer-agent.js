@@ -1,5 +1,5 @@
-import { UIConfigSchema } from '../agent-schemas'
-import { runPromptWithFallback } from '../utils/prompt-runner'
+import { UIConfigSchema } from '../agent-schemas.js'
+import { requestJsonResponse } from '../utils/prompt-runner.js'
 
 export class UIDesignerAgent {
   name = 'UI Designer'
@@ -53,14 +53,12 @@ export class UIDesignerAgent {
 
     const promptText = promptSections.join('\n')
 
-    const response = await runPromptWithFallback(promptText, { temperature: 0.6, maxTokens: 1000 })
-
-    let parsed
-    try {
-      parsed = JSON.parse(response)
-    } catch (error) {
-      throw new Error('UI Designer agent returned invalid JSON.')
-    }
+    const parsed = await requestJsonResponse(promptText, {
+      temperature: 0.3,
+      maxTokens: 1100,
+      systemPrompt: 'You are a UI configuration generator. Produce JSON only with no additional commentary.',
+      maxAttempts: 3,
+    })
 
     const validatedConfig = UIConfigSchema.parse(parsed.uiConfig)
 

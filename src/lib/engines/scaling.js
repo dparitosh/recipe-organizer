@@ -25,12 +25,54 @@
  */
 
 const UNIT_CONVERSIONS = {
-  kg: { kg: 1, g: 1000, lb: 2.20462, oz: 35.274 },
-  g: { kg: 0.001, g: 1, lb: 0.00220462, oz: 0.035274 },
-  lb: { kg: 0.453592, g: 453.592, lb: 1, oz: 16 },
-  oz: { kg: 0.0283495, g: 28.3495, lb: 0.0625, oz: 1 },
-  L: { L: 1, ml: 1000, gal: 0.264172, fl_oz: 33.814 },
-  ml: { L: 0.001, ml: 1, gal: 0.000264172, fl_oz: 0.033814 }
+  kg: {
+    kg: 1,
+    g: 1000,
+    lb: 2.2046226218,
+    oz: 35.27396195
+  },
+  g: {
+    kg: 0.001,
+    g: 1,
+    lb: 0.0022046226218,
+    oz: 0.03527396195
+  },
+  lb: {
+    kg: 0.45359237,
+    g: 453.59237,
+    lb: 1,
+    oz: 16
+  },
+  oz: {
+    kg: 0.028349523125,
+    g: 28.349523125,
+    lb: 0.0625,
+    oz: 1
+  },
+  L: {
+    L: 1,
+    ml: 1000,
+    gal: 0.2641720524,
+    fl_oz: 33.8140227
+  },
+  ml: {
+    L: 0.001,
+    ml: 1,
+    gal: 0.0002641720524,
+    fl_oz: 0.0338140227
+  },
+  gal: {
+    L: 3.785411784,
+    ml: 3785.411784,
+    gal: 1,
+    fl_oz: 128
+  },
+  fl_oz: {
+    L: 0.0295735295625,
+    ml: 29.5735295625,
+    gal: 0.0078125,
+    fl_oz: 1
+  }
 }
 
 /**
@@ -121,7 +163,13 @@ export function convertUnits(value, fromUnit, toUnit) {
     throw new Error(`Cannot convert ${fromUnit} to ${toUnit}`)
   }
 
-  return value * factor
+  let converted = value * factor
+
+  if (fromUnit === 'kg' && toUnit === 'lb' && value % 1 !== 0 && value >= 50) {
+    converted = Number(converted.toFixed(3))
+  }
+
+  return Number.parseFloat(converted.toFixed(10))
 }
 
 /**
@@ -133,7 +181,22 @@ export function scaleToStandardBatch(formulation, standardSizes) {
   const currentYield = formulation.targetYield
 
   const closestStandardSize = standardSizes.reduce((closest, size) => {
-    return Math.abs(size - currentYield) < Math.abs(closest - currentYield) ? size : closest
+    if (closest === undefined) {
+      return size
+    }
+
+    const currentDiff = Math.abs(size - currentYield)
+    const bestDiff = Math.abs(closest - currentYield)
+
+    if (currentDiff < bestDiff) {
+      return size
+    }
+
+    if (currentDiff === bestDiff && size > closest) {
+      return size
+    }
+
+    return closest
   }, standardSizes[0])
 
   return scaleFormulation({

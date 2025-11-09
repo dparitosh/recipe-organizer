@@ -1,0 +1,97 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Calculation Engine - Scaling Snapshot Tests > should match snapshot for 10x scale 1`] = `
+{
+  "ingredients": [
+    {
+      "name": "Orange Juice (Fresh)",
+      "quantity": 855,
+      "unit": "kg",
+    },
+    {
+      "name": "Cane Sugar",
+      "quantity": 123,
+      "unit": "kg",
+    },
+    {
+      "name": "Citric Acid",
+      "quantity": 15,
+      "unit": "kg",
+    },
+    {
+      "name": "Ascorbic Acid (Vitamin C)",
+      "quantity": 7,
+      "unit": "kg",
+    },
+  ],
+  "scaleFactor": 10,
+  "targetYield": 1000,
+  "warnings": [],
+}
+`;
+
+exports[`Calculation Engine - Scaling Snapshot Tests > should match snapshot for 1000L batch with rounding 1`] = `
+{
+  "ingredients": [
+    {
+      "name": "Orange Juice (Fresh)",
+      "originalQuantity": 8550,
+      "percentage": 85.5,
+      "roundedQuantity": 8550,
+    },
+    {
+      "name": "Cane Sugar",
+      "originalQuantity": 1230,
+      "percentage": 12.3,
+      "roundedQuantity": 1230,
+    },
+    {
+      "name": "Citric Acid",
+      "originalQuantity": 150,
+      "percentage": 1.5,
+      "roundedQuantity": 150,
+    },
+    {
+      "name": "Ascorbic Acid (Vitamin C)",
+      "originalQuantity": 70,
+      "percentage": 0.7000000000000001,
+      "roundedQuantity": 70,
+    },
+  ],
+  "scaleFactor": 100,
+  "targetYield": 10000,
+  "warnings": [],
+}
+`;
+
+exports[`Calculation Engine - Scaling Snapshot Tests > should match snapshot for pilot batch (5kg) 1`] = `
+{
+  "ingredients": [
+    {
+      "name": "Orange Juice (Fresh)",
+      "quantity": 4.28,
+      "unit": "kg",
+    },
+    {
+      "name": "Cane Sugar",
+      "quantity": 0.62,
+      "unit": "kg",
+    },
+    {
+      "name": "Citric Acid",
+      "quantity": 0.08,
+      "unit": "kg",
+    },
+    {
+      "name": "Ascorbic Acid (Vitamin C)",
+      "quantity": 0.03,
+      "unit": "kg",
+    },
+  ],
+  "scaleFactor": 0.05,
+  "targetYield": 5,
+  "warnings": [
+    "Scale factor very small (<0.1) - accuracy may be compromised",
+  ],
+}
+`;

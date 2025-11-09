@@ -1,0 +1,53 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Yield Calculation - Snapshot Tests > should match snapshot for complex yield calculation with multiple losses 1`] = `
+{
+  "actualYield": 202.774,
+  "lossBreakdown": {
+    "evaporationLoss": 14.872000000000002,
+    "moistureLoss": 35.178000000000004,
+    "processLoss": 24.310000000000002,
+    "total": 83.22600000000001,
+    "waste": 8.866,
+  },
+  "theoreticalYield": 286,
+  "unit": "kg",
+  "warnings": [
+    "Yield is below 80% - consider reviewing process efficiency",
+    "Total losses exceed 25% - high waste detected",
+  ],
+  "yieldPercentage": 70.89999999999999,
+}
+`;
+
+exports[`Yield Calculation - Snapshot Tests > should match snapshot for high-efficiency process 1`] = `
+{
+  "actualYield": 275.704,
+  "lossBreakdown": {
+    "evaporationLoss": 4.29,
+    "moistureLoss": 0,
+    "processLoss": 6.006,
+    "total": 10.296,
+    "waste": 0,
+  },
+  "warnings": [],
+  "yieldPercentage": 96.4,
+}
+`;
+
+exports[`Yield Calculation - Snapshot Tests > should match snapshot for low-yield warning scenario 1`] = `
+{
+  "lossBreakdown": {
+    "evaporationLoss": 0,
+    "moistureLoss": 28.6,
+    "processLoss": 51.48,
+    "total": 94.38,
+    "waste": 14.3,
+  },
+  "warnings": [
+    "Yield is below 80% - consider reviewing process efficiency",
+    "Total losses exceed 25% - high waste detected",
+  ],
+  "yieldPercentage": 67,
+}
+`;

@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Unit of Measure Conversions > UoM Conversion Snapshot Tests > should match snapshot for common production conversions 1`] = `
+{
+  "1000L_to_gal": 264.1720524,
+  "1000L_to_ml": 1000000,
+  "100kg_to_g": 100000,
+  "100kg_to_lb": 220.46226218,
+  "500ml_to_L": 0.5,
+  "5lb_to_kg": 2.26796185,
+}
+`;
+
+exports[`Unit of Measure Conversions > UoM Conversion Snapshot Tests > should match snapshot for recipe scaling conversions 1`] = `
+{
+  "citric_lb": 3.3069339327,
+  "sugar_lb": 27.1168582481,
+  "vitamin_lb": 1.5432358353,
+  "water_lb": 188.495,
+}
+`;

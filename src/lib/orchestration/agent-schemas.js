@@ -42,9 +42,9 @@ export const CalculationSchema = z.object({
       originalPercentage: z.number(),
       scaledQuantity: z.number(),
       scaledUnit: z.string(),
-      volumeEquivalent: z.number().optional(),
-      cost: z.number().optional(),
-      density: z.number().optional(),
+  volumeEquivalent: z.number().nullable().optional(),
+  cost: z.number().nullable().optional(),
+  density: z.number().nullable().optional(),
     })
   ),
   costs: z.object({

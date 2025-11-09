@@ -1,5 +1,5 @@
-import { CalculationSchema } from '../agent-schemas'
-import { runPromptWithFallback } from '../utils/prompt-runner'
+import { CalculationSchema } from '../agent-schemas.js'
+import { requestJsonResponse } from '../utils/prompt-runner.js'
 
 export class ScalingCalculatorAgent {
   name = 'Scaling Calculator'
@@ -83,8 +83,12 @@ export class ScalingCalculatorAgent {
 
     const promptText = promptSections.join('\n')
 
-    const responseText = await runPromptWithFallback(promptText, { temperature: 0.3, maxTokens: 1400 })
-    const parsed = JSON.parse(responseText)
+    const parsed = await requestJsonResponse(promptText, {
+      temperature: 0.2,
+      maxTokens: 1400,
+      systemPrompt: 'You are a scaling calculator that must return JSON only. Ensure the data matches the schema exactly.',
+      maxAttempts: 3,
+    })
     
     const validatedCalculation = CalculationSchema.parse(parsed.calculation)
     

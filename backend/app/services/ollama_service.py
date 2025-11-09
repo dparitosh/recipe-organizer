@@ -10,7 +10,10 @@ class OllamaService:
     def __init__(self, base_url: str = "http://localhost:11434", model: str = "llama2"):
         self.base_url = base_url.rstrip('/')
         self.model = model
-        self.timeout = aiohttp.ClientTimeout(total=60)
+        # Disable per-request timeout to allow long-running Ollama generations during
+        # exploratory testing or heavy models. Callers can still rely on upstream HTTP
+        # timeouts or cancellation if needed.
+        self.timeout = aiohttp.ClientTimeout(total=None)
     
     async def check_health(self) -> bool:
         try:
@@ -32,30 +35,34 @@ class OllamaService:
             full_prompt = prompt
             if system_prompt:
                 full_prompt = f"{system_prompt}\n\n{prompt}"
-            
+
             payload = {
                 "model": self.model,
                 "prompt": full_prompt,
                 "stream": False,
                 "options": {
                     "temperature": temperature,
-                    "num_predict": max_tokens
-                }
+                    "num_predict": max_tokens,
+                },
             }
-            
+
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
                 async with session.post(
                     f"{self.base_url}/api/generate",
-                    json=payload
+                    json=payload,
                 ) as response:
                     if response.status == 200:
                         result = await response.json()
                         return result.get("response", "")
-                    else:
-                        error_text = await response.text()
-                        raise Exception(f"OLLAMA API error: {error_text}")
-        
-        except Exception as e:
+                    if response.status == 504:
+                        raise asyncio.TimeoutError("OLLAMA request timed out")
+                    error_text = await response.text()
+                    raise Exception(f"OLLAMA API error: {error_text}")
+
+        except asyncio.TimeoutError as exc:
+            logger.error("OLLAMA generation timed out", exc_info=True)
+            raise
+        except Exception as exc:
             logger.error("OLLAMA generation failed", exc_info=True)
             raise
     

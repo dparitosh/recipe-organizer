@@ -1,11 +1,11 @@
-import { afterEach, vi } from 'vitest'
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 
-afterEach(() => {
-  vi.clearAllMocks()
-})
+if (!global.ResizeObserver) {
+  global.ResizeObserver = ResizeObserverMock
+}
 
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}))
+export {}

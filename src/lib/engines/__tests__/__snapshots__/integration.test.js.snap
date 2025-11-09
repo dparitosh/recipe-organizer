@@ -1,0 +1,124 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Calculation Engine - Integration Tests > Production Scenario Snapshot Tests > should match snapshot for 10,000L industrial batch 1`] = `
+{
+  "batch": {
+    "scaleFactor": 100,
+    "targetQuantity": 10000,
+  },
+  "ingredients": [
+    {
+      "name": "Fresh Orange Juice",
+      "quantity": 8550,
+      "roundedQuantity": 8550,
+    },
+    {
+      "name": "Cane Sugar",
+      "quantity": 1230,
+      "roundedQuantity": 1230,
+    },
+    {
+      "name": "Citric Acid",
+      "quantity": 150,
+      "roundedQuantity": 150,
+    },
+    {
+      "name": "Ascorbic Acid",
+      "quantity": 70,
+      "roundedQuantity": 70,
+    },
+  ],
+  "yield": {
+    "actualYield": 9410,
+    "lossBreakdown": {
+      "evaporationLoss": 180.00000000000003,
+      "moistureLoss": 0,
+      "processLoss": 320,
+      "total": 590,
+      "waste": 90.00000000000001,
+    },
+    "yieldPercentage": 94.1,
+  },
+}
+`;
+
+exports[`Calculation Engine - Integration Tests > Production Scenario Snapshot Tests > should match snapshot for 1000L production batch with losses 1`] = `
+{
+  "batch": {
+    "scaleFactor": 10,
+    "targetQuantity": 1000,
+  },
+  "ingredients": [
+    {
+      "name": "Fresh Orange Juice",
+      "percentage": 85.5,
+      "quantity": 855,
+      "unit": "kg",
+    },
+    {
+      "name": "Cane Sugar",
+      "percentage": 12.3,
+      "quantity": 123,
+      "unit": "kg",
+    },
+    {
+      "name": "Citric Acid",
+      "percentage": 1.5,
+      "quantity": 15,
+      "unit": "kg",
+    },
+    {
+      "name": "Ascorbic Acid",
+      "percentage": 0.7000000000000001,
+      "quantity": 7,
+      "unit": "kg",
+    },
+  ],
+  "warnings": [],
+  "yield": {
+    "actualYield": 915,
+    "theoreticalYield": 1000,
+    "totalLoss": 85,
+    "yieldPercentage": 91.5,
+  },
+}
+`;
+
+exports[`Calculation Engine - Integration Tests > Production Scenario Snapshot Tests > should match snapshot for pilot batch with high precision 1`] = `
+{
+  "batch": {
+    "scaleFactor": 0.05,
+    "targetQuantity": 5,
+  },
+  "ingredients": [
+    {
+      "name": "Fresh Orange Juice",
+      "quantity": 4.275,
+      "unit": "kg",
+    },
+    {
+      "name": "Cane Sugar",
+      "quantity": 0.615,
+      "unit": "kg",
+    },
+    {
+      "name": "Citric Acid",
+      "quantity": 0.075,
+      "unit": "kg",
+    },
+    {
+      "name": "Ascorbic Acid",
+      "quantity": 0.035,
+      "unit": "kg",
+    },
+  ],
+  "scalingWarnings": [
+    "Scale factor very small (<0.1) - accuracy may be compromised",
+  ],
+  "yield": {
+    "actualYield": 4.365,
+    "warnings": [],
+    "yieldPercentage": 87.3,
+  },
+}
+`;
