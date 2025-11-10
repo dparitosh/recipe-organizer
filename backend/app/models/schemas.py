@@ -77,6 +77,12 @@ class FormulationCreate(BaseModel):
     status: Literal["draft", "review", "approved", "archived"] = "draft"
     ingredients: List[IngredientInput] = []
 
+class FormulationUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    status: Optional[Literal["draft", "review", "approved", "archived"]] = None
+    ingredients: Optional[List[IngredientInput]] = None
+
 class FormulationResponse(BaseModel):
     id: str
     name: str

@@ -138,6 +138,36 @@ async def quick_ingest(payload: FDCQuickIngestRequest, request: Request) -> FDCI
     return await _perform_ingestion(api_key, fdc_ids, fdc_service, neo4j_client)
 
 
+@router.get("/foods", summary="List foods ingested into Neo4j from FDC")
+async def list_ingested_foods(
+    request: Request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = 25,
+    include_nutrients: bool = False,
+) -> dict:
+    _, neo4j_client = _get_services(request)
+    fdc_service = getattr(request.app.state, "fdc_service", None)
+
+    if fdc_service is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="FDC service unavailable")
+
+    try:
+        return fdc_service.list_ingested_foods(
+            neo4j_client,
+            search=search,
+            page=page,
+            page_size=page_size,
+            include_nutrients=include_nutrients,
+        )
+    except Exception as exc:  # pragma: no cover - defensive logging
+        logger.exception("Failed to list ingested FDC foods")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list FDC foods: {exc}",
+        )
+
+
 async def _perform_ingestion(
     api_key: str,
     fdc_ids: List[int],

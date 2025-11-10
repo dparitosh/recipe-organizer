@@ -3,8 +3,8 @@
  * @typedef {import('./formulation').Ingredient} Ingredient
  */
 
-/** @type {readonly ['base','flavor','preservative','sweetener','colorant','other']} */
-export const INGREDIENT_FUNCTIONS = ['base','flavor','preservative','sweetener','colorant','other']
+/** @type {readonly ['unspecified','base','flavor','preservative','sweetener','colorant','other']} */
+export const INGREDIENT_FUNCTIONS = ['unspecified','base','flavor','preservative','sweetener','colorant','other']
 
 /** @type {readonly ['concentrate','final_product','intermediate']} */
 export const FORMULATION_TYPES = ['concentrate','final_product','intermediate']

@@ -1,0 +1,75 @@
+{
+  "$schema": "../schemas/graphrag-sources.schema.json",
+  "version": "0.1.0",
+  "generated_at": "2025-11-10T00:00:00Z",
+  "sources": [
+    {
+      "id": "formulations",
+      "type": "structured",
+      "description": "Canonical formulations and ingredient relationships stored in Neo4j",
+      "enabled": true,
+      "ingestion": {
+        "driver": "neo4j",
+        "query": "MATCH (f:Formulation)-[r:CONTAINS]->(i:Food) RETURN f, collect({ingredient: i, rel: r}) as ingredients"
+      },
+      "chunking": {
+        "strategy": "single-node",
+        "max_items": 25,
+        "metadata_keys": ["status", "created_at", "updated_at"]
+      }
+    },
+    {
+      "id": "fdc_foods",
+      "type": "structured",
+      "description": "USDA FoodData Central entries and nutrients",
+      "enabled": true,
+      "ingestion": {
+        "driver": "neo4j",
+        "query": "MATCH (f:FDCFood) OPTIONAL MATCH (f)-[r:HAS_NUTRIENT]->(n:Nutrient) RETURN f, collect({nutrient: n, rel: r}) as nutrients"
+      },
+      "chunking": {
+        "strategy": "single-node",
+        "metadata_keys": ["data_type", "brand", "category"],
+        "notes": "Limit nutrient list to top 10 by nutrient_rank"
+      }
+    },
+    {
+      "id": "orchestration_playbooks",
+      "type": "unstructured",
+      "description": "Markdown documentation for orchestration workflows",
+      "enabled": true,
+      "ingestion": {
+        "driver": "filesystem",
+        "paths": [
+          "../CAP-01_ORCHESTRATION_PIPELINE.md",
+          "../BACKEND_IMPLEMENTATION_SUMMARY.md"
+        ],
+        "include_glob": "../**/*.md"
+      },
+      "chunking": {
+        "strategy": "sliding-window",
+        "token_target": 450,
+        "token_overlap": 50,
+        "metadata_keys": ["heading", "breadcrumb"]
+      }
+    },
+    {
+      "id": "qa_reports",
+      "type": "unstructured",
+      "description": "Quality assurance lab notebooks and reports",
+      "enabled": false,
+      "ingestion": {
+        "driver": "s3",
+        "bucket": "s3://corp-data-qa",
+        "prefix": "reports/",
+        "requires_redaction": true
+      },
+      "chunking": {
+        "strategy": "ocr-sliding",
+        "token_target": 300,
+        "token_overlap": 20,
+        "metadata_keys": ["report_id", "run_date", "owner"]
+      }
+    }
+  ]
+}

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -11,39 +12,48 @@ import { INGREDIENT_FUNCTIONS } from '@/lib/schemas/formulation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export const FormulationEditor = ({ formulation, onChange }) => {
-  const [newIngredient, setNewIngredient] = useState({ function: 'base' });
+  const [newIngredient, setNewIngredient] = useState({ function: 'unspecified', percentage: 0, cost_per_kg: 0 });
 
-  const totalPercentage = formulation.ingredients.reduce((sum, ing) => sum + (ing.percentage || 0), 0);
+  const totalPercentage = useMemo(
+    () => formulation.ingredients.reduce((sum, ing) => sum + (Number(ing.percentage) || 0), 0),
+    [formulation.ingredients]
+  );
 
   const handleFormulationChange = (field, value) => {
     onChange({
       ...formulation,
       [field]: value,
-      updatedAt: new Date(),
     });
   };
 
-  const handleIngredientChange = (index, field, value) => {
+  const handleIngredientChange = (index, field, rawValue) => {
     const updated = [...formulation.ingredients];
+    const value = field === 'percentage' || field === 'cost_per_kg'
+      ? Number.isNaN(parseFloat(rawValue)) ? 0 : parseFloat(rawValue)
+      : rawValue;
+
     updated[index] = { ...updated[index], [field]: value };
     handleFormulationChange('ingredients', updated);
   };
 
   const addIngredient = () => {
-    if (!newIngredient.name || !newIngredient.quantity) return;
+    if (!newIngredient.name?.trim()) {
+      return;
+    }
+
+    const safePercentage = Number.isNaN(parseFloat(newIngredient.percentage)) ? 0 : parseFloat(newIngredient.percentage);
+    const safeCost = Number.isNaN(parseFloat(newIngredient.cost_per_kg)) ? 0 : parseFloat(newIngredient.cost_per_kg);
 
     const ingredient = {
       id: `ing-${Date.now()}`,
-      materialId: newIngredient.materialId || `MAT-${Date.now()}`,
-      name: newIngredient.name,
-      quantity: newIngredient.quantity || 0,
-      unit: newIngredient.unit || 'kg',
-      percentage: newIngredient.percentage || 0,
-      function: newIngredient.function || 'other',
+      name: newIngredient.name.trim(),
+      percentage: safePercentage,
+      cost_per_kg: safeCost,
+      function: newIngredient.function || 'unspecified',
     };
 
     handleFormulationChange('ingredients', [...formulation.ingredients, ingredient]);
-    setNewIngredient({ function: 'base' });
+    setNewIngredient({ function: 'unspecified', percentage: 0, cost_per_kg: 0 });
   };
 
   const removeIngredient = (index) => {
@@ -75,27 +85,6 @@ export const FormulationEditor = ({ formulation, onChange }) => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="formula-version">Version</Label>
-            <Input
-              id="formula-version"
-              value={formulation.version}
-              onChange={(e) => handleFormulationChange('version', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="formula-type">Type</Label>
-            <Select value={formulation.type} onValueChange={(value) => handleFormulationChange('type', value)}>
-              <SelectTrigger id="formula-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="concentrate">Concentrate</SelectItem>
-                <SelectItem value="final_product">Final Product</SelectItem>
-                <SelectItem value="intermediate">Intermediate</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="formula-status">Status</Label>
             <Select value={formulation.status} onValueChange={(value) => handleFormulationChange('status', value)}>
               <SelectTrigger id="formula-status">
@@ -109,6 +98,15 @@ export const FormulationEditor = ({ formulation, onChange }) => {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2 col-span-2">
+            <Label htmlFor="formula-description">Description</Label>
+            <Textarea
+              id="formula-description"
+              value={formulation.description || ''}
+              onChange={(e) => handleFormulationChange('description', e.target.value)}
+              rows={3}
+            />
+          </div>
         </div>
 
         <Separator />
@@ -118,7 +116,7 @@ export const FormulationEditor = ({ formulation, onChange }) => {
           <ScrollArea className="h-[400px] pr-4">
             <div className="space-y-3">
               {formulation.ingredients.map((ingredient, idx) => (
-                <Card key={ingredient.id} className="p-4">
+                <Card key={ingredient.id ?? `${ingredient.name}-${idx}`} className="p-4">
                   <div className="grid grid-cols-6 gap-3 items-center">
                     <div className="col-span-2">
                       <Input
@@ -130,17 +128,17 @@ export const FormulationEditor = ({ formulation, onChange }) => {
                     <div>
                       <Input
                         type="number"
-                        placeholder="Qty"
-                        value={ingredient.quantity}
-                        onChange={(e) => handleIngredientChange(idx, 'quantity', parseFloat(e.target.value))}
+                        placeholder="%"
+                        value={ingredient.percentage}
+                        onChange={(e) => handleIngredientChange(idx, 'percentage', e.target.value)}
                       />
                     </div>
                     <div>
                       <Input
                         type="number"
-                        placeholder="%"
-                        value={ingredient.percentage}
-                        onChange={(e) => handleIngredientChange(idx, 'percentage', parseFloat(e.target.value))}
+                        placeholder="Cost/kg"
+                        value={ingredient.cost_per_kg ?? 0}
+                        onChange={(e) => handleIngredientChange(idx, 'cost_per_kg', e.target.value)}
                       />
                     </div>
                     <div>
@@ -182,21 +180,21 @@ export const FormulationEditor = ({ formulation, onChange }) => {
                 />
               </div>
               <div>
-                <Label className="text-xs">Quantity</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={newIngredient.quantity || ''}
-                  onChange={(e) => setNewIngredient({ ...newIngredient, quantity: parseFloat(e.target.value) })}
-                />
-              </div>
-              <div>
                 <Label className="text-xs">Percentage</Label>
                 <Input
                   type="number"
                   placeholder="0"
-                  value={newIngredient.percentage || ''}
-                  onChange={(e) => setNewIngredient({ ...newIngredient, percentage: parseFloat(e.target.value) })}
+                  value={newIngredient.percentage ?? ''}
+                  onChange={(e) => setNewIngredient({ ...newIngredient, percentage: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Cost/kg</Label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={newIngredient.cost_per_kg ?? ''}
+                  onChange={(e) => setNewIngredient({ ...newIngredient, cost_per_kg: parseFloat(e.target.value) || 0 })}
                 />
               </div>
               <div>

@@ -125,6 +125,34 @@ class FDCService {
 		})
 	}
 
+	async listStoredFoods(options = {}) {
+		const params = new URLSearchParams()
+		if (options.search) {
+			params.set('search', options.search)
+		}
+		if (options.page) {
+			params.set('page', String(options.page))
+		}
+		if (options.pageSize) {
+			params.set('page_size', String(options.pageSize))
+		}
+		if (options.includeNutrients) {
+			params.set('include_nutrients', 'true')
+		}
+
+		const query = params.toString()
+		const path = `/api/fdc/foods${query ? `?${query}` : ''}`
+		const result = await this._request(path, { method: 'GET' })
+
+		return {
+			items: result?.items || [],
+			page: result?.page || options.page || 1,
+			pageSize: result?.page_size || options.pageSize || FDC_CONSTANTS.DEFAULT_PAGE_SIZE,
+			total: result?.total || 0,
+			hasNextPage: Boolean(result?.has_next_page),
+		}
+	}
+
 	async cacheFoodInNeo4j(foodData, options = {}) {
 		if (!foodData || !foodData.fdcId) {
 			throw new Error('Food data must include an FDC ID')

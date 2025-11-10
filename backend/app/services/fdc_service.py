@@ -213,3 +213,109 @@ class FDCService:
             "nutrients_linked": len(nutrients_payload),
             "categories_linked": 1,
         }
+
+    def list_ingested_foods(
+        self,
+        neo4j_client: "Neo4jClient",
+        *,
+        search: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 25,
+        include_nutrients: bool = False,
+    ) -> Dict[str, Any]:
+        """Fetch paginated foods ingested into Neo4j from the FDC data set."""
+
+        page = max(page, 1)
+        page_size = max(1, min(page_size, 100))
+        offset = (page - 1) * page_size
+        search_term = (search or "").strip().lower()
+
+        base_params = {
+            "search": search_term,
+        }
+
+        match_filter = (
+            "WHERE $search = '' "
+            "OR toLower(f.description) CONTAINS $search "
+            "OR toLower(coalesce(f.brandOwner, '')) CONTAINS $search "
+            "OR toLower(coalesce(f.foodCategory, '')) CONTAINS $search"
+        )
+
+        query_params = {
+            **base_params,
+            "skip": offset,
+            "limit": page_size,
+            "include_nutrients": include_nutrients,
+        }
+
+        data_query = (
+            "MATCH (f:Food)\n"
+            f"{match_filter}\n"
+            "WITH f\n"
+            "ORDER BY coalesce(f.description, '') ASC, f.fdcId\n"
+            "SKIP $skip\n"
+            "LIMIT $limit\n"
+            "RETURN f {\n"
+            "    .fdcId,\n"
+            "    .description,\n"
+            "    .dataType,\n"
+            "    .brandOwner,\n"
+            "    .brandName,\n"
+            "    .foodCategory,\n"
+            "    .servingSize,\n"
+            "    .servingSizeUnit,\n"
+            "    .ingredients,\n"
+            "    .publicationDate,\n"
+            "    .updatedAt,\n"
+            "    .dataSource\n"
+            "} AS food,\n"
+            "CASE\n"
+            "    WHEN $include_nutrients\n"
+            "    THEN [(f)-[rel:CONTAINS_NUTRIENT]->(n:Nutrient) |\n"
+            "        {\n"
+            "            nutrientId: n.nutrientId,\n"
+            "            nutrientName: n.nutrientName,\n"
+            "            unitName: n.unitName,\n"
+            "            rank: n.rank,\n"
+            "            value: rel.value,\n"
+            "            unit: rel.unit,\n"
+            "            derivationCode: rel.derivationCode\n"
+            "        }\n"
+            "    ]\n"
+            "    ELSE []\n"
+            "END AS nutrients"
+        )
+
+        records = neo4j_client.execute_query(data_query, query_params)
+
+        def _normalize(raw: Any) -> Dict[str, Any]:
+            if isinstance(raw, dict):
+                return dict(raw)
+            try:
+                return dict(raw)
+            except TypeError:
+                return {}
+
+        items: List[Dict[str, Any]] = []
+        for record in records:
+            food = _normalize(record.get("food"))
+            if include_nutrients:
+                food["nutrients"] = record.get("nutrients", []) or []
+            items.append(food)
+
+        total_query = (
+            "MATCH (f:Food)\n"
+            f"{match_filter}\n"
+            "RETURN count(f) AS total"
+        )
+
+        total_records = neo4j_client.execute_query(total_query, base_params)
+        total = total_records[0].get("total", 0) if total_records else 0
+
+        return {
+            "items": items,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "has_next_page": offset + len(items) < total,
+        }
