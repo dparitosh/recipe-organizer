@@ -1,16 +1,28 @@
 # Formulation Graph Studio - Backend API
 
-Modern Python FastAPI backend for Food & Beverage formulation management platform.
+Modern Python FastAPI backend for Food & Beverage formulation management platform with Neo4j, Ollama AI, USDA FDC integration, and GraphRAG knowledge retrieval.
+
+## Current Status
+
+✅ **Production Ready**
+- All services operational (Neo4j, Ollama, FDC)
+- GraphRAG ingestion and retrieval active
+- 33/33 tests passing
+- FDC nutrition data ingestion working
+- Embedding generation via Ollama
+- Knowledge chunk storage in Neo4j
 
 ## Features
 
 - **FastAPI Framework**: Modern, fast web framework with automatic OpenAPI documentation
-- **OLLAMA AI Integration**: Local AI processing with OLLAMA for natural language queries and Cypher generation
+- **Ollama AI Integration**: Local AI processing for natural language queries, Cypher generation, and embeddings
 - **Neo4j Graph Database**: Official Neo4j Python driver for graph data management
+- **USDA FDC Integration**: Food nutrition data ingestion and retrieval
+- **GraphRAG Retrieval**: Hybrid search (vector + Cypher) for knowledge chunks
 - **Pydantic Validation**: Comprehensive request/response validation with OpenAPI standards
 - **Async Operations**: Full async/await support for optimal performance
 - **Service Health Monitoring**: Real-time health checks for all integrated services
-- **Graceful Degradation**: Automatic fallback from online to offline mode when services unavailable
+- **Graceful Degradation**: Automatic fallback when services unavailable
 
 ## Architecture
 
@@ -44,12 +56,14 @@ backend/
 ### Required Services
 
 1. **Python 3.10+**
-2. **OLLAMA** - Local AI service
+2. **Ollama** - Local AI service
    - Download: https://ollama.ai/
-   - Install and pull model: `ollama pull llama3`
+   - Pull models: `ollama pull llama3:latest` and `ollama pull nomic-embed-text:latest`
 3. **Neo4j Database** - Graph database
-   - Cloud: Neo4j Aura (https://neo4j.com/cloud/aura/)
+   - Cloud: Neo4j Aura (https://neo4j.com/cloud/aura/) - Recommended
    - Local: Neo4j Desktop or Docker
+4. **USDA FDC API Key** - Nutrition data
+   - Register: https://fdc.nal.usda.gov/api-key-signup.html
 
 ## Installation
 
@@ -81,27 +95,57 @@ pip install -r requirements-dev.txt  # tooling for testing/linting
 
 ### 4. Configure Environment
 
+Create `.env` file or `env.local.json` (JSON takes precedence):
+
+**Option A: `.env` file**
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` file with your configuration:
+Edit `.env`:
 
 ```env
-# Neo4j Configuration
-NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
+# Neo4j Configuration (REQUIRED)
+NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 NEO4J_DATABASE=neo4j
 
-# OLLAMA Configuration
+# Ollama Configuration (REQUIRED)
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama2
+OLLAMA_MODEL=llama3:latest
+OLLAMA_EMBED_MODEL=nomic-embed-text:latest
+OLLAMA_TIMEOUT=60
+OLLAMA_EMBED_BATCH_SIZE=16
+
+# USDA FDC API (REQUIRED)
+FDC_API_KEY=your-fdc-api-key
+FDC_API_BASE_URL=https://api.nal.usda.gov/fdc/v1
+FDC_REQUEST_TIMEOUT=30
 
 # Server Configuration
 HOST=0.0.0.0
 PORT=8000
 DEBUG=False
+
+# GraphRAG Configuration
+GRAPHRAG_CHUNK_INDEX_NAME=knowledge_chunks
+GRAPHRAG_CACHE_MAX_ENTRIES=64
+GRAPHRAG_CACHE_TTL_SECONDS=120
+GRAPHRAG_CHUNK_CONTENT_MAX_CHARS=2000
+```
+
+**Option B: `env.local.json` (recommended, overrides .env)**
+```json
+{
+  "NEO4J_URI": "neo4j+s://xxxxx.databases.neo4j.io",
+  "NEO4J_USER": "neo4j",
+  "NEO4J_PASSWORD": "your-password",
+  "OLLAMA_BASE_URL": "http://localhost:11434",
+  "OLLAMA_MODEL": "llama3:latest",
+  "OLLAMA_EMBED_MODEL": "nomic-embed-text:latest",
+  "FDC_API_KEY": "your-fdc-api-key"
+}
 ```
 
 ## Running the Server
@@ -135,21 +179,35 @@ Once the server is running, access the interactive API documentation:
 ## API Endpoints
 
 ### Health Check
-- `GET /api/health` - Service health status
+- `GET /api/health` - Service health status for Neo4j, Ollama, FDC
+
+### Multi-Agent Orchestration
+- `POST /api/orchestration/runs` - Persist orchestration run with recipe, costs, validation, and UI config
 
 ### AI Assistant
-- `POST /api/ai/query` - Process natural language queries
+- `POST /api/ai/query` - Process natural language queries with optional graph context
+- `POST /api/ai/completion` - Direct Ollama completion endpoint
 
 ### Formulations
 - `POST /api/formulations` - Create formulation
 - `GET /api/formulations` - List formulations
 - `GET /api/formulations/{id}` - Get formulation details
+- `PUT /api/formulations/{id}` - Update formulation
+- `DELETE /api/formulations/{id}` - Delete formulation
+
+### FDC (Food Data Central)
+- `POST /api/fdc/search` - Search USDA foods
+- `POST /api/fdc/foods/{fdc_id}/details` - Get food details
+- `POST /api/fdc/ingest` - Ingest foods by FDC IDs
+- `POST /api/fdc/quick-ingest` - Search and ingest in one step
+- `GET /api/fdc/foods` - List ingested foods with optional nutrients
 
 ### Calculations
 - `POST /api/calculations/scale` - Scale formulation to batch size
 
 ### Graph Data
 - `GET /api/graph/data` - Retrieve graph visualization data
+- `POST /api/graph/query` - Execute custom Cypher query
 
 ### Sample Data
 - `POST /api/sample-data/load` - Load sample F&B datasets
@@ -395,6 +453,63 @@ python --version  # Should be 3.10+
 ```bash
 # Health check
 curl http://localhost:8000/api/health
+
+# Orchestration pipeline test
+curl -X POST http://localhost:8000/api/orchestration/runs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userRequest": "Create a chocolate chip cookie recipe",
+    "result": {
+      "id": "test-run-001",
+      "status": "success",
+      "recipe": {
+        "name": "Chocolate Chip Cookies",
+        "ingredients": [
+          {"id": "1", "name": "Flour", "percentage": 50.0},
+          {"id": "2", "name": "Sugar", "percentage": 25.0},
+          {"id": "3", "name": "Butter", "percentage": 20.0},
+          {"id": "4", "name": "Chocolate Chips", "percentage": 5.0}
+        ],
+        "totalPercentage": 100.0
+      },
+      "calculation": {
+        "targetBatchSize": 1000,
+        "targetUnit": "g",
+        "costs": {"total": 5.50, "perKg": 5.50}
+      },
+      "graph": {
+        "nodes": [],
+        "edges": []
+      },
+      "validation": {
+        "valid": true,
+        "errors": [],
+        "warnings": []
+      },
+      "uiConfig": {
+        "layout": "default"
+      },
+      "agentHistory": [
+        {"agent": "RecipeEngineer", "duration": 800, "status": "success"},
+        {"agent": "ScalingCalculator", "duration": 500, "status": "success"},
+        {"agent": "QAValidator", "duration": 300, "status": "success"}
+      ],
+      "totalDuration": 1600,
+      "timestamp": "2025-11-11T12:00:00Z"
+    },
+    "targetBatchSize": 1000.0,
+    "targetUnit": "g",
+    "includeCosts": true
+  }'
+
+# FDC quick ingest
+curl -X POST http://localhost:8000/api/fdc/quick-ingest \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "your-fdc-key",
+    "search_term": "almond butter",
+    "count": 5
+  }'
 
 # Create formulation
 curl -X POST http://localhost:8000/api/formulations \

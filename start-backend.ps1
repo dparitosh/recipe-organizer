@@ -20,8 +20,8 @@ if (-not (Test-Path $backendDir)) {
 Set-Location $backendDir
 
 $venvCandidates = @(
-    Join-Path $backendDir "venv\Scripts\Activate.ps1",
-    Join-Path $scriptRoot ".venv\Scripts\Activate.ps1"
+    (Join-Path $backendDir "venv\Scripts\Activate.ps1")
+    (Join-Path $scriptRoot ".venv\Scripts\Activate.ps1")
 )
 
 $venvActivate = $venvCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1

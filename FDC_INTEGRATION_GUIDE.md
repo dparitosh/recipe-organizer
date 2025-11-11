@@ -8,7 +8,7 @@ The Formulation Graph Studio now includes full integration with the USDA FoodDat
 ### API Key
 The application is pre-configured with your FDC API key:
 ```
-axHdO7CFrKh2wBPBSHKRaASp9m8lanCIaDY5W9ya
+N8J01VZvGtq3CwIrgJpgvlW4p2R03aSdOXcGcSke
 ```
 
 ### API Reference

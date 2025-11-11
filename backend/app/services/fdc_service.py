@@ -141,19 +141,32 @@ class FDCService:
         self._schema_ready = True
 
     def ingest_food(self, neo4j_client: "Neo4jClient", food_data: Dict[str, Any]) -> Dict[str, int]:
-        nutrients_payload = [
-            {
-                "nutrientId": nutrient.get("nutrientId"),
-                "nutrientName": nutrient.get("nutrientName"),
-                "nutrientNumber": nutrient.get("nutrientNumber") or "",
-                "unitName": nutrient.get("unitName") or "g",
-                "rank": index,
-                "value": nutrient.get("value") or 0,
-                "derivationCode": nutrient.get("derivationCode") or "",
-            }
-            for index, nutrient in enumerate(food_data.get("foodNutrients", []), start=1)
-            if nutrient.get("nutrientId") is not None
-        ]
+        nutrients_payload = []
+        for index, nutrient in enumerate(food_data.get("foodNutrients", []), start=1):
+            nutrient_info = nutrient.get("nutrient") or {}
+            nutrient_id = nutrient.get("nutrientId") or nutrient_info.get("id")
+            if nutrient_id is None:
+                continue
+
+            amount = nutrient.get("value")
+            if amount is None:
+                amount = nutrient.get("amount")
+
+            derivation = nutrient.get("derivationCode")
+            if derivation is None:
+                derivation = (nutrient.get("foodNutrientDerivation") or {}).get("code")
+
+            nutrients_payload.append(
+                {
+                    "nutrientId": nutrient_id,
+                    "nutrientName": nutrient.get("nutrientName") or nutrient_info.get("name"),
+                    "nutrientNumber": nutrient.get("nutrientNumber") or nutrient_info.get("number") or "",
+                    "unitName": nutrient.get("unitName") or nutrient_info.get("unitName") or "g",
+                    "rank": index,
+                    "value": amount or 0,
+                    "derivationCode": derivation or "",
+                }
+            )
 
         cypher = """
         MERGE (f:Food {fdcId: $fdcId})

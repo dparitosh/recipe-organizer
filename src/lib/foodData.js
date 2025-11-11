@@ -1,6 +1,6 @@
 import { FDC_CONSTANTS } from './constants.js'
 
-let FDC_API_KEY = 'axHdO7CFrKh2wBPBSHKRaASp9m8lanCIaDY5W9ya'
+let FDC_API_KEY = 'N8J01VZvGtq3CwIrgJpgvlW4p2R03aSdOXcGcSke'
 
 export function setFDCApiKey(apiKey) {
   FDC_API_KEY = apiKey

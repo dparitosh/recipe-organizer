@@ -48,8 +48,8 @@ This tracker captures the immediate capability workstreams around Neo4j integrat
 | Task | Status | Priority | Notes |
 |------|--------|----------|-------|
 | Define ingestion sources & chunking strategy | RD | P2 | Plan captured in 'CAP-03_GRAPH_RAG_PLAN.md'; ingestion service now generates chunks and writes to Neo4j via 'backend/scripts/graphrag_ingest.py' with persistence tests (2025-11-10). |
-| Select embedding model & storage approach | IP | P2 | Embedding prototype wired - pull Ollama embed model before re-running CLI and compare Neo4j vector index versus GDS storage next. |
-| Implement hybrid retrieval (vector + Cypher) | IP | P1 | 'GraphRAGRetrievalService' now provides vector index search and Cypher context; integrate into conversation service next. |
+| Select embedding model & storage approach | RD | P2 | 'nomic-embed-text:latest' benchmarked via 'scripts/embedding_benchmark.py'; report in 'docs/embedding-selection-report.md' confirms Neo4j vector index strategy (2025-11-11). |
+| Implement hybrid retrieval (vector + Cypher) | RD | P1 | 'GraphRAGRetrievalService' integrated with `/api/ai/query` hybrid endpoint; caching/truncation optimized and covered by pytest (2025-11-11). |
 | Integrate GraphRAG into conversation service | RD | P2 | GraphRAG UI integration complete and pending UX review. |
 | Optimize retrieval memory footprint & caching strategy | RD | P1 | GraphRAG retrieval service now applies LRU+TTL cache and chunk truncation with pytest coverage (2025-11-11). |
 | Build Neo4j FDC query endpoint | RD | P1 | GET '/api/fdc/foods' returning paginated ingest list; tests in 'backend/tests/services/test_fdc_service.py'. |

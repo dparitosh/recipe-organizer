@@ -264,7 +264,12 @@ async def process_online_query(query: str, include_graph: bool, request: Request
 
     if include_graph and retrieval_service:
         try:
-            retrieval_result = retrieval_service.retrieve(query, limit=5, structured_limit=25)
+            retrieval_result = await asyncio.to_thread(
+                retrieval_service.retrieve,
+                query,
+                limit=5,
+                structured_limit=25,
+            )
             retrieval_chunks = retrieval_result.chunks
             structured_entities = retrieval_result.structured_entities
         except GraphRAGRetrievalError as exc:

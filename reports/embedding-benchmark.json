@@ -1,0 +1,16 @@
+[
+  {
+    "model": "nomic-embed-text:latest",
+    "vector_dimensions": 768,
+    "avg_chunk_latency_ms": 2209.0132999995453,
+    "avg_query_latency_ms": 2096.0264333334635,
+    "top1_accuracy": 1.0,
+    "detail": {
+      "avg_chunk_latency_ms": 2209.0132999995453,
+      "max_chunk_latency_ms": 2242.360500000359,
+      "avg_query_latency_ms": 2096.0264333334635,
+      "max_query_latency_ms": 2103.2930000001215,
+      "evaluation_samples": 3
+    }
+  }
+]
