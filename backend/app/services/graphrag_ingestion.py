@@ -24,12 +24,18 @@ class QueryRunner(Protocol):
         """Execute a Cypher query and return raw Neo4j records."""
 
 
+class EmbeddingClient(Protocol):
+    def embed_texts(self, texts: Sequence[str]) -> Sequence[Sequence[float]]:  # noqa: D401 - protocol stub
+        """Return embeddings for the provided text batch."""
+
+
 @dataclass
 class KnowledgeChunk:
     chunk_id: str
     source: str
     content: str
     metadata: Metadata
+    embedding: Optional[Sequence[float]] = None
 
 
 @dataclass
@@ -101,10 +107,14 @@ def build_structured_chunks(
         return chunks, warnings
 
     for index, record in enumerate(records, start=1):
-        metadata, missing = extract_metadata(record, metadata_keys)
-        if missing:
+        optional_keys: Sequence[str] = chunking_cfg.get("metadata_optional", [])
+        search_keys = list(dict.fromkeys([*metadata_keys, *optional_keys]))
+        metadata, missing = extract_metadata(record, search_keys)
+
+        missing_required = [key for key in missing if key in metadata_keys]
+        if missing_required:
             warnings.append(
-                f"{source_id} chunk {index:04d} missing metadata keys: {', '.join(missing)}"
+                f"{source_id} chunk {index:04d} missing metadata keys: {', '.join(missing_required)}"
             )
 
         content = stringify_record(record)
@@ -222,16 +232,22 @@ class GraphRAGIngestionService:
         manifest_path: Path,
         *,
         neo4j_client: Optional[QueryRunner] = None,
+        embedding_client: Optional[EmbeddingClient] = None,
         output_dir: Optional[Path] = None,
         persist_chunks: bool = True,
         write_to_neo4j: bool = True,
+        embed_chunks: bool = False,
+        embedding_batch_size: int = 16,
     ) -> None:
         self.manifest = manifest
         self.manifest_path = manifest_path
         self.neo4j_client = neo4j_client
+        self.embedding_client = embedding_client
         self.output_dir = output_dir
         self.persist_chunks = persist_chunks and output_dir is not None
         self.write_to_neo4j = bool(neo4j_client) and write_to_neo4j
+        self.embed_chunks = bool(embedding_client) and embed_chunks
+        self.embedding_batch_size = max(1, embedding_batch_size)
         if self.persist_chunks and output_dir is not None:
             output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -277,6 +293,8 @@ class GraphRAGIngestionService:
             chunking_cfg,
             metadata_keys,
         )
+
+        self._apply_embeddings(chunks)
 
         output_path: Optional[Path] = None
         if self.persist_chunks and not dry_run and chunks:
@@ -336,6 +354,8 @@ class GraphRAGIngestionService:
             chunks.extend(file_chunks)
             next_index += len(file_chunks)
 
+        self._apply_embeddings(chunks)
+
         output_path: Optional[Path] = None
         if self.persist_chunks and not dry_run and chunks:
             output_path = self._persist_chunks(source_id, chunks)
@@ -368,9 +388,28 @@ class GraphRAGIngestionService:
                     "content": chunk.content,
                     "metadata": chunk.metadata,
                 }
+                if chunk.embedding is not None:
+                    payload["embedding"] = list(chunk.embedding)
                 handle.write(json.dumps(payload, ensure_ascii=True))
                 handle.write("\n")
         return output_path
+
+    def _apply_embeddings(self, chunks: Sequence[KnowledgeChunk]) -> None:
+        if not self.embed_chunks or self.embedding_client is None or not chunks:
+            return
+
+        batch_size = self.embedding_batch_size
+        for start in range(0, len(chunks), batch_size):
+            batch = chunks[start : start + batch_size]
+            embeddings = self.embedding_client.embed_texts([chunk.content for chunk in batch])
+            if len(embeddings) != len(batch):
+                raise RuntimeError(
+                    "Embedding client returned mismatched batch size: "
+                    f"expected {len(batch)} got {len(embeddings)}"
+                )
+
+            for chunk, vector in zip(batch, embeddings):
+                chunk.embedding = [float(value) for value in vector]
 
     def _persist_chunks_to_neo4j(
         self,
@@ -385,9 +424,11 @@ class GraphRAGIngestionService:
             {
                 "chunk_id": chunk.chunk_id,
                 "content": chunk.content,
-                "metadata": chunk.metadata,
+                "metadata_json": json.dumps(chunk.metadata, ensure_ascii=True, sort_keys=True),
+                "metadata_keys": sorted(chunk.metadata.keys()),
                 "chunk_index": chunk.metadata.get("chunk_index"),
                 "chunk_strategy": chunk.metadata.get("chunk_strategy"),
+                "embedding": list(chunk.embedding) if chunk.embedding is not None else None,
             }
             for chunk in chunks
         ]
@@ -403,12 +444,16 @@ class GraphRAGIngestionService:
         MERGE (c:KnowledgeChunk {chunk_id: chunk.chunk_id})
         ON CREATE SET c.created_at = datetime()
         SET c.content = chunk.content,
-            c.metadata = chunk.metadata,
             c.source = $source_id,
             c.source_type = $source_type,
             c.chunk_index = chunk.chunk_index,
             c.chunk_strategy = chunk.chunk_strategy,
             c.updated_at = datetime()
+        SET c.metadata_json = chunk.metadata_json,
+            c.metadata_keys = chunk.metadata_keys
+        FOREACH (_ IN CASE WHEN chunk.embedding IS NULL THEN [] ELSE [1] END |
+            SET c.embedding = chunk.embedding
+        )
         MERGE (source)-[:HAS_CHUNK]->(c)
         """
 

@@ -1,24 +1,111 @@
 import { ValidationReportSchema } from '../agent-schemas.js'
 import { requestJsonResponse } from '../utils/prompt-runner.js'
 
+const formatRecipeForPrompt = (recipe) => {
+  if (!recipe) {
+    return '{}'
+  }
+
+  const ingredients = Array.isArray(recipe.ingredients)
+    ? recipe.ingredients.map((ingredient) => ({
+        id: ingredient.id,
+        name: ingredient.name,
+        percentage: ingredient.percentage,
+        function: ingredient.function || 'other',
+        category: ingredient.category,
+      }))
+    : []
+
+  return JSON.stringify({
+    id: recipe.id,
+    name: recipe.name,
+    description: recipe.description,
+    totalPercentage: recipe.totalPercentage,
+    ingredients,
+    metadata: recipe.metadata,
+  })
+}
+
+const formatCalculationForPrompt = (calculation) => {
+  if (!calculation) {
+    return '{}'
+  }
+
+  const scaledIngredients = Array.isArray(calculation.scaledIngredients)
+    ? calculation.scaledIngredients.map((ingredient) => ({
+        id: ingredient.id,
+        name: ingredient.name,
+        originalPercentage: ingredient.originalPercentage,
+        scaledQuantity: ingredient.scaledQuantity,
+        scaledUnit: ingredient.scaledUnit,
+        cost: ingredient.cost,
+        density: ingredient.density,
+      }))
+    : []
+
+  return JSON.stringify({
+    recipeId: calculation.recipeId,
+    recipeName: calculation.recipeName,
+    targetBatchSize: calculation.targetBatchSize,
+    targetUnit: calculation.targetUnit,
+    scaledIngredients,
+    costs: calculation.costs,
+    yield: calculation.yield,
+  })
+}
+
+const formatGraphForPrompt = (graph) => {
+  if (!graph) {
+    return '{}'
+  }
+
+  const nodes = Array.isArray(graph.nodes)
+    ? graph.nodes.map((node) => ({
+        id: node.id,
+        label: node.label,
+        type: node.type,
+        properties: node.properties,
+      }))
+    : []
+
+  const edges = Array.isArray(graph.edges)
+    ? graph.edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type,
+        properties: edge.properties,
+      }))
+    : []
+
+  return JSON.stringify({
+    nodes,
+    edges,
+    metadata: graph.metadata,
+  })
+}
+
 export class QAValidatorAgent {
   name = 'QA Validator'
   description = 'Cross-checks data consistency and validates business rules'
 
   async execute(input) {
     const timestamp = new Date().toISOString()
+    const recipeJson = formatRecipeForPrompt(input.recipe)
+    const calculationJson = formatCalculationForPrompt(input.calculation)
+    const graphJson = formatGraphForPrompt(input.graph)
 
     const promptSections = [
       'You are a QA Validator agent specializing in data consistency and business rule validation.',
       '',
       'Recipe Data:',
-      JSON.stringify(input.recipe, null, 2),
+      recipeJson,
       '',
       'Calculation Data:',
-      JSON.stringify(input.calculation, null, 2),
+      calculationJson,
       '',
       'Graph Data:',
-      JSON.stringify(input.graph, null, 2),
+      graphJson,
       '',
       'Your task:',
       '1. Validate recipe percentages sum to exactly 100%',

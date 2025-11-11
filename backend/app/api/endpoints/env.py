@@ -38,6 +38,7 @@ async def read_env_settings() -> EnvSettingsResponse:
         "FDC_REQUEST_TIMEOUT": settings.FDC_REQUEST_TIMEOUT,
         "OLLAMA_BASE_URL": settings.OLLAMA_BASE_URL,
         "OLLAMA_MODEL": settings.OLLAMA_MODEL,
+        "OLLAMA_TIMEOUT": settings.OLLAMA_TIMEOUT,
         "DEBUG": settings.DEBUG,
     }
 
@@ -123,14 +124,26 @@ async def update_env_settings(payload: EnvSettingsPayload, request: Request) -> 
 
     ollama_base_url = settings.OLLAMA_BASE_URL
     ollama_model = settings.OLLAMA_MODEL
+    ollama_timeout = settings.OLLAMA_TIMEOUT
 
     if ollama_base_url:
         try:
-            refreshed_ollama = OllamaService(base_url=ollama_base_url, model=ollama_model)
+            refreshed_ollama = OllamaService(
+                base_url=ollama_base_url,
+                model=ollama_model,
+                timeout_seconds=ollama_timeout,
+            )
             is_available = await refreshed_ollama.check_health()
             if is_available:
+                existing_service = getattr(request.app.state, "ollama_service", None)
+                if existing_service is not None:
+                    try:
+                        await existing_service.close()
+                    except Exception:  # pragma: no cover - best effort
+                        logger.debug("Failed to close previous OLLAMA service during refresh.")
                 request.app.state.ollama_service = refreshed_ollama
             else:
+                await refreshed_ollama.close()
                 logger.warning("OLLAMA service unavailable after settings update; keeping previous instance.")
         except Exception as exc:  # pragma: no cover - best effort
             logger.warning("OLLAMA service refresh failed after settings update: %s", exc)

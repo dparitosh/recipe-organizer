@@ -46,14 +46,18 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    NEO4J_URI: str = "neo4j+s://2cccd05b.databases.neo4j.io"
-    NEO4J_USER: str = "neo4j"
-    NEO4J_PASSWORD: str = "tcs12345"
-    NEO4J_DATABASE: str = "neo4j"
+    # IMPORTANT: No hardcoded production credentials or endpoints.
+    # Provide these via environment variables or backend/env.local.json (loaded by the app).
+    NEO4J_URI: str = Field(default="")
+    NEO4J_USER: str = Field(default="")
+    NEO4J_PASSWORD: str = Field(default="")
+    NEO4J_DATABASE: str = Field(default="neo4j")
 
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama2"
-    OLLAMA_TIMEOUT: int = 60
+    OLLAMA_BASE_URL: str = Field(default="")
+    OLLAMA_MODEL: str = Field(default="llama2")
+    OLLAMA_TIMEOUT: int = Field(default=60)
+    OLLAMA_EMBED_MODEL: str = Field(default="")
+    OLLAMA_EMBED_BATCH_SIZE: int = Field(default=16)
 
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080", "*"]
 
@@ -66,6 +70,44 @@ class Settings(BaseSettings):
     FDC_REQUEST_TIMEOUT: int = 30
 
     GRAPH_SCHEMA_NAME: str = "FormulationGraph"
+
+    GRAPHRAG_CHUNK_INDEX_NAME: str = Field(default="knowledge_chunks")
+    GRAPHRAG_METADATA_ID_KEYS: List[str] = Field(default_factory=list)
+    GRAPHRAG_CACHE_MAX_ENTRIES: int = Field(default=64)
+    GRAPHRAG_CACHE_TTL_SECONDS: float = Field(default=120.0)
+    GRAPHRAG_CHUNK_CONTENT_MAX_CHARS: int = Field(default=2000)
+
+    FORMULATION_CACHE_TTL_SECONDS: int = 20
+    FORMULATION_CACHE_MAX_ENTRIES: int = 256
+    FORMULATION_RETRY_ATTEMPTS: int = 3
+    FORMULATION_RETRY_BACKOFF_SECONDS: float = 0.35
+    FORMULATION_RETRY_MAX_BACKOFF_SECONDS: float = 2.0
+
+    def validate(self) -> None:
+        """Validate that required environment-backed settings are present.
+
+        This method does not raise in CI but will log warnings for missing values.
+        Call this at process start to surface misconfiguration.
+        """
+        missing = []
+        required = {
+            "NEO4J_URI": self.NEO4J_URI,
+            "NEO4J_USER": self.NEO4J_USER,
+            "NEO4J_PASSWORD": self.NEO4J_PASSWORD,
+            "OLLAMA_BASE_URL": self.OLLAMA_BASE_URL,
+            "OLLAMA_EMBED_MODEL": self.OLLAMA_EMBED_MODEL,
+        }
+
+        for name, val in required.items():
+            if not val:
+                missing.append(name)
+
+        if missing:
+            logger.warning(
+                "Missing required configuration values: %s. "
+                "Provide them via environment variables or backend/env.local.json.",
+                ", ".join(missing),
+            )
 
     def reload(self) -> None:
         load_dotenv(override=True)

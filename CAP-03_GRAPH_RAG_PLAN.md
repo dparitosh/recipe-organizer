@@ -42,7 +42,7 @@
 - Track token budgets: maximum chunk length 512 tokens to maintain retrieval latency under 200ms during hybrid search.
 
 ## Implementation Next Steps
-1. Extend the scaffolded ingestion CLI (`backend/scripts/graphrag_ingest.py`) to chunk, embed, and persist enabled sources.
+1. Extend the scaffolded ingestion CLI (`backend/scripts/graphrag_ingest.py`) to chunk, embed, and persist enabled sources. *(Embedding prototype with Ollama nomic-embed-text now wired for local vectors; continue benchmarking before locking storage schema.)*
 2. Iterate on the manifest (`config/graphrag_sources.json`) and schema (`schemas/graphrag-sources.schema.json`) as source owners confirm metadata needs.
 3. Benchmark candidate embedding models (local Ollama vs managed) with sample chunks to verify cosine recall on known QA pairs.
 4. Extend backend Graph API with `GET /api/graph/knowledge` for chunk inspection and provenance filtering.

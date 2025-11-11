@@ -5,6 +5,11 @@ from typing import Optional, List, Dict, Any
 
 from neo4j import GraphDatabase, Driver
 
+try:  # neo4j graph primitives for richer JSON conversion
+    from neo4j.graph import Node, Relationship, Path
+except ImportError:  # pragma: no cover - fallback when graph helpers unavailable
+    Node = Relationship = Path = None
+
 try:  # Neo4j temporal helpers are optional depending on driver version
     from neo4j.time import Date as Neo4jDate, DateTime as Neo4jDateTime, Duration as Neo4jDuration, Time as Neo4jTime
 except ImportError:  # pragma: no cover - older driver fallback
@@ -76,6 +81,36 @@ class Neo4jClient:
 
         if isinstance(value, dict):
             return {key: Neo4jClient._jsonify(val) for key, val in value.items()}
+
+        if Node and isinstance(value, Node):
+            props = {key: Neo4jClient._jsonify(val) for key, val in dict(value).items()}
+            return {
+                "id": getattr(value, "element_id", getattr(value, "id", None)),
+                "labels": list(getattr(value, "labels", [])),
+                "properties": props,
+            }
+
+        if Relationship and isinstance(value, Relationship):
+            props = {key: Neo4jClient._jsonify(val) for key, val in dict(value).items()}
+            start_id = getattr(value, "start_node_element_id", None)
+            if start_id is None and hasattr(value, "start_node"):
+                start_id = getattr(value.start_node, "element_id", getattr(value.start_node, "id", None))
+            end_id = getattr(value, "end_node_element_id", None)
+            if end_id is None and hasattr(value, "end_node"):
+                end_id = getattr(value.end_node, "element_id", getattr(value.end_node, "id", None))
+            return {
+                "id": getattr(value, "element_id", getattr(value, "id", None)),
+                "type": value.type,
+                "start": start_id,
+                "end": end_id,
+                "properties": props,
+            }
+
+        if Path and isinstance(value, Path):
+            return {
+                "nodes": [Neo4jClient._jsonify(node) for node in value.nodes],
+                "relationships": [Neo4jClient._jsonify(rel) for rel in value.relationships],
+            }
 
         if isinstance(value, (datetime, date, time)):
             return value.isoformat()

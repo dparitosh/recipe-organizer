@@ -25,11 +25,12 @@
       "enabled": true,
       "ingestion": {
         "driver": "neo4j",
-        "query": "MATCH (f:FDCFood) OPTIONAL MATCH (f)-[r:HAS_NUTRIENT]->(n:Nutrient) RETURN f, collect({nutrient: n, rel: r}) as nutrients"
+        "query": "MATCH (f:Food) OPTIONAL MATCH (f)-[r:CONTAINS_NUTRIENT]->(n:Nutrient) RETURN f, collect({nutrient: n, rel: r}) as nutrients"
       },
       "chunking": {
         "strategy": "single-node",
-        "metadata_keys": ["data_type", "brand", "category"],
+        "metadata_keys": ["dataType", "foodCategory"],
+        "metadata_optional": ["brandOwner", "brandName", "ingredients", "gtinUpc"],
         "notes": "Limit nutrient list to top 10 by nutrient_rank"
       }
     },

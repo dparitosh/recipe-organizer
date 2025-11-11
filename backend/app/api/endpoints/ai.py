@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException, status
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Any, Dict, List, Sequence
 import asyncio
 import logging
 
@@ -13,9 +13,161 @@ from app.models.schemas import (
     RelationshipSummary,
     Recommendation,
 )
+from app.services.graphrag_retrieval import (
+    GraphRAGRetrievalError,
+    RetrievalChunk,
+    StructuredEntityContext,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _truncate_text(value: str, limit: int) -> str:
+    text = value.strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "..."
+
+
+def _summarize_chunk_context(
+    chunks: Sequence[RetrievalChunk],
+    *,
+    max_chunks: int = 3,
+    max_chars: int = 1200,
+) -> str:
+    if not chunks:
+        return ""
+
+    selected = list(chunks[:max_chunks])
+    per_chunk_limit = max(200, max_chars // max(1, len(selected)))
+
+    lines: List[str] = ["GraphRAG knowledge chunks:"]
+    for chunk in selected:
+        header_parts = [f"[{chunk.chunk_id}] score={chunk.score:.3f}"]
+        if chunk.source_id:
+            header_parts.append(f"source={chunk.source_id}")
+        if chunk.source_type:
+            header_parts.append(f"type={chunk.source_type}")
+
+        lines.append(" ".join(header_parts))
+
+        metadata_summary = _summarize_chunk_metadata(chunk.metadata)
+        if metadata_summary:
+            lines.append(f"Metadata: {metadata_summary}")
+
+        lines.append(f"Content: {_truncate_text(chunk.content, per_chunk_limit)}")
+
+    return "\n".join(lines)
+
+
+def _summarize_chunk_metadata(metadata: Dict[str, Any], *, max_items: int = 4) -> str:
+    if not metadata:
+        return ""
+
+    ignored_keys = {
+        "source",
+        "source_type",
+        "chunk_strategy",
+        "chunk_index",
+        "token_start",
+        "token_end",
+        "token_length",
+        "content_word_count",
+    }
+
+    details: List[str] = []
+    for key, value in metadata.items():
+        if key in ignored_keys:
+            continue
+        if isinstance(value, (list, dict)):
+            continue
+        details.append(f"{key}={value}")
+        if len(details) >= max_items:
+            break
+    return ", ".join(details)
+
+
+def _build_node_highlights_from_structured(
+    entities: Sequence[StructuredEntityContext],
+    *,
+    limit: int = 10,
+) -> List[NodeHighlight]:
+    highlights: List[NodeHighlight] = []
+    for entity in entities[:limit]:
+        node_data = entity.node or {}
+        node_props: Dict[str, Any] = node_data.get("properties", {}) or {}
+        node_id = node_props.get("id") or node_data.get("id")
+        if not node_id:
+            continue
+        labels = node_data.get("labels") or []
+        node_type = labels[0] if labels else str(node_props.get("type", "Unknown"))
+        name = node_props.get("name") or node_id
+        highlights.append(
+            NodeHighlight(
+                id=str(node_id),
+                type=str(node_type),
+                name=str(name),
+                properties=node_props,
+            )
+        )
+    return highlights
+
+
+def _build_relationship_summaries_from_structured(
+    entities: Sequence[StructuredEntityContext],
+) -> List[RelationshipSummary]:
+    counts: Dict[str, int] = {}
+    examples: Dict[str, Dict[str, str]] = {}
+
+    for entity in entities:
+        node_props = (entity.node or {}).get("properties", {}) or {}
+        source_name = str(node_props.get("name") or node_props.get("id") or "unknown")
+        for rel in entity.relationships:
+            rel_type = rel.type or "UNKNOWN"
+            counts[rel_type] = counts.get(rel_type, 0) + 1
+            if rel_type not in examples and rel.target:
+                target_props = rel.target.get("properties", {}) or {}
+                target_name = str(target_props.get("name") or target_props.get("id") or "unknown")
+                examples[rel_type] = {"source": source_name, "target": target_name}
+
+    summaries: List[RelationshipSummary] = []
+    for rel_type, count in sorted(counts.items(), key=lambda item: item[1], reverse=True):
+        example = examples.get(rel_type)
+        summaries.append(
+            RelationshipSummary(
+                type=str(rel_type),
+                count=count,
+                description=f"Found {count} {rel_type} relationships",
+                examples=[example] if example else None,
+            )
+        )
+    return summaries
+
+
+def _summarize_structured_entities(
+    entities: Sequence[StructuredEntityContext],
+    *,
+    max_entities: int = 3,
+    max_relationships: int = 3,
+) -> str:
+    if not entities:
+        return ""
+
+    lines: List[str] = ["Structured graph context:"]
+    for entity in entities[:max_entities]:
+        node_data = entity.node or {}
+        node_props = node_data.get("properties", {}) or {}
+        labels = node_data.get("labels") or []
+        node_label = labels[0] if labels else str(node_props.get("type", "Unknown"))
+        node_name = node_props.get("name") or node_props.get("id")
+        lines.append(f"- {node_name} [{node_label}]")
+        for rel in entity.relationships[:max_relationships]:
+            target_props = (rel.target or {}).get("properties", {}) or {}
+            target_name = target_props.get("name") or target_props.get("id")
+            lines.append(f"  -> {rel.type} {target_name}")
+
+    return "\n".join(lines)
 
 @router.post("/query", response_model=AIQueryResponse, summary="Process AI Query")
 async def process_ai_query(request_data: AIQueryRequest, request: Request):
@@ -95,7 +247,8 @@ async def process_online_query(query: str, include_graph: bool, request: Request
     """Process query using OLLAMA AI and optionally Neo4j graph data."""
     
     ollama_service = request.app.state.ollama_service
-    neo4j_client = request.app.state.neo4j_client
+    neo4j_client = getattr(request.app.state, "neo4j_client", None)
+    retrieval_service = getattr(request.app.state, "graphrag_retrieval_service", None)
     
     if not ollama_service:
         raise Exception("OLLAMA service not initialized")
@@ -103,10 +256,39 @@ async def process_online_query(query: str, include_graph: bool, request: Request
     cypher_query = None
     node_highlights = []
     relationship_summaries = []
-    graph_context = ""
     data_sources = ["OLLAMA AI"]
+    graph_context_sections: List[str] = []
+
+    retrieval_chunks: List[RetrievalChunk] = []
+    structured_entities: List[StructuredEntityContext] = []
+
+    if include_graph and retrieval_service:
+        try:
+            retrieval_result = retrieval_service.retrieve(query, limit=5, structured_limit=25)
+            retrieval_chunks = retrieval_result.chunks
+            structured_entities = retrieval_result.structured_entities
+        except GraphRAGRetrievalError as exc:
+            logger.warning("GraphRAG retrieval failed: %s", exc)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.warning("GraphRAG retrieval raised unexpected error: %s", exc)
+
+    if include_graph and retrieval_chunks:
+        chunk_section = _summarize_chunk_context(retrieval_chunks)
+        if chunk_section:
+            graph_context_sections.append(chunk_section)
+        if "GraphRAG Knowledge Base" not in data_sources:
+            data_sources.append("GraphRAG Knowledge Base")
+
+    if include_graph and structured_entities:
+        node_highlights = _build_node_highlights_from_structured(structured_entities)
+        relationship_summaries = _build_relationship_summaries_from_structured(structured_entities)
+        structured_section = _summarize_structured_entities(structured_entities)
+        if structured_section:
+            graph_context_sections.append(structured_section)
+
+    use_fallback_cypher = include_graph and not graph_context_sections and neo4j_client is not None
     
-    if include_graph and neo4j_client:
+    if use_fallback_cypher:
         try:
             cypher_query = await ollama_service.generate_cypher_query(query)
             logger.info(f"Generated Cypher: {cypher_query}")
@@ -156,13 +338,17 @@ async def process_online_query(query: str, include_graph: bool, request: Request
                     )
                 )
             
-            graph_context = f"\n\nGraph Query Results:\n- {len(nodes)} nodes found\n- {len(relationships)} relationships found"
+            graph_context_sections.append(
+                f"Graph query results:\n- {len(nodes)} nodes\n- {len(relationships)} relationships"
+            )
             data_sources.append("Neo4j Graph Database")
         
         except Exception as e:
             logger.warning(f"Graph query failed: {e}")
-            graph_context = f"\n\nNote: Graph query encountered an issue, using formulation data only."
+            graph_context_sections.append("Note: Graph query encountered an issue, fallback context only.")
     
+    graph_context = "\n\n".join(section for section in graph_context_sections if section)
+
     answer = await ollama_service.generate_answer(
         query=query,
         context=graph_context,

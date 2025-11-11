@@ -1,9 +1,13 @@
+import { RecipeSchema } from '../agent-schemas.js'
+import { requestJsonResponse } from '../utils/prompt-runner.js'
+
 const BASE_WATER_PERCENTAGE = 88
+const ALLOWED_FUNCTIONS = ['base', 'flavor', 'preservative', 'sweetener', 'emulsifier', 'stabilizer', 'colorant', 'other']
 
 const makeId = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 const normalizeRequest = (value) => value?.toLowerCase() ?? ''
 
-function extractActiveIngredient(normalizedRequest) {
+const extractActiveIngredient = (normalizedRequest) => {
   if (normalizedRequest.includes('green tea')) {
     return 'Green Tea Extract'
   }
@@ -20,152 +24,152 @@ function extractActiveIngredient(normalizedRequest) {
     .replace(/^(.)/, (char) => char.toUpperCase())
 }
 
-function buildRecipeName(normalizedRequest, activeIngredient) {
-  if (normalizedRequest.includes('sparkling')) {
-    return `${activeIngredient} Sparkling Beverage`
+const summarizeContext = (context = {}) => {
+  const summary = {}
+
+  if (context.densityMap) {
+    summary.densityMap = context.densityMap
   }
 
-  if (normalizedRequest.includes('energy')) {
-    return `${activeIngredient} Energy Drink`
+  if (context.costMap) {
+    summary.costMap = context.costMap
   }
 
-  return `${activeIngredient} Functional Beverage`
+  if (context.targetConsumer) {
+    summary.targetConsumer = context.targetConsumer
+  }
+
+  if (context.claims) {
+    summary.claims = context.claims
+  }
+
+  if (Array.isArray(context.ingredientsLibrary)) {
+    summary.ingredientsLibrary = context.ingredientsLibrary.slice(0, 10)
+  }
+
+  if (Array.isArray(context.relatedFormulas)) {
+    summary.relatedFormulas = context.relatedFormulas.slice(0, 5)
+  }
+
+  return Object.keys(summary).length > 0 ? JSON.stringify(summary) : 'No additional context provided.'
 }
 
-function buildDefaultRecipe(userRequest, createdAt) {
-  const recipeId = makeId('recipe')
-  const ingredients = [
-    {
-      id: makeId('ing'),
-      name: 'Base Ingredient',
-      percentage: 70,
-      function: 'base',
-      category: 'general',
-    },
-    {
-      id: makeId('ing'),
-      name: 'Active Component',
-      percentage: 20,
-      function: 'other',
-      category: 'active',
-    },
-    {
-      id: makeId('ing'),
-      name: 'Support Ingredient',
-      percentage: 10,
-      function: 'other',
-      category: 'support',
-    },
-  ]
-
-  return {
-    recipe: {
-      id: recipeId,
-      name: 'Concept Formulation',
-      description: `Preliminary formulation derived from request: ${userRequest}`,
-      ingredients,
-      totalPercentage: 100,
-      metadata: {
-        version: '0.1',
-        author: 'Recipe Engineer Agent',
-        createdAt,
-      },
-    },
-    reasoning: 'Generated a placeholder formulation because the request could not be mapped to a detailed template.',
-    alternatives: [
-      'Provide more detail about the product type for a richer formulation.',
-      'List critical functional requirements (e.g., sugar-free, dairy-free).',
-    ],
-  }
+const buildPrompt = (userRequest, contextSummary, timestamp) => {
+  return [
+    'You are the Recipe Engineer agent for a food & beverage R&D co-pilot.',
+    'Translate user requirements into a validated formulation.',
+    '',
+    'Instructions:',
+    `- Ingredient functions must be one of: ${ALLOWED_FUNCTIONS.join(', ')}.`,
+    '- Percentages must sum to exactly 100%.',
+    '- Use available context to ground realistic ingredient choices.',
+    '- Provide descriptive text explaining the formulation decisions.',
+    '- Return only JSON that matches the requested schema.',
+    '',
+    `User Request: ${userRequest}`,
+    'Context:',
+    contextSummary,
+    '',
+    'JSON Schema:',
+    '{',
+    '  "recipe": {',
+    '    "id": "string",',
+    '    "name": "string",',
+    '    "description": "string",',
+    '    "ingredients": [',
+    '      {',
+    '        "id": "string",',
+    '        "name": "string",',
+    '        "percentage": 42.5,',
+    '        "function": "base|flavor|preservative|sweetener|emulsifier|stabilizer|colorant|other",',
+    '        "category": "string"',
+    '      }',
+    '    ],',
+    '    "totalPercentage": 100,',
+    '    "metadata": {',
+    `      "createdAt": "${timestamp}",`,
+    '      "author": "Recipe Engineer Agent",',
+    '      "version": "string"',
+    '    }',
+    '  },',
+    '  "reasoning": "Explain the formulation choices.",',
+    '  "alternatives": ["Optional alternate approaches"]',
+    '}',
+  ].join('\n')
 }
 
-function buildBeverageRecipe(userRequest, createdAt) {
-  const normalized = normalizeRequest(userRequest)
-  const activeIngredient = extractActiveIngredient(normalized)
-  const recipeId = makeId('recipe')
-
-  const ingredients = [
-    {
-      id: makeId('ing'),
-      name: 'Purified Water',
-      percentage: BASE_WATER_PERCENTAGE,
-      function: 'base',
-      category: 'water',
-    },
-    {
-      id: makeId('ing'),
-      name: activeIngredient,
-      percentage: 5,
-      function: 'flavor',
-      category: 'botanical extract',
-    },
-    {
-      id: makeId('ing'),
-      name: 'Cane Sugar',
-      percentage: 4,
-      function: 'sweetener',
-      category: 'sweetener',
-    },
-    {
-      id: makeId('ing'),
-      name: 'Natural Lemon Flavor',
-      percentage: 1.5,
-      function: 'flavor',
-      category: 'flavor',
-    },
-    {
-      id: makeId('ing'),
-      name: 'Citric Acid',
-      percentage: 0.8,
-      function: 'preservative',
-      category: 'acidulant',
-    },
-    {
-      id: makeId('ing'),
-      name: 'Ascorbic Acid (Vitamin C)',
-      percentage: 0.5,
-      function: 'preservative',
-      category: 'antioxidant',
-    },
-    {
-      id: makeId('ing'),
-      name: 'Sodium Benzoate',
-      percentage: 0.2,
-      function: 'preservative',
-      category: 'preservative',
-    },
-  ]
-
-  return {
-    recipe: {
-      id: recipeId,
-      name: buildRecipeName(normalized, activeIngredient),
-      description: `Ready-to-drink functional beverage built around ${activeIngredient.toLowerCase()} with balanced sweetness and shelf-stable acidification.`,
-      ingredients,
-      totalPercentage: 100,
-      metadata: {
-        version: '1.0',
-        author: 'Recipe Engineer Agent',
-        createdAt,
-      },
-    },
-    reasoning: `Allocated ${BASE_WATER_PERCENTAGE}% purified water as base, ${activeIngredient} for functional benefit, and supporting acids/preservatives to maintain flavor stability and shelf life.`,
-    alternatives: [
-      'Replace cane sugar with stevia + erythritol blend for lower calories.',
-      'Swap lemon flavor for peach or mango concentrates to expand the product line.',
-    ],
-  }
-}
-
-function buildRecipeProfile(userRequest, createdAt) {
+const buildFallbackRecipe = (userRequest, createdAt) => {
   const normalized = normalizeRequest(userRequest)
   const isBeverage = /drink|beverage|tea|juice|smoothie/.test(normalized)
+  const activeIngredient = isBeverage ? extractActiveIngredient(normalized) : 'Functional Extract'
+  const recipeId = makeId('recipe')
 
-  if (!isBeverage) {
-    return buildDefaultRecipe(userRequest, createdAt)
+  const ingredients = [
+    {
+      id: makeId('ing'),
+      name: isBeverage ? 'Purified Water' : 'Base Ingredient',
+      percentage: isBeverage ? BASE_WATER_PERCENTAGE : 70,
+      function: 'base',
+      category: isBeverage ? 'water' : 'general',
+    },
+    {
+      id: makeId('ing'),
+      name: isBeverage ? activeIngredient : 'Active Component',
+      percentage: isBeverage ? 5 : 20,
+      function: isBeverage ? 'flavor' : 'other',
+      category: isBeverage ? 'botanical extract' : 'active',
+    },
+    {
+      id: makeId('ing'),
+      name: isBeverage ? 'Cane Sugar' : 'Support Ingredient',
+      percentage: isBeverage ? 4 : 10,
+      function: isBeverage ? 'sweetener' : 'other',
+      category: isBeverage ? 'sweetener' : 'support',
+    },
+    {
+      id: makeId('ing'),
+      name: isBeverage ? 'Citric Acid' : 'Stabilizer',
+      percentage: isBeverage ? 0.8 : 0,
+      function: isBeverage ? 'preservative' : 'other',
+      category: isBeverage ? 'acidulant' : 'general',
+    },
+    {
+      id: makeId('ing'),
+      name: isBeverage ? 'Ascorbic Acid (Vitamin C)' : 'Processing Aid',
+      percentage: isBeverage ? 0.5 : 0,
+      function: 'preservative',
+      category: isBeverage ? 'antioxidant' : 'general',
+    },
+  ].filter((ingredient) => ingredient.percentage > 0)
+
+  const recipeName = isBeverage ? `${activeIngredient} Functional Beverage` : 'Concept Formulation'
+
+  const currentTotal = ingredients.reduce((total, item) => total + item.percentage, 0)
+  if (Math.abs(currentTotal - 100) > 0.001 && ingredients.length > 0) {
+    const adjusted = { ...ingredients[0] }
+    adjusted.percentage = Math.max(0, adjusted.percentage + (100 - currentTotal))
+    ingredients[0] = adjusted
   }
 
-  return buildBeverageRecipe(userRequest, createdAt)
+  return {
+    recipe: {
+      id: recipeId,
+      name: recipeName,
+      description: `Preliminary formulation derived from request: ${userRequest}`,
+      ingredients,
+      totalPercentage: ingredients.reduce((total, item) => total + item.percentage, 0),
+      metadata: {
+        version: 'fallback',
+        author: 'Recipe Engineer Agent',
+        createdAt,
+      },
+    },
+    reasoning: 'Returned fallback formulation because structured output generation failed.',
+    alternatives: [
+      'Provide more detail about desired taste profile and functional claims.',
+      'Specify processing constraints or regulatory limits to refine the formulation.',
+    ],
+  }
 }
 
 export class RecipeEngineerAgent {
@@ -174,12 +178,37 @@ export class RecipeEngineerAgent {
 
   async execute(input) {
     const createdAt = new Date().toISOString()
-    const profile = buildRecipeProfile(input.userRequest, createdAt)
+    const contextSummary = summarizeContext(input.context)
+    const prompt = buildPrompt(input.userRequest, contextSummary, createdAt)
 
-    return {
-      recipe: profile.recipe,
-      reasoning: profile.reasoning,
-      alternatives: profile.alternatives,
+    try {
+      const response = await requestJsonResponse(prompt, {
+        temperature: 0.35,
+        maxTokens: 1200,
+        systemPrompt: 'You are a formulation scientist. Return JSON only and adhere to the provided schema.',
+        maxAttempts: 2,
+      })
+
+      const parsedRecipe = RecipeSchema.parse({
+        ...response.recipe,
+        metadata: {
+          ...(response.recipe?.metadata || {}),
+          author: 'Recipe Engineer Agent',
+          createdAt: response.recipe?.metadata?.createdAt || createdAt,
+        },
+      })
+
+      if (!Array.isArray(response.alternatives)) {
+        response.alternatives = []
+      }
+
+      return {
+        recipe: parsedRecipe,
+        reasoning: response.reasoning || 'Formulation generated based on user request and available context.',
+        alternatives: response.alternatives,
+      }
+    } catch (error) {
+      return buildFallbackRecipe(input.userRequest, createdAt)
     }
   }
 }

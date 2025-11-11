@@ -92,6 +92,9 @@ class FormulationResponse(BaseModel):
     total_percentage: float
     created_at: str
     updated_at: Optional[str] = None
+    cost_per_kg: Optional[float] = None
+    cost_basis_kg: Optional[float] = None
+    cost_updated_at: Optional[str] = None
 
 class FormulationListResponse(BaseModel):
     formulations: List[FormulationResponse]

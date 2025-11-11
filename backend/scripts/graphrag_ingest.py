@@ -20,6 +20,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.core.config import settings  # noqa: E402
 from app.db.neo4j_client import Neo4jClient  # noqa: E402
+from app.services.embedding_service import OllamaEmbeddingClient  # noqa: E402
 from app.services.graphrag_ingestion import GraphRAGIngestionService  # noqa: E402
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -53,6 +54,22 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
         "--skip-neo4j",
         action="store_true",
         help="Do not write knowledge chunks to Neo4j",
+    )
+    parser.add_argument(
+        "--skip-embeddings",
+        action="store_true",
+        help="Do not generate embeddings for chunk content",
+    )
+    parser.add_argument(
+        "--embedding-model",
+        default=settings.OLLAMA_EMBED_MODEL,
+        help="Model to use for embedding chunk content (defaults to settings.OLLAMA_EMBED_MODEL)",
+    )
+    parser.add_argument(
+        "--embedding-batch-size",
+        type=int,
+        default=settings.OLLAMA_EMBED_BATCH_SIZE,
+        help="Batch size when requesting embeddings",
     )
     return parser.parse_args(list(argv))
 
@@ -136,6 +153,7 @@ def run(argv: Iterable[str]) -> int:
     )
 
     neo4j_client: Neo4jClient | None = None
+    embedding_client = None
 
     try:
         if requires_neo4j:
@@ -147,13 +165,23 @@ def run(argv: Iterable[str]) -> int:
             )
             neo4j_client.connect()
 
+        if not args.skip_embeddings:
+            embedding_client = OllamaEmbeddingClient(
+                base_url=settings.OLLAMA_BASE_URL,
+                model=args.embedding_model,
+                timeout=settings.OLLAMA_TIMEOUT,
+            )
+
         service = GraphRAGIngestionService(
             manifest,
             manifest_path,
             neo4j_client=neo4j_client,
+            embedding_client=embedding_client,
             output_dir=output_dir,
             persist_chunks=output_dir is not None and not args.dry_run,
             write_to_neo4j=not args.skip_neo4j,
+            embed_chunks=not args.skip_embeddings,
+            embedding_batch_size=args.embedding_batch_size,
         )
         results = service.ingest(dry_run=args.dry_run)
     finally:

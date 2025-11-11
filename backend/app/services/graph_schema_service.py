@@ -2,7 +2,7 @@ import copy
 import json
 import logging
 import math
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 from app.db.neo4j_client import Neo4jClient
@@ -15,8 +15,11 @@ class GraphSchemaService:
 
     DEFAULT_SCHEMA: Dict[str, Any] = {
         "name": "FormulationGraph",
-        "version": "1.0.0",
-        "description": "Default schema used when GraphSchema metadata is not present in Neo4j.",
+        "version": "2.0.0",
+        "description": (
+            "Graph schema optimized for multi-agent orchestration, bill of material reasoning, "
+            "FDC enrichment, and GraphRAG retrieval."
+        ),
         "defaults": {
             "node": {
                 "color": "#1e293b",
@@ -29,6 +32,11 @@ class GraphSchemaService:
                 "width": 2,
                 "target_arrow": "triangle",
             },
+            "layout": {
+                "algorithm": "cose",
+                "ideal_edge_length": 200,
+                "node_spacing": 60,
+            },
         },
         "node_types": [
             {
@@ -38,6 +46,41 @@ class GraphSchemaService:
                 "shape": "hexagon",
                 "size": 92,
                 "icon": "Flask",
+                "metadata": {
+                    "primary_key": "id",
+                    "indexed_properties": ["id", "name", "status"],
+                    "domain": "formulation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "BillOfMaterial",
+                "label": "Bill of Material",
+                "color": "#f97316",
+                "shape": "rectangle",
+                "size": 86,
+                "icon": "ClipboardList",
+                "metadata": {
+                    "primary_key": "bom_id",
+                    "indexed_properties": ["bom_id", "formulation_id"],
+                    "domain": "formulation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "BOMItem",
+                "label": "BOM Item",
+                "color": "#fb923c",
+                "shape": "roundrectangle",
+                "size": 80,
+                "icon": "ListChecks",
+                "metadata": {
+                    "primary_key": "item_id",
+                    "indexed_properties": ["item_id", "ingredient_id"],
+                    "quantity_property": "quantity",
+                    "domain": "formulation",
+                    "vector_property": None,
+                },
             },
             {
                 "type": "Ingredient",
@@ -46,14 +89,26 @@ class GraphSchemaService:
                 "shape": "roundrectangle",
                 "size": 84,
                 "icon": "Leaf",
+                "metadata": {
+                    "primary_key": "id",
+                    "indexed_properties": ["id", "name", "sku"],
+                    "domain": "inputs",
+                    "vector_property": None,
+                },
             },
             {
-                "type": "Nutrient",
-                "label": "Nutrient",
-                "color": "#0f766e",
-                "shape": "diamond",
-                "size": 78,
-                "icon": "Activity",
+                "type": "Food",
+                "label": "FDC Food",
+                "color": "#06b6d4",
+                "shape": "ellipse",
+                "size": 80,
+                "icon": "Utensils",
+                "metadata": {
+                    "primary_key": "fdcId",
+                    "indexed_properties": ["fdcId", "description", "brandOwner"],
+                    "domain": "external",
+                    "vector_property": None,
+                },
             },
             {
                 "type": "ProcessStep",
@@ -61,15 +116,13 @@ class GraphSchemaService:
                 "color": "#4338ca",
                 "shape": "hexagon",
                 "size": 80,
-                "icon": "GearSix",
-            },
-            {
-                "type": "Supplier",
-                "label": "Supplier",
-                "color": "#2563eb",
-                "shape": "rectangle",
-                "size": 76,
-                "icon": "Factory",
+                "icon": "Workflow",
+                "metadata": {
+                    "primary_key": "id",
+                    "indexed_properties": ["id", "name"],
+                    "domain": "operations",
+                    "vector_property": None,
+                },
             },
             {
                 "type": "Plant",
@@ -78,6 +131,139 @@ class GraphSchemaService:
                 "shape": "round-diamond",
                 "size": 76,
                 "icon": "Factory",
+                "metadata": {
+                    "primary_key": "id",
+                    "indexed_properties": ["id", "name"],
+                    "domain": "operations",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "Supplier",
+                "label": "Supplier",
+                "color": "#2563eb",
+                "shape": "rectangle",
+                "size": 76,
+                "icon": "Factory",
+                "metadata": {
+                    "primary_key": "id",
+                    "indexed_properties": ["id", "name"],
+                    "domain": "external",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "Nutrient",
+                "label": "Nutrient",
+                "color": "#0f766e",
+                "shape": "diamond",
+                "size": 78,
+                "icon": "Activity",
+                "metadata": {
+                    "primary_key": "nutrientId",
+                    "indexed_properties": ["nutrientId", "nutrientName"],
+                    "domain": "nutrition",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "NutritionalProfile",
+                "label": "Nutritional Profile",
+                "color": "#16a34a",
+                "shape": "ellipse",
+                "size": 78,
+                "icon": "PieChart",
+                "metadata": {
+                    "primary_key": "profile_id",
+                    "indexed_properties": ["profile_id", "source_id"],
+                    "domain": "nutrition",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "CostProfile",
+                "label": "Cost Profile",
+                "color": "#a855f7",
+                "shape": "ellipse",
+                "size": 78,
+                "icon": "Coins",
+                "metadata": {
+                    "primary_key": "profile_id",
+                    "indexed_properties": ["profile_id", "currency"],
+                    "domain": "finance",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "LabelClaim",
+                "label": "Label Claim",
+                "color": "#f43f5e",
+                "shape": "roundrectangle",
+                "size": 74,
+                "icon": "ClipboardCheck",
+                "metadata": {
+                    "primary_key": "claim_id",
+                    "indexed_properties": ["claim_id", "claimType"],
+                    "domain": "regulatory",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "KnowledgeSource",
+                "label": "Knowledge Source",
+                "color": "#0ea5e9",
+                "shape": "rectangle",
+                "size": 74,
+                "icon": "Database",
+                "metadata": {
+                    "primary_key": "id",
+                    "indexed_properties": ["id", "name"],
+                    "domain": "knowledge",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "KnowledgeChunk",
+                "label": "Knowledge Chunk",
+                "color": "#22d3ee",
+                "shape": "roundrectangle",
+                "size": 68,
+                "icon": "Layers",
+                "metadata": {
+                    "primary_key": "chunk_id",
+                    "indexed_properties": ["chunk_id", "source"],
+                    "domain": "knowledge",
+                    "vector_property": "embedding",
+                    "timestamp_property": "metadata.ingested_at",
+                },
+            },
+            {
+                "type": "AgentRun",
+                "label": "Agent Run",
+                "color": "#f59e0b",
+                "shape": "hexagon",
+                "size": 82,
+                "icon": "Workflow",
+                "metadata": {
+                    "primary_key": "run_id",
+                    "indexed_properties": ["run_id", "status"],
+                    "domain": "automation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "AgentTask",
+                "label": "Agent Task",
+                "color": "#fbbf24",
+                "shape": "roundrectangle",
+                "size": 72,
+                "icon": "Target",
+                "metadata": {
+                    "primary_key": "task_id",
+                    "indexed_properties": ["task_id", "kind"],
+                    "domain": "automation",
+                    "vector_property": None,
+                },
             },
             {
                 "type": "AIInsight",
@@ -86,6 +272,12 @@ class GraphSchemaService:
                 "shape": "ellipse",
                 "size": 72,
                 "icon": "Sparkle",
+                "metadata": {
+                    "primary_key": "insight_id",
+                    "indexed_properties": ["insight_id", "category"],
+                    "domain": "analytics",
+                    "vector_property": None,
+                },
             },
             {
                 "type": "CalculationSnapshot",
@@ -94,6 +286,82 @@ class GraphSchemaService:
                 "shape": "rectangle",
                 "size": 74,
                 "icon": "Calculator",
+                "metadata": {
+                    "primary_key": "snapshot_id",
+                    "indexed_properties": ["snapshot_id", "calculation_type"],
+                    "domain": "analytics",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "RiskModel",
+                "label": "Risk Model",
+                "color": "#db2777",
+                "shape": "ellipse",
+                "size": 78,
+                "icon": "ActivitySquare",
+                "metadata": {
+                    "primary_key": "model_id",
+                    "indexed_properties": ["model_id", "version"],
+                    "domain": "compliance",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "RiskAssessment",
+                "label": "Risk Assessment",
+                "color": "#ef4444",
+                "shape": "diamond",
+                "size": 76,
+                "icon": "TriangleAlert",
+                "metadata": {
+                    "primary_key": "assessment_id",
+                    "indexed_properties": ["assessment_id", "target_id"],
+                    "domain": "compliance",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "RiskFactor",
+                "label": "Risk Factor",
+                "color": "#f97316",
+                "shape": "diamond",
+                "size": 68,
+                "icon": "AlertTriangle",
+                "metadata": {
+                    "primary_key": "factor_id",
+                    "indexed_properties": ["factor_id", "category"],
+                    "domain": "compliance",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "Regulation",
+                "label": "Regulation",
+                "color": "#6366f1",
+                "shape": "rectangle",
+                "size": 78,
+                "icon": "Scale",
+                "metadata": {
+                    "primary_key": "regulation_id",
+                    "indexed_properties": ["regulation_id", "jurisdiction"],
+                    "domain": "regulatory",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "ComplianceRequirement",
+                "label": "Compliance Requirement",
+                "color": "#facc15",
+                "shape": "roundrectangle",
+                "size": 74,
+                "icon": "ClipboardWarning",
+                "metadata": {
+                    "primary_key": "requirement_id",
+                    "indexed_properties": ["requirement_id", "regulation_id"],
+                    "domain": "regulatory",
+                    "vector_property": None,
+                },
             },
         ],
         "relationship_types": [
@@ -106,16 +374,173 @@ class GraphSchemaService:
                 "target_arrow": "triangle",
                 "allowed_source_types": ["Formulation"],
                 "allowed_target_types": ["Ingredient"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                    "aggregation_property": "percentage",
+                },
             },
             {
-                "type": "HAS_NUTRIENT",
-                "label": "Has Nutrient",
+                "type": "HAS_BOM",
+                "label": "Has BOM",
+                "color": "#f97316",
+                "style": "solid",
+                "width": 2.5,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["Formulation"],
+                "allowed_target_types": ["BillOfMaterial"],
+                "metadata": {
+                    "cardinality": "one-to-one",
+                },
+            },
+            {
+                "type": "CONTAINS_ITEM",
+                "label": "Contains Item",
+                "color": "#fb923c",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["BillOfMaterial"],
+                "allowed_target_types": ["BOMItem"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                },
+            },
+            {
+                "type": "ITEM_USES_INGREDIENT",
+                "label": "Item Uses Ingredient",
+                "color": "#0ea5e9",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["BOMItem"],
+                "allowed_target_types": ["Ingredient"],
+                "metadata": {
+                    "cardinality": "many-to-one",
+                },
+            },
+            {
+                "type": "ITEM_REFERENCES_FOOD",
+                "label": "Item References FDC",
+                "color": "#06b6d4",
+                "style": "dashed",
+                "width": 1.5,
+                "target_arrow": "vee",
+                "allowed_source_types": ["BOMItem"],
+                "allowed_target_types": ["Food"],
+                "metadata": {
+                    "cardinality": "optional-one",
+                    "semantic": True,
+                },
+            },
+            {
+                "type": "MAPPED_TO_FDC",
+                "label": "Mapped To FDC",
+                "color": "#0ea5e9",
+                "style": "dotted",
+                "width": 1.5,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["Ingredient"],
+                "allowed_target_types": ["Food"],
+                "metadata": {
+                    "cardinality": "many-to-one",
+                    "semantic": True,
+                },
+            },
+            {
+                "type": "CONTAINS_NUTRIENT",
+                "label": "Contains Nutrient",
                 "color": "#0f766e",
                 "style": "solid",
                 "width": 2,
                 "target_arrow": "triangle",
-                "allowed_source_types": ["Ingredient", "Formulation"],
+                "allowed_source_types": ["Ingredient", "Food", "Formulation"],
                 "allowed_target_types": ["Nutrient"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                    "semantic": True,
+                },
+            },
+            {
+                "type": "HAS_NUTRITION_PROFILE",
+                "label": "Has Nutrition Profile",
+                "color": "#16a34a",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["Formulation", "Food"],
+                "allowed_target_types": ["NutritionalProfile"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                },
+            },
+            {
+                "type": "HAS_COST_PROFILE",
+                "label": "Has Cost Profile",
+                "color": "#a855f7",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["Formulation", "BillOfMaterial"],
+                "allowed_target_types": ["CostProfile"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                },
+            },
+            {
+                "type": "HAS_LABEL_CLAIM",
+                "label": "Has Label Claim",
+                "color": "#f43f5e",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["Formulation", "Food"],
+                "allowed_target_types": ["LabelClaim"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                    "semantic": True,
+                },
+            },
+            {
+                "type": "PROFILE_DERIVED_FROM",
+                "label": "Profile Derived From",
+                "color": "#16a34a",
+                "style": "dashed",
+                "width": 1.5,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["NutritionalProfile", "CostProfile"],
+                "allowed_target_types": ["Ingredient", "Food"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                    "semantic": True,
+                },
+            },
+            {
+                "type": "CLAIM_REFERENCES_NUTRIENT",
+                "label": "Claim References Nutrient",
+                "color": "#f43f5e",
+                "style": "dotted",
+                "width": 1.5,
+                "target_arrow": "vee",
+                "allowed_source_types": ["LabelClaim"],
+                "allowed_target_types": ["Nutrient"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                    "semantic": True,
+                },
+            },
+            {
+                "type": "CLAIM_SUPPORTED_BY",
+                "label": "Claim Supported By",
+                "color": "#be123c",
+                "style": "dotted",
+                "width": 1.5,
+                "target_arrow": "vee",
+                "allowed_source_types": ["LabelClaim"],
+                "allowed_target_types": ["KnowledgeChunk", "KnowledgeSource"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                    "evidence": True,
+                },
             },
             {
                 "type": "EXECUTES",
@@ -126,6 +551,9 @@ class GraphSchemaService:
                 "target_arrow": "triangle",
                 "allowed_source_types": ["Formulation"],
                 "allowed_target_types": ["ProcessStep"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                },
             },
             {
                 "type": "PRODUCED_AT",
@@ -136,6 +564,9 @@ class GraphSchemaService:
                 "target_arrow": "triangle",
                 "allowed_source_types": ["Formulation"],
                 "allowed_target_types": ["Plant"],
+                "metadata": {
+                    "cardinality": "many-to-one",
+                },
             },
             {
                 "type": "PROCURED_FROM",
@@ -146,6 +577,81 @@ class GraphSchemaService:
                 "target_arrow": "triangle",
                 "allowed_source_types": ["Ingredient"],
                 "allowed_target_types": ["Supplier"],
+                "metadata": {
+                    "cardinality": "many-to-one",
+                },
+            },
+            {
+                "type": "OPTIMIZED_BY",
+                "label": "Optimized By",
+                "color": "#f59e0b",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["Formulation", "BillOfMaterial"],
+                "allowed_target_types": ["AgentRun"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                    "temporal_property": "run_at",
+                },
+            },
+            {
+                "type": "RUN_GENERATED_BOM",
+                "label": "Run Generated BOM",
+                "color": "#facc15",
+                "style": "dotted",
+                "width": 1.5,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["AgentRun"],
+                "allowed_target_types": ["BillOfMaterial"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                },
+            },
+            {
+                "type": "RUN_CONTAINS_TASK",
+                "label": "Run Contains Task",
+                "color": "#fbbf24",
+                "style": "solid",
+                "width": 1.5,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["AgentRun"],
+                "allowed_target_types": ["AgentTask"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                },
+            },
+            {
+                "type": "TASK_TARGETS",
+                "label": "Task Targets",
+                "color": "#f97316",
+                "style": "dashed",
+                "width": 1.5,
+                "target_arrow": "vee",
+                "allowed_source_types": ["AgentTask"],
+                "allowed_target_types": [
+                    "Formulation",
+                    "Ingredient",
+                    "ProcessStep",
+                    "BillOfMaterial",
+                ],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                },
+            },
+            {
+                "type": "TASK_EMITS_INSIGHT",
+                "label": "Task Emits Insight",
+                "color": "#7c3aed",
+                "style": "dotted",
+                "width": 1.5,
+                "target_arrow": "vee",
+                "allowed_source_types": ["AgentTask"],
+                "allowed_target_types": ["AIInsight", "CalculationSnapshot"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                    "temporal_property": "captured_at",
+                },
             },
             {
                 "type": "APPLIES_TO",
@@ -155,7 +661,10 @@ class GraphSchemaService:
                 "width": 2,
                 "target_arrow": "triangle",
                 "allowed_source_types": ["CalculationSnapshot"],
-                "allowed_target_types": ["Formulation"],
+                "allowed_target_types": ["Formulation", "BillOfMaterial"],
+                "metadata": {
+                    "cardinality": "many-to-one",
+                },
             },
             {
                 "type": "SUPPORTS",
@@ -165,10 +674,159 @@ class GraphSchemaService:
                 "width": 1.5,
                 "target_arrow": "vee",
                 "allowed_source_types": ["AIInsight"],
-                "allowed_target_types": ["Formulation", "ProcessStep", "Ingredient"],
+                "allowed_target_types": ["Formulation", "ProcessStep", "Ingredient", "LabelClaim"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                    "semantic": True,
+                },
+            },
+            {
+                "type": "HAS_CHUNK",
+                "label": "Has Chunk",
+                "color": "#22d3ee",
+                "style": "solid",
+                "width": 1.5,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["KnowledgeSource"],
+                "allowed_target_types": ["KnowledgeChunk"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                },
+            },
+            {
+                "type": "CHUNK_DESCRIBES",
+                "label": "Chunk Describes",
+                "color": "#0ea5e9",
+                "style": "dashed",
+                "width": 1.5,
+                "target_arrow": "vee",
+                "allowed_source_types": ["KnowledgeChunk"],
+                "allowed_target_types": [
+                    "Formulation",
+                    "Ingredient",
+                    "Food",
+                    "Regulation",
+                ],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                    "semantic": True,
+                    "preferred_for_rag": True,
+                },
+            },
+            {
+                "type": "RISK_MODEL_RATES",
+                "label": "Risk Model Rates",
+                "color": "#db2777",
+                "style": "solid",
+                "width": 1.5,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["RiskModel"],
+                "allowed_target_types": ["RiskAssessment"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                },
+            },
+            {
+                "type": "ASSESSMENT_EVALUATES",
+                "label": "Assessment Evaluates",
+                "color": "#ef4444",
+                "style": "solid",
+                "width": 1.8,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["RiskAssessment"],
+                "allowed_target_types": ["Formulation", "Ingredient", "Food"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                },
+            },
+            {
+                "type": "ASSESSMENT_TRACKS_FACTOR",
+                "label": "Assessment Tracks Factor",
+                "color": "#f97316",
+                "style": "dotted",
+                "width": 1.3,
+                "target_arrow": "vee",
+                "allowed_source_types": ["RiskAssessment"],
+                "allowed_target_types": ["RiskFactor"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                },
+            },
+            {
+                "type": "ASSESSMENT_REFERENCES_REGULATION",
+                "label": "Assessment References Regulation",
+                "color": "#6366f1",
+                "style": "solid",
+                "width": 1.5,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["RiskAssessment"],
+                "allowed_target_types": ["Regulation"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                },
+            },
+            {
+                "type": "ASSESSMENT_COMPLIES_WITH",
+                "label": "Assessment Complies With",
+                "color": "#facc15",
+                "style": "dotted",
+                "width": 1.3,
+                "target_arrow": "vee",
+                "allowed_source_types": ["RiskAssessment"],
+                "allowed_target_types": ["ComplianceRequirement"],
+                "metadata": {
+                    "cardinality": "many-to-many",
+                },
+            },
+            {
+                "type": "COMPLIANCE_REFERENCES_REGULATION",
+                "label": "Compliance References Regulation",
+                "color": "#6366f1",
+                "style": "solid",
+                "width": 1.3,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["ComplianceRequirement"],
+                "allowed_target_types": ["Regulation"],
+                "metadata": {
+                    "cardinality": "many-to-one",
+                },
             },
         ],
     }
+
+    DEFAULT_CONSTRAINT_STATEMENTS: Tuple[str, ...] = (
+        "CREATE CONSTRAINT formulation_id IF NOT EXISTS FOR (f:Formulation) REQUIRE f.id IS UNIQUE",
+        "CREATE CONSTRAINT bom_id IF NOT EXISTS FOR (b:BillOfMaterial) REQUIRE b.bom_id IS UNIQUE",
+        "CREATE CONSTRAINT bom_item_id IF NOT EXISTS FOR (b:BOMItem) REQUIRE b.item_id IS UNIQUE",
+        "CREATE CONSTRAINT ingredient_id IF NOT EXISTS FOR (i:Ingredient) REQUIRE i.id IS UNIQUE",
+        "CREATE CONSTRAINT food_fdc_id IF NOT EXISTS FOR (f:Food) REQUIRE f.fdcId IS UNIQUE",
+        "CREATE CONSTRAINT knowledge_source_id IF NOT EXISTS FOR (s:KnowledgeSource) REQUIRE s.id IS UNIQUE",
+        "CREATE CONSTRAINT knowledge_chunk_id IF NOT EXISTS FOR (c:KnowledgeChunk) REQUIRE c.chunk_id IS UNIQUE",
+        "CREATE CONSTRAINT risk_model_id IF NOT EXISTS FOR (r:RiskModel) REQUIRE r.model_id IS UNIQUE",
+        "CREATE CONSTRAINT regulation_id IF NOT EXISTS FOR (r:Regulation) REQUIRE r.regulation_id IS UNIQUE",
+    )
+
+    DEFAULT_INDEX_STATEMENTS: Tuple[str, ...] = (
+        "CREATE INDEX ingredient_name_idx IF NOT EXISTS FOR (i:Ingredient) ON (i.name)",
+        "CREATE INDEX food_description_idx IF NOT EXISTS FOR (f:Food) ON (f.description)",
+        "CREATE INDEX formulation_status_idx IF NOT EXISTS FOR (f:Formulation) ON (f.status)",
+        "CREATE INDEX label_claim_type_idx IF NOT EXISTS FOR (l:LabelClaim) ON (l.claimType)",
+        "CREATE INDEX risk_assessment_target_idx IF NOT EXISTS FOR (r:RiskAssessment) ON (r.target_id)",
+        "CREATE INDEX knowledge_chunk_source_idx IF NOT EXISTS FOR (c:KnowledgeChunk) ON (c.source)",
+    )
+
+    DEFAULT_VECTOR_INDEX_STATEMENTS: Tuple[str, ...] = (
+        """
+        CREATE VECTOR INDEX knowledge_chunk_embedding_index IF NOT EXISTS
+        FOR (c:KnowledgeChunk) ON (c.embedding)
+        OPTIONS {
+            indexConfig: {
+                `vector.dimensions`: 768,
+                `vector.similarity_function`: 'cosine'
+            }
+        }
+        """,
+    )
 
     def __init__(self, neo4j_client: Optional[Neo4jClient], schema_name: str) -> None:
         self._neo4j = neo4j_client

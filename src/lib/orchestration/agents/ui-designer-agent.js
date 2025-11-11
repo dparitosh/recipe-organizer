@@ -1,22 +1,86 @@
 import { UIConfigSchema } from '../agent-schemas.js'
 import { requestJsonResponse } from '../utils/prompt-runner.js'
 
+const formatRecipeForPrompt = (recipe) => {
+  if (!recipe) {
+    return '{}'
+  }
+
+  const ingredients = Array.isArray(recipe.ingredients)
+    ? recipe.ingredients.map((ingredient) => ({
+        id: ingredient.id,
+        name: ingredient.name,
+        percentage: ingredient.percentage,
+        function: ingredient.function || 'other',
+      }))
+    : []
+
+  return JSON.stringify({
+    id: recipe.id,
+    name: recipe.name,
+    description: recipe.description,
+    totalPercentage: recipe.totalPercentage,
+    ingredients,
+  })
+}
+
+const formatCalculationForPrompt = (calculation) => {
+  if (!calculation) {
+    return '{}'
+  }
+
+  const scaledIngredients = Array.isArray(calculation.scaledIngredients)
+    ? calculation.scaledIngredients.map((ingredient) => ({
+        name: ingredient.name,
+        scaledQuantity: ingredient.scaledQuantity,
+        scaledUnit: ingredient.scaledUnit,
+        cost: ingredient.cost,
+      }))
+    : []
+
+  return JSON.stringify({
+    targetBatchSize: calculation.targetBatchSize,
+    targetUnit: calculation.targetUnit,
+    scaledIngredients,
+    costs: calculation.costs,
+    yield: calculation.yield,
+  })
+}
+
+const formatValidationForPrompt = (validation) => {
+  if (!validation) {
+    return '{}'
+  }
+
+  return JSON.stringify({
+    valid: validation.valid,
+    errors: validation.errors,
+    warnings: validation.warnings,
+    checks: validation.checks,
+    summary: validation.summary,
+  })
+}
+
 export class UIDesignerAgent {
   name = 'UI Designer'
   description = 'Generates React component configurations for data visualization'
 
   async execute(input) {
+    const recipeJson = formatRecipeForPrompt(input.recipe)
+    const calculationJson = formatCalculationForPrompt(input.calculation)
+    const validationJson = formatValidationForPrompt(input.validation)
+
     const promptSections = [
       'You are a UI Designer agent specializing in data-rich dashboard layouts for food & beverage operations.',
       '',
       'Recipe Data:',
-      JSON.stringify(input.recipe, null, 2),
+      recipeJson,
       '',
       'Calculation Data:',
-      JSON.stringify(input.calculation, null, 2),
+      calculationJson,
       '',
       'Validation Data:',
-      JSON.stringify(input.validation, null, 2),
+      validationJson,
       '',
       'Design Requirements:',
       '1. Choose an optimal layout (single-column, two-column, three-column, or grid).',

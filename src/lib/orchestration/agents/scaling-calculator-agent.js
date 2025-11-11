@@ -1,6 +1,39 @@
 import { CalculationSchema } from '../agent-schemas.js'
 import { requestJsonResponse } from '../utils/prompt-runner.js'
 
+const formatRecipeForPrompt = (recipe) => {
+  if (!recipe) {
+    return '{}'
+  }
+
+  const ingredients = Array.isArray(recipe.ingredients)
+    ? recipe.ingredients.map((ingredient) => ({
+        id: ingredient.id,
+        name: ingredient.name,
+        percentage: ingredient.percentage,
+        function: ingredient.function || 'other',
+        category: ingredient.category,
+      }))
+    : []
+
+  const minimalRecipe = {
+    id: recipe.id,
+    name: recipe.name,
+    description: recipe.description,
+    totalPercentage: recipe.totalPercentage,
+    ingredients,
+  }
+
+  if (recipe.metadata?.createdAt || recipe.metadata?.version) {
+    minimalRecipe.metadata = {
+      version: recipe.metadata?.version,
+      createdAt: recipe.metadata?.createdAt,
+    }
+  }
+
+  return JSON.stringify(minimalRecipe)
+}
+
 export class ScalingCalculatorAgent {
   name = 'Scaling Calculator'
   description = 'Computes quantities, costs, and yields with density conversions'
@@ -16,12 +49,13 @@ export class ScalingCalculatorAgent {
     const lossLine = input.lossFactors
       ? `Loss Factors: ${JSON.stringify(input.lossFactors)}`
       : 'Use default losses'
+    const compactRecipeJson = formatRecipeForPrompt(input.recipe)
 
     const promptSections = [
       'You are a Scaling Calculator agent specializing in quantitative formulation computation.',
       '',
       'Recipe Data:',
-      JSON.stringify(input.recipe, null, 2),
+      compactRecipeJson,
       '',
       `Target Batch: ${input.targetBatchSize} ${input.targetUnit}`,
       densityLine,

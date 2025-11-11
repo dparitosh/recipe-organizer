@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "sources": [
+    {
+      "id": "tmp_docs",
+      "type": "unstructured",
+      "description": "Temporary docs for CLI validation",
+      "enabled": true,
+      "ingestion": {
+        "driver": "filesystem",
+        "paths": ["sample.md"]
+      },
+      "chunking": {
+        "strategy": "sliding-window",
+        "token_target": 50,
+        "token_overlap": 10,
+        "metadata_keys": ["heading", "breadcrumb"]
+      }
+    }
+  ]
+}

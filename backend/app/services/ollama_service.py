@@ -7,14 +7,30 @@ from typing import Optional, Dict, Any, List
 logger = logging.getLogger(__name__)
 
 class OllamaService:
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "llama2"):
+    def __init__(
+        self,
+        base_url: str = "http://localhost:11434",
+        model: str = "llama2",
+        timeout_seconds: Optional[int] = 60,
+        max_connections: int = 10,
+    ) -> None:
         self.base_url = base_url.rstrip('/')
         self.model = model
-        # Disable per-request timeout to allow long-running Ollama generations during
-        # exploratory testing or heavy models. Callers can still rely on upstream HTTP
-        # timeouts or cancellation if needed.
-        self.timeout = aiohttp.ClientTimeout(total=None)
-    
+        normalized_timeout = None if timeout_seconds is None or timeout_seconds <= 0 else timeout_seconds
+        self._client_timeout = aiohttp.ClientTimeout(total=normalized_timeout)
+        self._connector = aiohttp.TCPConnector(limit=max(1, max_connections))
+        self._session: Optional[aiohttp.ClientSession] = None
+
+    async def close(self) -> None:
+        if self._session is not None and not self._session.closed:
+            await self._session.close()
+        self._session = None
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=self._client_timeout, connector=self._connector)
+        return self._session
+
     async def check_health(self) -> bool:
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
@@ -46,18 +62,18 @@ class OllamaService:
                 },
             }
 
-            async with aiohttp.ClientSession(timeout=self.timeout) as session:
-                async with session.post(
-                    f"{self.base_url}/api/generate",
-                    json=payload,
-                ) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        return result.get("response", "")
-                    if response.status == 504:
-                        raise asyncio.TimeoutError("OLLAMA request timed out")
-                    error_text = await response.text()
-                    raise Exception(f"OLLAMA API error: {error_text}")
+            session = await self._get_session()
+            async with session.post(
+                f"{self.base_url}/api/generate",
+                json=payload,
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result.get("response", "")
+                if response.status == 504:
+                    raise asyncio.TimeoutError("OLLAMA request timed out")
+                error_text = await response.text()
+                raise Exception(f"OLLAMA API error: {error_text}")
 
         except asyncio.TimeoutError as exc:
             logger.error("OLLAMA generation timed out", exc_info=True)
