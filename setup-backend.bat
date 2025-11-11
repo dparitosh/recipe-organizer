@@ -1,55 +1,113 @@
 @echo off
+setlocal ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
+
 echo =========================================
 echo Formulation Graph Studio - Backend Setup
 echo =========================================
 echo.
 
-cd backend
+set REPO_ROOT=%~dp0
+set BACKEND_DIR=%REPO_ROOT%backend
+set VENV_DIR=%BACKEND_DIR%\venv
 
-if not exist "venv" (
-    echo Creating Python virtual environment...
-    python -m venv venv
-    echo Virtual environment created
+if not exist "%BACKEND_DIR%" (
+    echo [ERROR] backend directory not found at %BACKEND_DIR%
+    exit /b 1
+)
+
+pushd "%BACKEND_DIR%"
+
+if exist "%VENV_DIR%\Scripts\python.exe" (
+    choice /M "Existing backend\venv detected. Recreate virtual environment?"
+    if not errorlevel 2 (
+        echo Removing existing virtual environment...
+        rmdir /s /q "%VENV_DIR%"
+    ) else (
+        echo Keeping existing virtual environment.
+    )
+)
+
+if not exist "%VENV_DIR%\Scripts\python.exe" (
+    echo Creating Python virtual environment under backend\venv ...
+    where py >nul 2>&1
+    if %errorlevel%==0 (
+        py -3.12 -m venv "%VENV_DIR%"
+    ) else (
+        python -m venv "%VENV_DIR%"
+    )
+    if errorlevel 1 (
+        echo [ERROR] Failed to create virtual environment. Ensure Python 3.12 is installed and available as 'py -3.12'.
+        popd
+        exit /b 1
+    )
+    echo ✓ Virtual environment created.
 ) else (
-    echo Virtual environment already exists
+    echo ✓ Virtual environment ready at backend\venv.
 )
 
 echo.
 echo Activating virtual environment...
-call venv\Scripts\activate
+call "%VENV_DIR%\Scripts\activate.bat"
+if errorlevel 1 (
+    echo [ERROR] Failed to activate virtual environment.
+    popd
+    exit /b 1
+)
 
 echo.
-echo Installing dependencies...
-pip install -r requirements.txt
+echo Installing backend dependencies...
+python -m pip install --upgrade pip
+if errorlevel 1 goto pip_failed
+python -m pip install -r requirements.txt
+if errorlevel 1 goto pip_failed
+if exist requirements-dev.txt (
+    python -m pip install -r requirements-dev.txt
+    if errorlevel 1 goto pip_failed
+)
+echo ✓ Dependencies installed.
 
 echo.
-echo Checking environment configuration...
 if not exist ".env" (
-    echo Creating .env file from template...
-    copy .env.example .env
-    echo Please edit backend\.env and add your OpenAI API key
-    echo   NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
-    echo   NEO4J_USER=neo4j
-    echo   NEO4J_PASSWORD=tcs12345
-    echo   NEO4J_DATABASE=neo4j
-    echo   OPENAI_API_KEY=^<your-key-here^>
+    echo Creating .env from template...
+    if exist ".env.example" (
+        copy /Y .env.example .env >nul
+        echo ✓ backend\.env created. Update Neo4j and Ollama credentials before running the server.
+    ) else (
+        echo [WARN] .env.example not found. Create backend\.env manually.
+    )
 ) else (
-    echo .env file exists
+    echo ✓ backend\.env already present.
+)
+
+if not exist "env.local.json" (
+    if exist "env.local.json.example" (
+        copy /Y env.local.json.example env.local.json >nul
+        echo ✓ env.local.json created (optional overrides).
+    )
 )
 
 echo.
 echo =========================================
-echo Setup Complete!
+echo Backend setup complete!
 echo =========================================
 echo.
-echo To start the backend server:
+echo Next steps:
+echo   1. Edit backend\.env and env.local.json with real credentials.
+echo   2. (Optional) Pull Ollama models:  ollama pull llama3:latest
+echo   3. Start backend: start-backend.bat or start-backend.ps1
+echo.
+echo To run API locally:
 echo   cd backend
 echo   venv\Scripts\activate
-echo   python main.py
+echo   uvicorn main:app --reload --port 8000
 echo.
-echo The API will be available at: http://localhost:8000
-echo API Documentation: http://localhost:8000/docs
-echo.
-echo Don't forget to configure your OpenAI API key in backend\.env
-echo.
-pause
+goto end
+
+:pip_failed
+echo [ERROR] pip installation failed. Review the output above.
+popd
+exit /b 1
+
+:end
+popd
+endlocal

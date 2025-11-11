@@ -1,41 +1,74 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 echo "========================================="
 echo "Formulation Graph Studio - Backend Setup"
 echo "========================================="
 echo ""
 
-cd backend
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_DIR="$SCRIPT_DIR/backend"
+VENV_DIR="$BACKEND_DIR/venv"
 
-if [ ! -d "venv" ]; then
-    echo "Creating Python virtual environment..."
-    python3 -m venv venv
-    echo "✓ Virtual environment created"
+if [ ! -d "$BACKEND_DIR" ]; then
+    echo "[ERROR] backend directory not found at $BACKEND_DIR" >&2
+    exit 1
+fi
+
+cd "$BACKEND_DIR"
+
+if [ -d "$VENV_DIR" ]; then
+    read -rp "Existing backend/venv detected. Recreate it? [y/N] " RECREATE
+    if [[ "$RECREATE" =~ ^[Yy]$ ]]; then
+        echo "Removing existing virtual environment..."
+        rm -rf "$VENV_DIR"
+    else
+        echo "Keeping existing virtual environment."
+    fi
+fi
+
+if [ ! -x "$VENV_DIR/bin/python" ]; then
+    echo "Creating Python virtual environment under backend/venv ..."
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -m venv "$VENV_DIR"
+    else
+        python -m venv "$VENV_DIR"
+    fi
+    echo "✓ Virtual environment created."
 else
-    echo "✓ Virtual environment already exists"
+    echo "✓ Virtual environment ready at backend/venv."
 fi
 
 echo ""
 echo "Activating virtual environment..."
-source venv/bin/activate
+# shellcheck disable=SC1090
+source "$VENV_DIR/bin/activate"
 
 echo ""
 echo "Installing dependencies..."
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+if [ -f "requirements-dev.txt" ]; then
+    python -m pip install -r requirements-dev.txt
+fi
+echo "✓ Dependencies installed."
 
 echo ""
-echo "Checking environment configuration..."
 if [ ! -f ".env" ]; then
-    echo "Creating .env file from template..."
-    cp .env.example .env
-    echo "⚠ Please edit backend/.env and add your OpenAI API key"
-    echo "  NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io"
-    echo "  NEO4J_USER=neo4j"
-    echo "  NEO4J_PASSWORD=tcs12345"
-    echo "  NEO4J_DATABASE=neo4j"
-    echo "  OPENAI_API_KEY=<your-key-here>"
+    if [ -f ".env.example" ]; then
+        cp .env.example .env
+        echo "✓ backend/.env created. Update Neo4j and Ollama credentials before starting the server."
+    else
+        echo "[WARN] .env.example not found. Create backend/.env manually."
+    fi
 else
-    echo "✓ .env file exists"
+    echo "✓ backend/.env already present."
+fi
+
+if [ ! -f "env.local.json" ] && [ -f "env.local.json.example" ]; then
+    cp env.local.json.example env.local.json
+    echo "✓ env.local.json created (optional runtime overrides)."
 fi
 
 echo ""
@@ -43,13 +76,15 @@ echo "========================================="
 echo "Setup Complete!"
 echo "========================================="
 echo ""
-echo "To start the backend server:"
+echo "Next steps:"
+echo "  1. Edit backend/.env and env.local.json with real credentials."
+echo "  2. (Optional) Pull Ollama models:  ollama pull llama3:latest"
+echo "  3. Start backend: ./start-backend.sh"
+echo ""
+echo "To run the API manually:"
 echo "  cd backend"
-echo "  source venv/bin/activate  # On Windows: venv\\Scripts\\activate"
-echo "  python main.py"
+echo "  source venv/bin/activate"
+echo "  uvicorn main:app --reload --host 0.0.0.0 --port 8000"
 echo ""
-echo "The API will be available at: http://localhost:8000"
-echo "API Documentation: http://localhost:8000/docs"
-echo ""
-echo "Don't forget to configure your OpenAI API key in backend/.env"
+echo "Remember: do not copy backend/venv between machines—recreate it with this script."
 echo ""

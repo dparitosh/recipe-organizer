@@ -19,9 +19,15 @@ if (-not (Test-Path $backendDir)) {
 
 Set-Location $backendDir
 
-$venvActivate = Join-Path $backendDir "venv\Scripts\Activate.ps1"
-if (-not (Test-Path $venvActivate)) {
-    Write-Error "Virtual environment not found. Run setup-backend.ps1 or setup-backend.bat first."
+$venvCandidates = @(
+    Join-Path $backendDir "venv\Scripts\Activate.ps1",
+    Join-Path $scriptRoot ".venv\Scripts\Activate.ps1"
+)
+
+$venvActivate = $venvCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $venvActivate) {
+    Write-Error "Virtual environment not found. Run setup-backend.bat or setup-backend.sh first."
     exit 1
 }
 
@@ -62,7 +68,7 @@ Write-Host "Documentation: http://localhost:8000/docs"
 Write-Host
 
 try {
-    python main.py
+    python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 } finally {
     Write-Host
     Write-Host "Server stopped."
