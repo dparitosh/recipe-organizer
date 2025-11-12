@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.models.orchestration import OrchestrationPersistRequest
 from .orchestration_types import GraphWriteSet
@@ -41,7 +41,7 @@ def map_orchestration_payload_to_graph_write_set(payload: OrchestrationPersistRe
 
     recipe_version = _build_recipe_version(result.recipe, run_id, run_timestamp)
     calculation = _build_calculation_snapshot(result.calculation, run_id, run_timestamp)
-    graph_snapshot = _build_graph_snapshot(result.graph, run_id, run_timestamp)
+    graph_snapshot, graph_nodes, graph_edges = _build_graph_snapshot(result.graph, run_id, run_timestamp)
     validation = _build_validation_snapshot(result.validation, run_id, run_timestamp)
     ui_config = _build_ui_snapshot(result.uiConfig, run_id, run_timestamp)
     agent_invocations = _build_agent_invocations(result.agentHistory, run_id)
@@ -52,6 +52,8 @@ def map_orchestration_payload_to_graph_write_set(payload: OrchestrationPersistRe
         recipe_version=recipe_version,
         calculation=calculation,
         graph_snapshot=graph_snapshot,
+        graph_nodes=graph_nodes,
+        graph_edges=graph_edges,
         validation=validation,
         ui_config=ui_config,
         agent_invocations=agent_invocations,
@@ -111,7 +113,7 @@ def _build_calculation_snapshot(calculation: Dict[str, Any], run_id: str, fallba
     }
 
 
-def _build_graph_snapshot(graph: Dict[str, Any], run_id: str, fallback_ts: str) -> Dict[str, Any]:
+def _build_graph_snapshot(graph: Dict[str, Any], run_id: str, fallback_ts: str) -> Tuple[Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]]]:
     payload = dict(graph or {})
     nodes = payload.get("nodes", [])
     edges = payload.get("edges", [])
@@ -130,13 +132,61 @@ def _build_graph_snapshot(graph: Dict[str, Any], run_id: str, fallback_ts: str) 
 
     blob_uri = payload.get("blobUri")
 
-    return {
+    snapshot = {
         "graphId": payload.get("graphId") or f"{run_id}-graph",
         "metadata": metadata,
         "checksum": _compute_checksum(checksum_payload),
         "blobUri": blob_uri,
         "createdAt": payload.get("timestamp") or fallback_ts,
     }
+
+    normalized_nodes, normalized_edges = _normalize_graph_entities(nodes, edges)
+
+    return snapshot, normalized_nodes, normalized_edges
+
+
+def _normalize_graph_entities(
+    nodes: List[Dict[str, Any]],
+    edges: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    normalized_nodes: List[Dict[str, Any]] = []
+    normalized_edges: List[Dict[str, Any]] = []
+
+    for node in nodes or []:
+        node_id = node.get("id") or node.get("nodeId")
+        if not node_id:
+            continue
+
+        properties = dict(node.get("properties") or {})
+        normalized_nodes.append(
+            {
+                "id": node_id,
+                "label": node.get("label") or node.get("name") or properties.get("name"),
+                "type": node.get("type") or properties.get("type"),
+                "properties": properties,
+            }
+        )
+
+    for edge in edges or []:
+        source = edge.get("source") or edge.get("from")
+        target = edge.get("target") or edge.get("to")
+        if not source or not target:
+            continue
+
+        edge_id = edge.get("edgeId") or edge.get("id") or f"edge::{source}::{target}::{edge.get('type', 'RELATED')}"
+
+        normalized_edges.append(
+            {
+                "id": edge.get("id") or edge_id,
+                "edgeId": edge_id,
+                "source": source,
+                "target": target,
+                "type": edge.get("type") or "RELATED",
+                "properties": dict(edge.get("properties") or {}),
+            }
+        )
+
+    return normalized_nodes, normalized_edges
 
 
 def _build_validation_snapshot(validation: Dict[str, Any], run_id: str, fallback_ts: str) -> Dict[str, Any]:

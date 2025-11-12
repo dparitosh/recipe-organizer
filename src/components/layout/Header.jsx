@@ -46,10 +46,10 @@ export function Header({ onMenuClick, backendUrl }) {
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground tracking-tight">
-                Formulation Graph Studio
+                Formulation & Nutritional Recipe Studio
               </h1>
               <p className="text-xs text-muted-foreground">
-                Modern F&B Management Platform
+                Unified formulation, nutrition, and graph intelligence
               </p>
             </div>
           </div>

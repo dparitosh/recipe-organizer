@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from contextlib import asynccontextmanager
@@ -133,9 +133,9 @@ async def lifespan(app: FastAPI):
         logger.info("FDC service client closed")
 
 app = FastAPI(
-    title="Formulation Graph Studio API",
+    title="Formulation & Nutritional Recipe Studio API",
     version="1.0.0",
-    description="Food & Beverage Formulation Management Platform API with Neo4j and OLLAMA AI",
+    description="Unified formulation and nutritional intelligence platform API powered by Neo4j and OLLAMA AI",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -155,7 +155,7 @@ app.include_router(router, prefix="/api")
 @app.get("/", tags=["Root"])
 async def read_root():
     return {
-        "message": "Formulation Graph Studio API",
+        "message": "Formulation & Nutritional Recipe Studio API",
         "version": "1.0.0",
         "docs": "/docs",
         "health": "/api/health"

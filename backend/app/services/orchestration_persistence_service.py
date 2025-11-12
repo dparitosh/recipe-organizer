@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from neo4j.exceptions import Neo4jError, ServiceUnavailable, SessionExpired, TransientError
 
@@ -129,6 +129,97 @@ class OrchestrationPersistenceService:
         MERGE (run)-[:PRODUCED_UI]->(ui)
 
         WITH run
+        UNWIND $graphNodes AS node
+        WITH run, node
+        WHERE node.id IS NOT NULL
+        MERGE (n:GraphEntity {id: node.id})
+          ON CREATE SET n.createdAt = timestamp()
+        SET n.name = coalesce(node.label, n.name),
+            n.type = coalesce(node.type, n.type),
+            n.updatedAt = timestamp(),
+            n += coalesce(node.properties, {})
+        SET n.generatedRunIds = CASE
+            WHEN n.generatedRunIds IS NULL THEN [run.runId]
+            WHEN run.runId IN n.generatedRunIds THEN n.generatedRunIds
+            ELSE n.generatedRunIds + run.runId
+        END
+        FOREACH (_ IN CASE WHEN toLower(coalesce(node.type, '')) = 'formulation' THEN [1] ELSE [] END | SET n:Formulation)
+        FOREACH (_ IN CASE WHEN toLower(coalesce(node.type, '')) = 'ingredient' THEN [1] ELSE [] END | SET n:Ingredient)
+        FOREACH (_ IN CASE WHEN toLower(coalesce(node.type, '')) = 'process' THEN [1] ELSE [] END | SET n:Process)
+        FOREACH (_ IN CASE WHEN toLower(coalesce(node.type, '')) = 'cost' THEN [1] ELSE [] END | SET n:Cost)
+        FOREACH (_ IN CASE WHEN toLower(coalesce(node.type, '')) = 'nutrient' THEN [1] ELSE [] END | SET n:Nutrient)
+        MERGE (run)-[:GENERATED_ENTITY]->(n)
+
+        WITH run
+        UNWIND $graphEdges AS edge
+        WITH run, edge
+        WHERE edge.source IS NOT NULL AND edge.target IS NOT NULL
+        MATCH (source:GraphEntity {id: edge.source})
+        MATCH (target:GraphEntity {id: edge.target})
+        WITH run, edge, source, target
+        FOREACH (_ IN CASE WHEN toUpper(coalesce(edge.type, '')) = 'CONTAINS' THEN [1] ELSE [] END |
+            MERGE (source)-[rel:CONTAINS {edgeId: edge.edgeId}]->(target)
+            SET rel += coalesce(edge.properties, {}),
+                rel.edgeId = edge.edgeId,
+                rel.type = coalesce(edge.type, 'CONTAINS'),
+                rel.updatedAt = timestamp(),
+                rel.generatedRunIds = CASE
+                    WHEN rel.generatedRunIds IS NULL THEN [run.runId]
+                    WHEN run.runId IN rel.generatedRunIds THEN rel.generatedRunIds
+                    ELSE rel.generatedRunIds + run.runId
+                END
+        )
+        FOREACH (_ IN CASE WHEN toUpper(coalesce(edge.type, '')) = 'PRODUCES' THEN [1] ELSE [] END |
+            MERGE (source)-[rel:PRODUCES {edgeId: edge.edgeId}]->(target)
+            SET rel += coalesce(edge.properties, {}),
+                rel.edgeId = edge.edgeId,
+                rel.type = coalesce(edge.type, 'PRODUCES'),
+                rel.updatedAt = timestamp(),
+                rel.generatedRunIds = CASE
+                    WHEN rel.generatedRunIds IS NULL THEN [run.runId]
+                    WHEN run.runId IN rel.generatedRunIds THEN rel.generatedRunIds
+                    ELSE rel.generatedRunIds + run.runId
+                END
+        )
+        FOREACH (_ IN CASE WHEN toUpper(coalesce(edge.type, '')) = 'COSTS' THEN [1] ELSE [] END |
+            MERGE (source)-[rel:COSTS {edgeId: edge.edgeId}]->(target)
+            SET rel += coalesce(edge.properties, {}),
+                rel.edgeId = edge.edgeId,
+                rel.type = coalesce(edge.type, 'COSTS'),
+                rel.updatedAt = timestamp(),
+                rel.generatedRunIds = CASE
+                    WHEN rel.generatedRunIds IS NULL THEN [run.runId]
+                    WHEN run.runId IN rel.generatedRunIds THEN rel.generatedRunIds
+                    ELSE rel.generatedRunIds + run.runId
+                END
+        )
+        FOREACH (_ IN CASE WHEN toUpper(coalesce(edge.type, '')) = 'HAS_NUTRIENT' THEN [1] ELSE [] END |
+            MERGE (source)-[rel:HAS_NUTRIENT {edgeId: edge.edgeId}]->(target)
+            SET rel += coalesce(edge.properties, {}),
+                rel.edgeId = edge.edgeId,
+                rel.type = coalesce(edge.type, 'HAS_NUTRIENT'),
+                rel.updatedAt = timestamp(),
+                rel.generatedRunIds = CASE
+                    WHEN rel.generatedRunIds IS NULL THEN [run.runId]
+                    WHEN run.runId IN rel.generatedRunIds THEN rel.generatedRunIds
+                    ELSE rel.generatedRunIds + run.runId
+                END
+        )
+        FOREACH (_ IN CASE WHEN toUpper(coalesce(edge.type, '')) IN ['CONTAINS','PRODUCES','COSTS','HAS_NUTRIENT'] THEN [] ELSE [1] END |
+            MERGE (source)-[rel:RELATED_TO {edgeId: edge.edgeId}]->(target)
+            SET rel += coalesce(edge.properties, {}),
+                rel.edgeId = edge.edgeId,
+                rel.type = coalesce(edge.type, 'RELATED_TO'),
+                rel.relationshipType = edge.type,
+                rel.updatedAt = timestamp(),
+                rel.generatedRunIds = CASE
+                    WHEN rel.generatedRunIds IS NULL THEN [run.runId]
+                    WHEN run.runId IN rel.generatedRunIds THEN rel.generatedRunIds
+                    ELSE rel.generatedRunIds + run.runId
+                END
+        )
+
+        WITH run
         UNWIND $agentInvocations AS agentInvocation
         MERGE (agent:AgentInvocation { runId: run.runId, sequence: agentInvocation.sequence })
           ON CREATE SET agent.agentName = agentInvocation.agentName,
@@ -164,12 +255,36 @@ class OrchestrationPersistenceService:
 
         agent_invocations = [dict(agent) for agent in write_set.agent_invocations]
 
+        graph_nodes: List[Dict[str, Any]] = []
+        for raw_node in write_set.graph_nodes:
+            node = {
+                "id": raw_node.get("id"),
+                "label": raw_node.get("label"),
+                "type": raw_node.get("type"),
+                "properties": dict(raw_node.get("properties") or {}),
+            }
+            graph_nodes.append(node)
+
+        graph_edges: List[Dict[str, Any]] = []
+        for raw_edge in write_set.graph_edges:
+            edge = {
+                "edgeId": raw_edge.get("edgeId") or raw_edge.get("id"),
+                "id": raw_edge.get("id") or raw_edge.get("edgeId"),
+                "source": raw_edge.get("source"),
+                "target": raw_edge.get("target"),
+                "type": raw_edge.get("type"),
+                "properties": dict(raw_edge.get("properties") or {}),
+            }
+            graph_edges.append(edge)
+
         return {
             "run": run,
             "userRequest": write_set.user_request,
             "recipeVersion": recipe_version,
             "calculation": calculation,
             "graphSnapshot": graph_snapshot,
+            "graphNodes": graph_nodes,
+            "graphEdges": graph_edges,
             "validation": validation,
             "uiConfig": ui_config,
             "agentInvocations": agent_invocations,

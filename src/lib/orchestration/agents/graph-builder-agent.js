@@ -143,10 +143,44 @@ export class GraphBuilderAgent {
 
     const formatNodeIdentifier = (id) => id.replace(/[^a-zA-Z0-9_]/g, '_')
 
+    const escapeString = (value) => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+
+    const formatPropertyKey = (key) => key.replace(/[^a-zA-Z0-9_]/g, '_')
+
+    const formatCypherValue = (value) => {
+      if (value === null || value === undefined) {
+        return 'null'
+      }
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return String(value)
+      }
+      if (typeof value === 'boolean') {
+        return value ? 'true' : 'false'
+      }
+      if (Array.isArray(value)) {
+        const items = value.map((item) => formatCypherValue(item))
+        return `[${items.join(', ')}]`
+      }
+      if (typeof value === 'object') {
+        return formatCypherProperties(value)
+      }
+      return `'${escapeString(value)}'`
+    }
+
+    const formatCypherProperties = (obj) => {
+      const entries = Object.entries(obj || {})
+      if (!entries.length) {
+        return '{}'
+      }
+
+      const parts = entries.map(([key, val]) => `${formatPropertyKey(key)}: ${formatCypherValue(val)}`)
+      return `{ ${parts.join(', ')} }`
+    }
+
     const cypherNodes = nodes.map((node) => {
       const label = node.type.charAt(0).toUpperCase() + node.type.slice(1)
       const identifier = formatNodeIdentifier(node.id)
-      const properties = JSON.stringify({
+      const properties = formatCypherProperties({
         id: node.id,
         label: node.label,
         ...node.properties,
@@ -156,8 +190,9 @@ export class GraphBuilderAgent {
 
     const cypherEdges = edges.map((edge) => {
       const type = edge.type.toUpperCase()
-      const properties = JSON.stringify(edge.properties || {})
-      return `MATCH (a {id: "${edge.source}"}), (b {id: "${edge.target}"}) CREATE (a)-[:${type} ${properties}]->(b)`
+      const properties = formatCypherProperties(edge.properties || {})
+      const propertiesSegment = properties === '{}' ? '' : ` ${properties}`
+      return `MATCH (a {id: '${escapeString(edge.source)}'}), (b {id: '${escapeString(edge.target)}'}) CREATE (a)-[:${type}${propertiesSegment}]->(b)`
     })
 
     const graph = {

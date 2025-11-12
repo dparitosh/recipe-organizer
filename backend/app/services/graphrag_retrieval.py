@@ -144,14 +144,17 @@ class GraphRAGRetrievalService:
         ORDER BY score DESC
         """
 
-        records = self.neo4j_client.execute_query(
-            cypher,
-            {
-                "index_name": self.chunk_index_name,
-                "limit": int(max(1, limit)),
-                "embedding": list(embedding),
-            },
-        )
+        try:
+            records = self.neo4j_client.execute_query(
+                cypher,
+                {
+                    "index_name": self.chunk_index_name,
+                    "limit": int(max(1, limit)),
+                    "embedding": list(embedding),
+                },
+            )
+        except Exception as exc:
+            raise GraphRAGRetrievalError(f"Vector search failed: {exc}") from exc
 
         chunks: List[RetrievalChunk] = []
         for raw in records:

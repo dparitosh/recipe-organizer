@@ -134,10 +134,19 @@ def _map_formulation_record(record: Dict[str, Any]) -> Optional[FormulationRespo
     if not form_node:
         return None
 
-    try:
-        form_props = dict(form_node)
-    except TypeError:
-        form_props = form_node if isinstance(form_node, dict) else {}
+    # Handle both raw node objects and jsonified node dictionaries
+    if isinstance(form_node, dict):
+        # Check if it's a jsonified node with 'properties' key
+        if "properties" in form_node:
+            form_props = form_node["properties"]
+        else:
+            form_props = form_node
+    else:
+        # Try to convert to dict (for backwards compatibility)
+        try:
+            form_props = dict(form_node)
+        except TypeError:
+            form_props = {}
 
     raw_ingredients = record.get("ingredients") or []
     ingredients = [ing for ing in raw_ingredients if isinstance(ing, dict) and ing.get("name")]

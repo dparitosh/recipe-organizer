@@ -3,6 +3,8 @@ from decimal import Decimal
 import logging
 from typing import Optional, List, Dict, Any
 
+from fastapi import Request
+
 from neo4j import GraphDatabase, Driver
 
 try:  # neo4j graph primitives for richer JSON conversion
@@ -47,7 +49,11 @@ class Neo4jClient:
             result = session.run(query, parameters or {})
             records = []
             for record in result:
-                records.append(dict(record))
+                # Convert Neo4j types to JSON-serializable primitives
+                record_dict = {}
+                for key in record.keys():
+                    record_dict[key] = self._jsonify(record[key])
+                records.append(record_dict)
             return records
     
     def execute_write(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -192,3 +198,8 @@ class Neo4jClient:
             "nodes": list(nodes_dict.values()),
             "edges": edges
         }
+
+
+def get_neo4j_client(request: Request) -> Optional["Neo4jClient"]:
+    """Convenience accessor for the per-app Neo4j client."""
+    return getattr(request.app.state, "neo4j_client", None)  # type: ignore[attr-defined]

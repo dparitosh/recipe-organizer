@@ -17,65 +17,72 @@ import {
   FileArrowDown,
   ImageSquare,
   Circle,
+  ListBullets,
+  Info,
 } from '@phosphor-icons/react'
 
 const CORPORATE_PALETTE = {
-  background: '#f8fafc',
+  background: '#f5f7fb',
   backgroundDark: '#0f172a',
   border: 'rgba(15, 23, 42, 0.18)',
-  edgeLabelBorder: 'rgba(148, 163, 184, 0.6)',
-  edgeLabelBackground: '#f1f5f9',
+  edgeLabelBorder: 'rgba(148, 163, 184, 0.4)',
+  edgeLabelBackground: '#f8fafc',
   edgeLabelText: '#1f2937',
-  blue600: '#2563eb',
-  blue700: '#1d4ed8',
-  sky500: '#0ea5e9',
-  sky600: '#0284c7',
-  teal600: '#0f766e',
-  indigo700: '#4338ca',
-  violet600: '#7c3aed',
-  violet800: '#4c1d95',
+  blue600: '#0F6CBD',
+  blue700: '#0B5AA7',
+  sky500: '#00A3C4',
+  sky600: '#0082A1',
+  teal600: '#0D9488',
+  indigo700: '#4338CA',
+  violet600: '#9333EA',
+  violet800: '#7C3AED',
   slate600: '#475569',
+  amber500: '#F59E0B',
+  orange500: '#F97316',
 }
 
 const CORPORATE_NODE_COLORS = {
-  __default__: '#1e293b',
+  __default__: '#164777',
   Formulation: CORPORATE_PALETTE.blue700,
   Ingredient: CORPORATE_PALETTE.sky500,
-  Food: CORPORATE_PALETTE.sky500,
-  Nutrient: CORPORATE_PALETTE.teal600,
-  ProcessStep: CORPORATE_PALETTE.indigo700,
-  Process: CORPORATE_PALETTE.indigo700,
-  Supplier: CORPORATE_PALETTE.blue600,
-  Plant: CORPORATE_PALETTE.sky600,
-  Recipe: CORPORATE_PALETTE.blue700,
-  MasterRecipe: CORPORATE_PALETTE.blue600,
-  ManufacturingRecipe: CORPORATE_PALETTE.indigo700,
-  AIInsight: CORPORATE_PALETTE.violet600,
-  CalculationSnapshot: CORPORATE_PALETTE.violet800,
-  SalesOrder: CORPORATE_PALETTE.violet600,
+  Food: '#22C55E',
+  Nutrient: CORPORATE_PALETTE.violet600,
+  ProcessStep: CORPORATE_PALETTE.orange500,
+  Process: '#EA580C',
+  Supplier: '#6366F1',
+  Plant: '#16A34A',
+  Recipe: CORPORATE_PALETTE.blue600,
+  MasterRecipe: '#2563EB',
+  ManufacturingRecipe: '#DB2777',
+  AIInsight: CORPORATE_PALETTE.amber500,
+  CalculationSnapshot: '#4C1D95',
+  SalesOrder: CORPORATE_PALETTE.violet800,
 }
 
-const FALLBACK_NODE_SHAPES = {
+const CORPORATE_NODE_SHAPES = {
   Formulation: 'hexagon',
-  Ingredient: 'roundrectangle',
-  Food: 'roundrectangle',
+  Ingredient: 'round-rectangle',
+  Food: 'round-rectangle',
   Nutrient: 'diamond',
-  Process: 'rectangle',
-  ProcessStep: 'hexagon',
-  Recipe: 'round-rectangle',
-  MasterRecipe: 'hexagon',
-  ManufacturingRecipe: 'hexagon',
+  Process: 'octagon',
+  ProcessStep: 'triangle',
+  Recipe: 'hexagon',
+  MasterRecipe: 'round-rectangle',
+  ManufacturingRecipe: 'octagon',
   Plant: 'round-diamond',
-  SalesOrder: 'tag',
+  Supplier: 'ellipse',
+  SalesOrder: 'rhomboid',
+  AIInsight: 'star',
+  CalculationSnapshot: 'rectangle',
 }
 
 const CORPORATE_RELATIONSHIP_COLORS = {
   __default__: CORPORATE_PALETTE.blue600,
   USES: CORPORATE_PALETTE.blue600,
   HAS_NUTRIENT: CORPORATE_PALETTE.teal600,
-  EXECUTES: CORPORATE_PALETTE.indigo700,
-  PRODUCED_AT: CORPORATE_PALETTE.sky600,
-  PROCURED_FROM: CORPORATE_PALETTE.blue700,
+  EXECUTES: CORPORATE_PALETTE.orange500,
+  PRODUCED_AT: '#22C55E',
+  PROCURED_FROM: CORPORATE_PALETTE.sky600,
   APPLIES_TO: CORPORATE_PALETTE.violet600,
   SUPPORTS: CORPORATE_PALETTE.slate600,
 }
@@ -94,6 +101,7 @@ const HEX_6_DIGIT = /^#(?:[0-9a-fA-F]{6})$/
 const HEX_3_DIGIT = /^#(?:[0-9a-fA-F]{3})$/
 
 const clamp01 = (value) => Math.min(Math.max(value, 0), 1)
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
 const normalizeHexColor = (value, fallback = null) => {
   if (typeof value !== 'string') {
@@ -203,6 +211,39 @@ const getCorporateRelationshipColor = (type, candidate) => {
   return DEFAULT_EDGE_COLOR
 }
 
+const formatTooltipValue = (value) => {
+  if (value === null || value === undefined) {
+    return '—'
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return '[]'
+    }
+    const preview = value.slice(0, 3).map((entry) => formatTooltipValue(entry))
+    const suffix = value.length > 3 ? '…' : ''
+    return `${preview.join(', ')}${suffix}`
+  }
+
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value)
+    } catch (error) {
+      return String(value)
+    }
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value.toLocaleString() : String(value)
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false'
+  }
+
+  return String(value)
+}
+
 const layoutPresets = {
   hierarchical: {
     name: 'breadthfirst',
@@ -242,9 +283,63 @@ export function GraphView({ backendUrl }) {
   const [showFilters, setShowFilters] = useState(false)
   const [schema, setSchema] = useState(null)
   const [installingSchema, setInstallingSchema] = useState(false)
+  const [legendOpen, setLegendOpen] = useState(true)
+  const [legendTab, setLegendTab] = useState('nodes')
+  const [tooltip, setTooltip] = useState(null)
   
   const containerRef = useRef(null)
   const cyRef = useRef(null)
+  const tooltipTimeoutRef = useRef(null)
+
+  const clearTooltipTimeout = useCallback(() => {
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current)
+      tooltipTimeoutRef.current = null
+    }
+  }, [])
+
+  const showTooltip = useCallback(
+    (payload) => {
+      if (!payload) {
+        return
+      }
+      clearTooltipTimeout()
+      setTooltip(payload)
+    },
+    [clearTooltipTimeout]
+  )
+
+  const hideTooltip = useCallback(
+    (immediate = false) => {
+      clearTooltipTimeout()
+      if (immediate) {
+        setTooltip(null)
+        return
+      }
+      tooltipTimeoutRef.current = setTimeout(() => {
+        setTooltip(null)
+        tooltipTimeoutRef.current = null
+      }, 140)
+    },
+    [clearTooltipTimeout]
+  )
+
+  const computeTooltipPosition = useCallback((point, offset = { x: 18, y: 18 }) => {
+    if (!point) {
+      return { x: 0, y: 0 }
+    }
+
+    const container = containerRef.current
+    if (!container) {
+      return { x: point.x, y: point.y }
+    }
+
+    const width = container.clientWidth || 0
+    const height = container.clientHeight || 0
+    const clampedX = clamp(point.x + offset.x, 12, Math.max(width - 260, 12))
+    const clampedY = clamp(point.y + offset.y, 12, Math.max(height - 220, 12))
+    return { x: clampedX, y: clampedY }
+  }, [])
 
   apiService.setBaseUrl(backendUrl)
 
@@ -269,6 +364,16 @@ export function GraphView({ backendUrl }) {
     }
   }, [backendUrl])
 
+  useEffect(() => {
+    return () => {
+      clearTooltipTimeout()
+    }
+  }, [clearTooltipTimeout])
+
+  useEffect(() => {
+    setTooltip(null)
+  }, [graphData])
+
   const nodeStyleMap = useMemo(() => {
     const defaultsColor = getCorporateNodeColor('__default__', schema?.defaults?.node?.color)
     const defaultsShape = schema?.defaults?.node?.shape || DEFAULT_NODE_SHAPE
@@ -281,7 +386,7 @@ export function GraphView({ backendUrl }) {
     }
 
     const colors = {}
-    const shapes = { ...FALLBACK_NODE_SHAPES }
+  const shapes = { ...CORPORATE_NODE_SHAPES }
     const textColors = {}
     const borderColors = {}
 
@@ -562,7 +667,76 @@ export function GraphView({ backendUrl }) {
       wheelSensitivity: 0.2,
     })
 
+    const renderer = cyInstance.renderer()
+
+    const projectPoint = (modelPoint) => {
+      if (!modelPoint) {
+        return { x: 0, y: 0 }
+      }
+
+      if (renderer && typeof renderer.projectIntoViewport === 'function') {
+        const [projectedX, projectedY] = renderer.projectIntoViewport(modelPoint.x, modelPoint.y)
+        return { x: projectedX, y: projectedY }
+      }
+
+      return { x: modelPoint.x, y: modelPoint.y }
+    }
+
+    cyInstance.on('mouseover', 'node', (event) => {
+      const node = event.target
+      const renderedPoint = event.renderedPosition || projectPoint(node.position())
+      const properties = node.data('properties') ?? {}
+      const propertyEntries = Object.entries(properties)
+        .filter(([key]) => key !== 'id' && key !== 'label')
+        .slice(0, 8)
+        .map(([key, value]) => ({ key, value: formatTooltipValue(value) }))
+
+      showTooltip({
+        kind: 'node',
+        title: node.data('label') || node.id(),
+        subtitle: node.data('type'),
+        color: getNodeColor(node.data('type')),
+        position: computeTooltipPosition(renderedPoint, { x: 20, y: 20 }),
+        entries: [{ key: 'ID', value: node.id() }, ...propertyEntries],
+      })
+    })
+
+    cyInstance.on('mouseout', 'node', () => hideTooltip())
+
+    cyInstance.on('mouseover', 'edge', (event) => {
+      const edge = event.target
+      const midpointModel =
+        typeof edge.midpoint === 'function'
+          ? edge.midpoint()
+          : {
+              x: (edge.source().position().x + edge.target().position().x) / 2,
+              y: (edge.source().position().y + edge.target().position().y) / 2,
+            }
+      const renderedPoint = projectPoint(midpointModel)
+      const properties = edge.data('properties') ?? {}
+      const propertyEntries = Object.entries(properties)
+        .filter(([key]) => key !== 'source' && key !== 'target')
+        .slice(0, 8)
+        .map(([key, value]) => ({ key, value: formatTooltipValue(value) }))
+
+      showTooltip({
+        kind: 'edge',
+        title: edge.data('label') || edge.data('type') || 'Relationship',
+        subtitle: edge.data('type'),
+        color: getEdgeColor(edge.data('type')),
+        position: computeTooltipPosition(renderedPoint, { x: 14, y: 14 }),
+        entries: [
+          { key: 'Source', value: edge.data('source') },
+          { key: 'Target', value: edge.data('target') },
+          ...propertyEntries,
+        ],
+      })
+    })
+
+    cyInstance.on('mouseout', 'edge', () => hideTooltip())
+
     cyInstance.on('tap', 'node', (event) => {
+      hideTooltip(true)
       const node = event.target
       const nodeData = normalizedNodes.find((n) => n.id === node.id())
       if (nodeData) {
@@ -570,12 +744,18 @@ export function GraphView({ backendUrl }) {
       }
     })
 
+    cyInstance.on('tap', 'edge', () => hideTooltip(true))
+
     cyInstance.on('tap', (event) => {
       if (event.target === cyInstance) {
+        hideTooltip(true)
         setSelectedNode(null)
         cyInstance?.elements().removeClass('highlighted dimmed')
       }
     })
+
+    cyInstance.on('pan zoom', () => hideTooltip(true))
+    cyInstance.on('drag', 'node', () => hideTooltip(true))
 
     cyRef.current = cyInstance
 
@@ -592,6 +772,9 @@ export function GraphView({ backendUrl }) {
     getNodeShape,
     getNodeTextColor,
     getNodeBorderColor,
+    showTooltip,
+    hideTooltip,
+    computeTooltipPosition,
     getEdgeColor,
     getEdgeStyle,
     getEdgeWidth,
@@ -933,10 +1116,218 @@ export function GraphView({ backendUrl }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <div 
-              ref={containerRef}
-              className="w-full h-[620px] rounded-xl border border-border/60 bg-[#f8fafc] dark:bg-[#0f172a] shadow-inner transition-colors"
-            />
+            <div className="relative">
+              <div 
+                ref={containerRef}
+                className="w-full h-[620px] rounded-xl border border-border/60 bg-[#f5f7fb] dark:bg-[#0f172a] shadow-inner transition-colors"
+              />
+
+              <div className="pointer-events-none absolute inset-0 z-20">
+                {tooltip && tooltip.position ? (
+                  <div
+                    className="pointer-events-none absolute"
+                    style={{
+                      left: 0,
+                      top: 0,
+                      transform: `translate(${tooltip.position.x}px, ${tooltip.position.y}px)`,
+                    }}
+                  >
+                    <div className="pointer-events-auto min-w-[220px] max-w-[320px] overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95">
+                      <div
+                        className="px-4 py-3"
+                        style={{
+                          background: `linear-gradient(135deg, ${tooltip.color}, ${mixHexColors(
+                            tooltip.color,
+                            '#0f172a',
+                            0.65,
+                          )})`,
+                        }}
+                      >
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-white/70">
+                          {tooltip.kind === 'edge' ? 'Relationship' : 'Node'}
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold leading-snug text-white">
+                          {tooltip.title}
+                        </p>
+                        {tooltip.subtitle && (
+                          <p className="text-xs text-white/80">{tooltip.subtitle}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2 px-4 py-3 text-xs text-slate-600 dark:text-slate-200">
+                        {tooltip.entries?.length ? (
+                          tooltip.entries.map((entry) => (
+                            <div
+                              key={`${tooltip.kind}-${tooltip.title}-${entry.key}`}
+                              className="flex items-start justify-between gap-3"
+                            >
+                              <span className="font-medium text-slate-500 dark:text-slate-300">
+                                {entry.key}
+                              </span>
+                              <span className="max-w-[180px] break-words text-right font-semibold text-slate-700 dark:text-slate-100">
+                                {entry.value}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-slate-500 dark:text-slate-300">No additional metadata</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="pointer-events-none absolute top-4 right-4 z-30 flex flex-col items-end gap-3">
+                <div className="pointer-events-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white/85 text-slate-700 shadow-sm backdrop-blur dark:bg-slate-900/85 dark:text-slate-100"
+                    onClick={() => setLegendOpen((prev) => !prev)}
+                  >
+                    <ListBullets size={16} className="mr-2" />
+                    {legendOpen ? 'Hide Legend' : 'Show Legend'}
+                  </Button>
+                </div>
+
+                {legendOpen && (
+                  <div className="pointer-events-auto w-72 max-h-[520px] overflow-hidden rounded-2xl border border-white/60 bg-white/95 shadow-2xl backdrop-blur-lg dark:border-slate-700 dark:bg-slate-950/90">
+                    <div className="flex items-center justify-between border-b border-white/50 px-4 py-3 dark:border-slate-800">
+                      <div className="flex items-center gap-2 text-slate-500 dark:text-slate-300">
+                        <Info size={16} />
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.28em]">Legend</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setLegendTab('nodes')}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                            legendTab === 'nodes'
+                              ? 'bg-slate-900 text-white dark:bg-white/95 dark:text-slate-900'
+                              : 'bg-white/70 text-slate-600 hover:bg-white/85 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-900/85'
+                          }`}
+                        >
+                          Nodes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLegendTab('relationships')}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                            legendTab === 'relationships'
+                              ? 'bg-slate-900 text-white dark:bg-white/95 dark:text-slate-900'
+                              : 'bg-white/70 text-slate-600 hover:bg-white/85 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-900/85'
+                          }`}
+                        >
+                          Relationships
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-[440px] overflow-y-auto px-4 py-3 text-sm">
+                      {legendTab === 'nodes' ? (
+                        legendTypes.length ? (
+                          <div className="space-y-3">
+                            {legendTypes.map((type) => {
+                              const isObserved = observedTypes.includes(type)
+                              return (
+                                <div
+                                  key={`legend-node-${type}`}
+                                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/70 bg-white/80 px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900/70"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="h-5 w-5 rounded-md border shadow-sm"
+                                      style={{
+                                        backgroundColor: getNodeColor(type),
+                                        borderColor: getNodeBorderColor(type),
+                                      }}
+                                    />
+                                    <div className="flex flex-col leading-tight">
+                                      <span className="font-semibold text-slate-700 dark:text-slate-100">{type}</span>
+                                      <span className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-400">{getNodeShape(type)}</span>
+                                    </div>
+                                  </div>
+                                  <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${
+                                    isObserved
+                                      ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
+                                      : 'bg-slate-900/10 text-slate-500 dark:bg-white/10 dark:text-slate-200'
+                                  }`}>
+                                    {isObserved ? 'Detected' : 'Schema'}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-500 dark:text-slate-300">No node types detected yet.</p>
+                        )
+                      ) : relationshipLegendTypes.length ? (
+                        <div className="space-y-3">
+                          {relationshipLegendTypes.map((type) => {
+                            const config = edgeStyleMap.lookup[type] || {}
+                            const label = config.label || type
+                            const sources = config.sources?.length ? config.sources : ['Any']
+                            const targets = config.targets?.length ? config.targets : ['Any']
+                            const color = getEdgeColor(type)
+                            const style = getEdgeStyle(type)
+                            const isObserved = observedRelationshipTypes.includes(type)
+                            return (
+                              <div
+                                key={`legend-edge-${type}`}
+                                className="space-y-2 rounded-lg border border-slate-200/70 bg-white/85 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-100">{label}</span>
+                                  <Badge
+                                    variant="outline"
+                                    className={`border-slate-200 text-[10px] uppercase tracking-wide dark:border-slate-700 dark:text-slate-200 ${
+                                      isObserved
+                                        ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
+                                        : 'bg-white/60 text-slate-500 dark:bg-slate-900/60 dark:text-slate-200'
+                                    }`}
+                                  >
+                                    {type}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: color, opacity: 0.92 }} />
+                                  <span className="text-[11px] capitalize text-slate-500 dark:text-slate-300">{style}</span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500 dark:text-slate-300">
+                                  <span className="font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">From</span>
+                                  {sources.map((source) => (
+                                    <Badge
+                                      key={`legend-edge-${type}-source-${source}`}
+                                      variant="outline"
+                                      className="border-slate-200 bg-white/70 text-[10px] dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
+                                    >
+                                      {source}
+                                    </Badge>
+                                  ))}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500 dark:text-slate-300">
+                                  <span className="font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">To</span>
+                                  {targets.map((target) => (
+                                    <Badge
+                                      key={`legend-edge-${type}-target-${target}`}
+                                      variant="outline"
+                                      className="border-slate-200 bg-white/70 text-[10px] dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
+                                    >
+                                      {target}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 dark:text-slate-300">No relationship styles defined yet.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -970,83 +1361,6 @@ export function GraphView({ backendUrl }) {
             ) : (
               <Card className="p-4 text-center text-muted-foreground">
                 Click a node to view details
-              </Card>
-            )}
-
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Legend</h3>
-              <div className="space-y-3">
-                {legendTypes.map((type) => (
-                  <div key={type} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-4 w-4 rounded border"
-                        style={{
-                          backgroundColor: getNodeColor(type),
-                          borderColor: getNodeBorderColor(type),
-                        }}
-                      />
-                      <span className="font-medium">{type}</span>
-                    </div>
-                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {getNodeShape(type)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            {relationshipLegendTypes.length > 0 && (
-              <Card className="p-4">
-                <h3 className="font-semibold mb-3">Relationship Styles</h3>
-                <div className="space-y-3">
-                  {relationshipLegendTypes.map((type) => {
-                    const config = edgeStyleMap.lookup[type]
-                    const label = config?.label || type
-                    const sources = (config?.sources?.length ? config.sources : ['Any'])
-                    const targets = (config?.targets?.length ? config.targets : ['Any'])
-                    const color = getEdgeColor(type)
-                    const style = getEdgeStyle(type)
-                    return (
-                      <div key={type} className="space-y-2 rounded-md border border-border/60 bg-white/80 p-3 text-xs shadow-sm dark:bg-slate-950/50">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-sm">{label}</span>
-                          <Badge variant="outline" className="border-slate-300 text-[10px] uppercase tracking-wide dark:border-slate-700 dark:text-slate-200">
-                            {type}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: color, opacity: 0.9 }} />
-                          <span className="text-muted-foreground capitalize">{style}</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-                          <span className="font-medium uppercase tracking-wide text-slate-600">From</span>
-                          {sources.map((source) => (
-                            <Badge
-                              key={`${type}-source-${source}`}
-                              variant="outline"
-                              className="border-slate-300 bg-white/70 text-[10px] dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200"
-                            >
-                              {source}
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-                          <span className="font-medium uppercase tracking-wide text-slate-600">To</span>
-                          {targets.map((target) => (
-                            <Badge
-                              key={`${type}-target-${target}`}
-                              variant="outline"
-                              className="border-slate-300 bg-white/70 text-[10px] dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200"
-                            >
-                              {target}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
               </Card>
             )}
 

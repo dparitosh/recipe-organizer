@@ -94,6 +94,7 @@ The frontend works standalone with realistic mock data:
 ### User Guides
 - **[AI_ASSISTANT_GUIDE.md](./AI_ASSISTANT_GUIDE.md)** - AI Assistant complete documentation
 - **[AI_ASSISTANT_QUICK_REFERENCE.md](./AI_ASSISTANT_QUICK_REFERENCE.md)** - AI Assistant quick reference
+- **[docs/ORCHESTRATION_QUICK_START.md](./docs/ORCHESTRATION_QUICK_START.md)** - Multi-agent orchestration API usage
 - **[FDC_INTEGRATION_GUIDE.md](./FDC_INTEGRATION_GUIDE.md)** - USDA nutrition data integration
 - **[CONNECTING_BACKEND_SERVICES.md](./CONNECTING_BACKEND_SERVICES.md)** - Backend configuration guide
 

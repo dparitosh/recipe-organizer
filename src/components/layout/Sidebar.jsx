@@ -6,12 +6,14 @@ import {
   Graph, 
   UploadSimple, 
   Gear,
-  Sparkle
+  Sparkle,
+  ChatsCircle
 } from '@phosphor-icons/react'
 
 const navItems = [
   { view: 'orchestration', label: 'Orchestration', icon: Sparkle },
   { view: 'dashboard', label: 'Dashboard', icon: House },
+  { view: 'conversation', label: 'Conversation AI', icon: ChatsCircle },
   { view: 'formulations', label: 'Formulations', icon: Flask },
   { view: 'graph', label: 'Graph Explorer', icon: Graph },
   { view: 'ingest', label: 'Data Ingestion', icon: UploadSimple },

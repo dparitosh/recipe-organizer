@@ -60,6 +60,7 @@ class ServiceHealthResponse(BaseModel):
     status: Literal["healthy", "degraded", "unavailable"]
     llm_available: bool
     neo4j_available: bool
+    graphrag_available: bool
     genai_available: bool
     response_time_ms: int
     ollama_model: Optional[str] = None

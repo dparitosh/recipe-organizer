@@ -438,3 +438,167 @@ async def process_offline_query(query: str) -> AIQueryResponse:
         data_sources=["Local Cache"],
         recommendations=recommendations
     )
+
+
+@router.post("/nutrition-query", response_model=dict, summary="Nutrition Label Query with GraphRAG")
+async def nutrition_query(
+    request: Request,
+    query_text: str,
+):
+    """
+    Use natural language + GraphRAG to find formulations and generate nutrition labels.
+    
+    Example queries:
+    - "Show nutrition label for almond butter formulation"
+    - "Generate nutrition facts for chocolate chip cookie recipe"
+    - "What are the nutrients in broccoli soup formulation?"
+    
+    Returns formulation details with calculated nutrition facts.
+    """
+    from app.services.nutrition_service import NutritionCalculationService
+    from app.db.neo4j_client import get_neo4j_client
+    
+    neo4j_client = get_neo4j_client(request)
+    graphrag_service = getattr(request.app.state, "graphrag_retrieval_service", None)
+    ollama = getattr(request.app.state, "ollama_service", None)
+    
+    if not neo4j_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Neo4j not connected"
+        )
+    
+    start_time = datetime.now()
+    
+    try:
+        # Step 1: Use GraphRAG to find relevant formulations
+        formulation_ids = []
+        graph_context = ""
+        
+        if graphrag_service:
+            try:
+                retrieval_result = graphrag_service.retrieve(
+                    query_text,
+                    limit=3,
+                    structured_limit=10
+                )
+                
+                # Extract formulation IDs from retrieved chunks
+                for chunk in retrieval_result.chunks:
+                    if "formulation_id" in chunk.metadata:
+                        fid = chunk.metadata["formulation_id"]
+                        if fid and fid not in formulation_ids:
+                            formulation_ids.append(fid)
+                
+                # Also check structured entities
+                for entity in retrieval_result.structured_entities:
+                    node_props = entity.node.get("properties", {})
+                    if "Formulation" in entity.node.get("labels", []):
+                        fid = node_props.get("id")
+                        if fid and fid not in formulation_ids:
+                            formulation_ids.append(fid)
+                
+                graph_context = _summarize_chunk_context(retrieval_result.chunks)
+                
+            except GraphRAGRetrievalError as e:
+                logger.warning(f"GraphRAG retrieval failed: {e}")
+        
+        # Step 2: If no formulations found via GraphRAG, search by keyword
+        if not formulation_ids:
+            search_query = """
+            MATCH (f:Formulation)
+            WHERE toLower(f.name) CONTAINS toLower($query) 
+               OR toLower(f.description) CONTAINS toLower($query)
+            RETURN f.id as id
+            LIMIT 5
+            """
+            results = neo4j_client.execute_query(search_query, {"query": query_text})
+            formulation_ids = [r.get("id") for r in results if r.get("id")]
+        
+        if not formulation_ids:
+            return {
+                "answer": f"No formulations found matching '{query_text}'. Please try a different search term.",
+                "formulations": [],
+                "execution_time_ms": int((datetime.now() - start_time).total_seconds() * 1000),
+                "data_sources": ["Neo4j", "GraphRAG"] if graphrag_service else ["Neo4j"]
+            }
+        
+        # Step 3: Generate nutrition labels for found formulations
+        nutrition_service = NutritionCalculationService(neo4j_client)
+        nutrition_labels = []
+        
+        for formulation_id in formulation_ids[:3]:  # Limit to 3 results
+            try:
+                nutrition_facts = await nutrition_service.calculate_nutrition_label(
+                    formulation_id=formulation_id,
+                    serving_size=100.0,
+                    serving_size_unit="g"
+                )
+                
+                nutrition_labels.append({
+                    "formulation_id": nutrition_facts.formulation_id,
+                    "formulation_name": nutrition_facts.formulation_name,
+                    "serving_size": f"{nutrition_facts.serving_size}{nutrition_facts.serving_size_unit}",
+                    "calories": nutrition_facts.calories,
+                    "nutrients": {
+                        "total_fat": {
+                            "amount": nutrition_facts.total_fat.amount,
+                            "unit": nutrition_facts.total_fat.unit,
+                            "daily_value": nutrition_facts.total_fat.daily_value_percent
+                        },
+                        "total_carbohydrate": {
+                            "amount": nutrition_facts.total_carbohydrate.amount,
+                            "unit": nutrition_facts.total_carbohydrate.unit,
+                            "daily_value": nutrition_facts.total_carbohydrate.daily_value_percent
+                        },
+                        "protein": {
+                            "amount": nutrition_facts.protein.amount,
+                            "unit": nutrition_facts.protein.unit,
+                            "daily_value": nutrition_facts.protein.daily_value_percent
+                        },
+                        "sodium": {
+                            "amount": nutrition_facts.sodium.amount,
+                            "unit": nutrition_facts.sodium.unit,
+                            "daily_value": nutrition_facts.sodium.daily_value_percent
+                        }
+                    }
+                })
+            except Exception as e:
+                logger.warning(f"Failed to calculate nutrition for {formulation_id}: {e}")
+                continue
+        
+        # Step 4: Generate AI summary if Ollama available
+        answer = f"Found {len(nutrition_labels)} formulation(s) matching your query."
+        if ollama and nutrition_labels:
+            try:
+                summary_context = f"Query: {query_text}\n\nNutrition Facts:\n"
+                for label in nutrition_labels:
+                    summary_context += f"\n{label['formulation_name']}:\n"
+                    summary_context += f"- Calories: {label['calories']}\n"
+                    summary_context += f"- Fat: {label['nutrients']['total_fat']['amount']}g\n"
+                    summary_context += f"- Carbs: {label['nutrients']['total_carbohydrate']['amount']}g\n"
+                    summary_context += f"- Protein: {label['nutrients']['protein']['amount']}g\n"
+                
+                answer = await ollama.generate_answer(
+                    query=query_text,
+                    context=summary_context,
+                    data_sources=["Neo4j Nutrition Data", "GraphRAG"] if graphrag_service else ["Neo4j Nutrition Data"]
+                )
+            except Exception as e:
+                logger.warning(f"Failed to generate AI summary: {e}")
+        
+        execution_time = int((datetime.now() - start_time).total_seconds() * 1000)
+        
+        return {
+            "answer": answer,
+            "formulations": nutrition_labels,
+            "execution_time_ms": execution_time,
+            "data_sources": ["Neo4j", "GraphRAG", "Ollama"] if (graphrag_service and ollama) else ["Neo4j"]
+        }
+        
+    except Exception as exc:
+        logger.error("Nutrition query failed", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Nutrition query failed: {str(exc)}"
+        ) from exc

@@ -17,21 +17,72 @@ def _build_payload() -> OrchestrationPersistRequest:
             "id": "recipe-001",
             "name": "Sample Beverage",
             "totalPercentage": 100,
-            "ingredients": [],
-            "metadata": {"createdAt": "2025-01-01T00:00:00Z", "version": "v2"},
+            "ingredients": [
+                {
+                    "id": "ing_cornmeal",
+                    "name": "Corn Meal",
+                    "percentage": 70.0,
+                    "costPerKg": 0.52,
+                },
+                {
+                    "id": "ing_cane_sugar",
+                    "name": "Cane Sugar",
+                    "percentage": 25.0,
+                    "costPerKg": 0.9,
+                },
+                {
+                    "id": "ing_sea_salt",
+                    "name": "Sea Salt",
+                    "percentage": 5.0,
+                    "costPerKg": 0.3,
+                },
+            ],
+            "metadata": {
+                "createdAt": "2025-01-01T00:00:00Z",
+                "version": "v2",
+                "brand": "Aurora Foods",
+                "category": "Cereal",
+            },
         },
         calculation={
             "recipeId": "recipe-001",
             "targetBatchSize": 1000,
             "targetUnit": "kg",
-            "scaledIngredients": [],
+            "scaledIngredients": [
+                {"id": "ing_cornmeal", "quantity": 700.0, "unit": "kg"},
+                {"id": "ing_cane_sugar", "quantity": 250.0, "unit": "kg"},
+                {"id": "ing_sea_salt", "quantity": 50.0, "unit": "kg"},
+            ],
             "timestamp": "2025-01-01T00:00:00Z",
         },
         graph={
-            "nodes": [],
-            "edges": [],
-            "metadata": {"graphComplexity": "low"},
-            "cypherCommands": ["MERGE (:Recipe {id: 'recipe-001'})"],
+            "nodes": [
+                {"id": "form_aurora_cornflakes", "labels": ["Formulation"], "properties": {"name": "Corn Flakes Base"}},
+                {"id": "form_aurora_cornflakes_v1", "labels": ["FormulationVersion"], "properties": {"version": "1.0"}},
+                {"id": "ing_cornmeal", "labels": ["Ingredient"], "properties": {"name": "Corn Meal"}},
+                {"id": "food_cornmeal", "labels": ["Food"], "properties": {"description": "Yellow Corn Meal"}},
+                {"id": "step_mix", "labels": ["ProcessStep"], "properties": {"sequence": 1}},
+                {"id": "param_temp", "labels": ["Parameter"], "properties": {"name": "Cooking Temperature"}},
+                {"id": "bom_polybag", "labels": ["BOMComponent"], "properties": {"name": "Poly Bag 500g"}},
+                {"id": "supplier_packaging", "labels": ["Supplier"], "properties": {"name": "Packaging World Inc."}},
+                {"id": "chunk_cf_v1_ops", "labels": ["KnowledgeChunk"], "properties": {"formulation_id": "form_aurora_cornflakes"}},
+            ],
+            "edges": [
+                {"source": "form_aurora_cornflakes", "target": "form_aurora_cornflakes_v1", "type": "HAS_VERSION"},
+                {"source": "form_aurora_cornflakes_v1", "target": "ing_cornmeal", "type": "CONTAINS_INGREDIENT"},
+                {"source": "ing_cornmeal", "target": "food_cornmeal", "type": "DERIVED_FROM"},
+                {"source": "form_aurora_cornflakes_v1", "target": "step_mix", "type": "HAS_STEP"},
+                {"source": "step_mix", "target": "param_temp", "type": "HAS_PARAMETER"},
+                {"source": "form_aurora_cornflakes_v1", "target": "bom_polybag", "type": "HAS_BOM_ITEM"},
+                {"source": "bom_polybag", "target": "supplier_packaging", "type": "PURCHASED_FROM"},
+                {"source": "form_aurora_cornflakes_v1", "target": "chunk_cf_v1_ops", "type": "LINKED_CHUNK"},
+            ],
+            "metadata": {"graphComplexity": "medium"},
+            "cypherCommands": [
+                "MERGE (f:Formulation {id: 'form_aurora_cornflakes'})",
+                "MERGE (v:FormulationVersion {id: 'form_aurora_cornflakes_v1'})",
+                "MERGE (f)-[:HAS_VERSION]->(v)",
+            ],
         },
         validation={
             "valid": True,
@@ -96,3 +147,18 @@ def test_map_orchestration_payload_to_graph_write_set_summarizes_context_and_age
     assert agent_invocations[0]["agentName"] == "Recipe Engineer"
     assert agent_invocations[0]["status"] == "success"
     assert agent_invocations[0]["runId"] == "orch-123"
+
+
+def test_map_orchestration_payload_to_graph_write_set_includes_graph_counts():
+    payload = _build_payload()
+    write_set = map_orchestration_payload_to_graph_write_set(payload)
+
+    metadata = write_set.graph_snapshot["metadata"]
+    assert metadata["nodeCount"] == 9
+    assert metadata["edgeCount"] == 8
+    assert metadata["graphComplexity"] == "medium"
+    assert metadata["cypherCommandsBytes"] > 0
+
+    recipe_metadata = write_set.recipe_version["metadata"]
+    assert recipe_metadata["ingredientsCount"] == 3
+    assert recipe_metadata["brand"] == "Aurora Foods"

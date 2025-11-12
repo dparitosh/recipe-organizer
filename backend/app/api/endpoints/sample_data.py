@@ -177,44 +177,178 @@ def load_cola_data(neo4j_client) -> dict:
     """Load cola beverage sample data"""
     
     query = """
-    // Classic Cola Beverage
-    CREATE (f:Formulation {
-        id: 'form_cola',
-        name: 'Classic Cola Beverage',
-        description: 'Carbonated cola soft drink',
-        status: 'approved',
-        version: '1.5',
-        created_at: datetime()
-    })
-    
-    // Ingredients
-    CREATE (water:Food {name: 'Purified Water', category: 'Base', fdc_id: '171881'})
-    CREATE (sugar:Food {name: 'White Sugar', category: 'Sweetener', fdc_id: '169655'})
-    CREATE (concentrate:Food {name: 'Cola Concentrate', category: 'Flavoring'})
-    CREATE (co2:Food {name: 'Carbon Dioxide', category: 'Gas'})
-    CREATE (citric:Food {name: 'Citric Acid', category: 'Acidulant', fdc_id: '171666'})
-    
-    CREATE (f)-[:CONTAINS {percentage: 88.5, cost_per_kg: 0.10}]->(water)
-    CREATE (f)-[:CONTAINS {percentage: 10.0, cost_per_kg: 0.80}]->(sugar)
-    CREATE (f)-[:CONTAINS {percentage: 1.0, cost_per_kg: 25.00}]->(concentrate)
-    CREATE (f)-[:CONTAINS {percentage: 0.4, cost_per_kg: 1.50}]->(co2)
-    CREATE (f)-[:CONTAINS {percentage: 0.1, cost_per_kg: 3.00}]->(citric)
-    
-    // Processes
-    CREATE (mix:Process {name: 'Syrup Mixing', description: 'Mix sugar and concentrate', duration: 20, temperature: 25})
-    CREATE (carb:Process {name: 'Carbonation', description: 'Add CO2 under pressure', duration: 5, temperature: 4})
-    CREATE (fill:Process {name: 'Filling', description: 'Fill and cap bottles', duration: 2, temperature: 4})
-    
-    CREATE (f)-[:REQUIRES_PROCESS {sequence: 1, yield_loss: 2}]->(mix)
-    CREATE (f)-[:REQUIRES_PROCESS {sequence: 2, yield_loss: 3}]->(carb)
-    CREATE (f)-[:REQUIRES_PROCESS {sequence: 3, yield_loss: 1}]->(fill)
-    
-    RETURN count(*) as total
+        // PepsiCo beverage knowledge graph aligned with orchestration schema
+        MERGE (brand:Brand:GraphEntity {id: 'brand-pepsico'})
+            SET brand.name = 'PepsiCo',
+                    brand.country = 'United States'
+
+        MERGE (product:Product:GraphEntity {id: 'product-pepsi'})
+            SET product.name = 'Pepsi',
+                    product.type = 'Soft Drink',
+                    product.fdcId = '234567',
+                    product.launchYear = 1893
+
+        MERGE (brand)-[:PRODUCES]->(product)
+
+        MERGE (trade:TradeItem:GraphEntity {id: 'tradeitem-pepsi-can'})
+            SET trade.gtin = '012000123456',
+                    trade.netContent = '355 mL',
+                    trade.packaging = 'Can'
+
+        MERGE (product)-[:HAS_TRADEITEM]->(trade)
+
+        MERGE (formulation:Formulation:GraphEntity {id: 'formulation-pepsi-base'})
+            SET formulation.name = 'Pepsi Base Formula',
+                    formulation.type = 'MasterRecipe',
+                    formulation.version = '2025-01',
+                    formulation.status = 'approved',
+                    formulation.total_percentage = 100.0,
+                    formulation.description = 'Core cola formulation used for global bottling',
+                    formulation.created_at = datetime()
+
+        MERGE (product)-[:HAS_FORMULATION]->(formulation)
+
+        MERGE (ingredient1:Ingredient:Food:GraphEntity {id: 'ingredient-carbonated-water'})
+            SET ingredient1.name = 'Carbonated Water',
+                    ingredient1.type = 'Base',
+                    ingredient1.fdcId = '173328'
+
+        MERGE (ingredient2:Ingredient:Food:GraphEntity {id: 'ingredient-hfcs'})
+            SET ingredient2.name = 'High Fructose Corn Syrup',
+                    ingredient2.type = 'Sweetener',
+                    ingredient2.fdcId = '173356'
+
+        MERGE (ingredient3:Ingredient:Food:GraphEntity {id: 'ingredient-caramel-color'})
+            SET ingredient3.name = 'Caramel Color',
+                    ingredient3.type = 'Additive',
+                    ingredient3.fdcId = '172242'
+
+        MERGE (ingredient4:Ingredient:Food:GraphEntity {id: 'ingredient-phosphoric-acid'})
+            SET ingredient4.name = 'Phosphoric Acid',
+                    ingredient4.type = 'Acidulant',
+                    ingredient4.fdcId = '173420'
+
+        MERGE (ingredient5:Ingredient:Food:GraphEntity {id: 'ingredient-caffeine'})
+            SET ingredient5.name = 'Caffeine',
+                    ingredient5.type = 'Stimulant',
+                    ingredient5.fdcId = '173272'
+
+        MERGE (ingredient6:Ingredient:Food:GraphEntity {id: 'ingredient-natural-flavor'})
+            SET ingredient6.name = 'Natural Flavor',
+                    ingredient6.type = 'Flavoring',
+                    ingredient6.fdcId = '999999'
+
+        WITH formulation,
+                 [
+                     { node: ingredient1, percentage: 87.2, cost: 0.02, function: 'Base' },
+                     { node: ingredient2, percentage: 10.6, cost: 0.85, function: 'Sweetener' },
+                     { node: ingredient3, percentage: 1.1, cost: 3.50, function: 'Color' },
+                     { node: ingredient4, percentage: 0.18, cost: 2.20, function: 'Acidulant' },
+                     { node: ingredient5, percentage: 0.05, cost: 120.0, function: 'Stimulant' },
+                     { node: ingredient6, percentage: 0.87, cost: 45.0, function: 'Flavor' }
+                 ] AS ingredients
+        UNWIND ingredients AS ingredientData
+            MERGE (formulation)-[uses:USES_INGREDIENT {edgeId: formulation.id + '-' + ingredientData.node.id, percentage: ingredientData.percentage}]->(ingredientData.node)
+                SET uses.function = ingredientData.function,
+                        uses.cost_per_kg = ingredientData.cost,
+                        uses.quantity_kg = ingredientData.percentage / 100.0,
+                        uses.updatedAt = datetime()
+            MERGE (formulation)-[contains:CONTAINS {edgeId: formulation.id + '-contains-' + ingredientData.node.id}]->(ingredientData.node)
+                SET contains.percentage = ingredientData.percentage,
+                        contains.cost_per_kg = ingredientData.cost,
+                        contains.function = ingredientData.function,
+                        contains.quantity_kg = ingredientData.percentage / 100.0,
+                        contains.updatedAt = datetime()
+
+        MERGE (food1:Food:GraphEntity {id: 'fdc-234567', fdcId: '234567'})
+            SET food1.name = 'Carbonated beverage, cola, regular',
+                    food1.category = 'Beverages'
+        MERGE (food2:Food:GraphEntity {id: 'fdc-173356', fdcId: '173356'})
+            SET food2.name = 'Corn syrup, high-fructose',
+                    food2.category = 'Sweeteners'
+        MERGE (food3:Food:GraphEntity {id: 'fdc-173272', fdcId: '173272'})
+            SET food3.name = 'Caffeine, synthetic',
+                    food3.category = 'Additives'
+
+        MERGE (ingredient1)-[:REFERENCES_FOOD]->(food1)
+        MERGE (ingredient2)-[:REFERENCES_FOOD]->(food2)
+        MERGE (ingredient5)-[:REFERENCES_FOOD]->(food3)
+
+        MERGE (nutrientSugar:Nutrient:GraphEntity {id: 'nutrient-sugar', name: 'Sugar', unit: 'g', fdcId: '1003'})
+        MERGE (nutrientSodium:Nutrient:GraphEntity {id: 'nutrient-sodium', name: 'Sodium', unit: 'mg', fdcId: '1093'})
+        MERGE (nutrientCaffeine:Nutrient:GraphEntity {id: 'nutrient-caffeine', name: 'Caffeine', unit: 'mg', fdcId: '1056'})
+        MERGE (nutrientEnergy:Nutrient:GraphEntity {id: 'nutrient-energy', name: 'Energy', unit: 'kcal', fdcId: '1008'})
+
+        MERGE (fn1:FoodNutrient:GraphEntity {id: 'foodnutrient-234567-sugar'})
+            SET fn1.amountPer100g = 10.58
+        MERGE (fn2:FoodNutrient:GraphEntity {id: 'foodnutrient-234567-sodium'})
+            SET fn2.amountPer100g = 7
+        MERGE (fn3:FoodNutrient:GraphEntity {id: 'foodnutrient-234567-caffeine'})
+            SET fn3.amountPer100g = 10
+        MERGE (fn4:FoodNutrient:GraphEntity {id: 'foodnutrient-234567-energy'})
+            SET fn4.amountPer100g = 42
+
+        MERGE (food1)-[:HAS_FOODNUTRIENT {edgeId: 'foodnutrient-234567-sugar'}]->(fn1)
+        MERGE (fn1)-[:OF_NUTRIENT]->(nutrientSugar)
+        MERGE (food1)-[:HAS_FOODNUTRIENT {edgeId: 'foodnutrient-234567-sodium'}]->(fn2)
+        MERGE (fn2)-[:OF_NUTRIENT]->(nutrientSodium)
+        MERGE (food1)-[:HAS_FOODNUTRIENT {edgeId: 'foodnutrient-234567-caffeine'}]->(fn3)
+        MERGE (fn3)-[:OF_NUTRIENT]->(nutrientCaffeine)
+        MERGE (food1)-[:HAS_FOODNUTRIENT {edgeId: 'foodnutrient-234567-energy'}]->(fn4)
+        MERGE (fn4)-[:OF_NUTRIENT]->(nutrientEnergy)
+
+        MERGE (step1:ProcessStep:GraphEntity {id: 'step-mixing'})
+            SET step1.name = 'Mixing',
+                    step1.sequence = 1,
+                    step1.description = 'Blend syrup base with carbonated water',
+                    step1.temperature = 10
+        MERGE (step2:ProcessStep:GraphEntity {id: 'step-carbonation'})
+            SET step2.name = 'Carbonation',
+                    step2.sequence = 2,
+                    step2.description = 'Inject CO2 under pressure',
+                    step2.temperature = 4
+        MERGE (step3:ProcessStep:GraphEntity {id: 'step-filling'})
+            SET step3.name = 'Filling',
+                    step3.sequence = 3,
+                    step3.description = 'Fill and seal cans',
+                    step3.temperature = 4
+        MERGE (step4:ProcessStep:GraphEntity {id: 'step-packaging'})
+            SET step4.name = 'Packaging',
+                    step4.sequence = 4,
+                    step4.description = 'Pack cases for distribution',
+                    step4.temperature = 20
+
+        MERGE (formulation)-[:HAS_STEP {sequence: 1}]->(step1)
+        MERGE (formulation)-[:HAS_STEP {sequence: 2}]->(step2)
+        MERGE (formulation)-[:HAS_STEP {sequence: 3}]->(step3)
+        MERGE (formulation)-[:HAS_STEP {sequence: 4}]->(step4)
+
+        MERGE (claim1:LabelClaim:GraphEntity {id: 'claim-contains-caffeine'})
+            SET claim1.text = 'Contains caffeine',
+                    claim1.type = 'Mandatory'
+        MERGE (claim2:LabelClaim:GraphEntity {id: 'claim-no-artificial-sweetener'})
+            SET claim2.text = 'No artificial sweeteners',
+                    claim2.type = 'Marketing'
+        MERGE (allergen:Allergen:GraphEntity {id: 'allergen-caffeine-sensitivity'})
+            SET allergen.name = 'Caffeine Sensitivity',
+                    allergen.type = 'Stimulant'
+
+        MERGE (product)-[:HAS_LABELCLAIM]->(claim1)
+        MERGE (product)-[:HAS_LABELCLAIM]->(claim2)
+        MERGE (product)-[:HAS_ALLERGEN]->(allergen)
+
+        MERGE (batch:Batch:GraphEntity {id: 'batch-pepsi-2025-001'})
+            SET batch.batchId = 'P2025-001',
+                    batch.producedOn = date('2025-10-07'),
+                    batch.volume = 25000,
+                    batch.volumeUnit = 'L'
+
+        MERGE (formulation)-[:EXECUTED_AS]->(batch)
     """
     
     neo4j_client.execute_query(query)
     
-    return {"nodes": 12, "relationships": 10}
+    return {"nodes": 29, "relationships": 34}
 
 
 def load_juices_data(neo4j_client) -> dict:

@@ -85,6 +85,141 @@ const formatGraphForPrompt = (graph) => {
   })
 }
 
+const VALIDATION_TOLERANCE = 0.01
+
+const sumPercentages = (ingredients = []) =>
+  ingredients.reduce((total, ingredient) => total + (Number(ingredient.percentage) || 0), 0)
+
+const deriveIngredientNodes = (graph) => {
+  if (!graph || !Array.isArray(graph.nodes)) {
+    return new Set()
+  }
+  return new Set(graph.nodes.filter((node) => node.type === 'ingredient').map((node) => node.id))
+}
+
+const buildFallbackValidation = (input) => {
+  const timestamp = new Date().toISOString()
+  const recipe = input.recipe || { ingredients: [], totalPercentage: 0 }
+  const calculation = input.calculation || { scaledIngredients: [], costs: {}, yield: {} }
+  const graph = input.graph || { nodes: [], edges: [] }
+
+  const checks = {
+    recipePercentageValid: false,
+    costPositive: false,
+    yieldRealistic: false,
+    graphIntegrity: false,
+    dataConsistency: false,
+  }
+
+  const errors = []
+  const warnings = []
+
+  const totalPercentage = sumPercentages(recipe.ingredients)
+  const percentageDelta = Math.abs(totalPercentage - 100)
+  checks.recipePercentageValid = percentageDelta <= VALIDATION_TOLERANCE
+  if (!checks.recipePercentageValid) {
+    errors.push({
+      agent: 'Recipe Engineer',
+      field: 'totalPercentage',
+      message: `Ingredient percentages sum to ${totalPercentage.toFixed(2)}% (expected 100%).`,
+      severity: percentageDelta > 1 ? 'error' : 'warning',
+    })
+  }
+
+  const costs = calculation.costs || {}
+  const positiveCost = ['rawMaterials', 'total']
+    .map((field) => Number(costs[field]) || 0)
+    .every((value) => value > 0)
+  checks.costPositive = positiveCost
+  if (!positiveCost) {
+    errors.push({
+      agent: 'Scaling Calculator',
+      field: 'costs.total',
+      message: 'Total cost must be greater than zero.',
+      severity: 'error',
+    })
+  }
+
+  const yieldPercentage = Number(calculation.yield?.percentage)
+  checks.yieldRealistic = Number.isFinite(yieldPercentage)
+    ? yieldPercentage >= 70 && yieldPercentage <= 100
+    : false
+  if (!checks.yieldRealistic) {
+    warnings.push({
+      agent: 'Scaling Calculator',
+      field: 'yield.percentage',
+      message: 'Yield should be between 70% and 100% for typical beverage processes.',
+    })
+  }
+
+  const ingredientNodes = deriveIngredientNodes(graph)
+  const missingGraphNodes = (recipe.ingredients || []).filter((ingredient) => {
+    const nodeId = `ingredient-${ingredient.id || ingredient.name}`
+    return !ingredientNodes.has(nodeId)
+  })
+  checks.graphIntegrity = missingGraphNodes.length === 0
+  if (!checks.graphIntegrity && missingGraphNodes.length) {
+    errors.push({
+      agent: 'Graph Builder',
+      field: 'graph.nodes',
+      message: `${missingGraphNodes.length} ingredient node(s) missing from graph output.`,
+      severity: 'warning',
+    })
+  }
+
+  const percentageLookup = new Map(
+    (recipe.ingredients || []).map((ingredient) => [ingredient.id || ingredient.name, Number(ingredient.percentage) || 0])
+  )
+  const scaledConsistent = (calculation.scaledIngredients || []).every((scaled) => {
+    const key = scaled.id || scaled.name
+    if (!percentageLookup.has(key)) {
+      return false
+    }
+    const expected = (percentageLookup.get(key) / 100) * (Number(calculation.targetBatchSize) || 0)
+    return Math.abs(expected - Number(scaled.scaledQuantity || 0)) <= Math.max(0.01 * expected, 0.5)
+  })
+  checks.dataConsistency = scaledConsistent
+  if (!scaledConsistent) {
+    errors.push({
+      agent: 'QA Validator',
+      field: 'scaledIngredients',
+      message: 'Scaled quantities do not align with recipe percentages.',
+      severity: 'error',
+    })
+  }
+
+  const totalChecks = Object.values(checks).length
+  const passed = Object.values(checks).filter(Boolean).length
+  const failed = totalChecks - passed
+  const score = Math.round((passed / Math.max(totalChecks, 1)) * 100)
+
+  const validationPayload = {
+    valid: errors.every((issue) => issue.severity !== 'error'),
+    errors,
+    warnings,
+    checks,
+    summary: {
+      totalChecks,
+      passed,
+      failed,
+      score,
+    },
+    timestamp,
+  }
+
+  const validatedReport = ValidationReportSchema.parse(validationPayload)
+
+  const criticalErrors = validatedReport.errors
+    .filter((issue) => issue.severity === 'error')
+    .map((issue) => `${issue.agent}: ${issue.message}`)
+
+  return {
+    validation: validatedReport,
+    canProceed: criticalErrors.length === 0,
+    criticalErrors,
+  }
+}
+
 export class QAValidatorAgent {
   name = 'QA Validator'
   description = 'Cross-checks data consistency and validates business rules'
@@ -163,23 +298,32 @@ export class QAValidatorAgent {
 
     const promptText = promptSections.join('\n')
 
-    const parsed = await requestJsonResponse(promptText, {
-      temperature: 0.15,
-      maxTokens: 1200,
-      systemPrompt: 'You are a QA validation agent. Return JSON only that conforms exactly to the specified schema.',
-      maxAttempts: 3,
-    })
-    
-    const validatedReport = ValidationReportSchema.parse(parsed.validation)
-    
-    const criticalErrors = validatedReport.errors
-      .filter(e => e.severity === 'error')
-      .map(e => `${e.agent}: ${e.message}`)
-    
-    return {
-      validation: validatedReport,
-      canProceed: criticalErrors.length === 0,
-      criticalErrors,
+    try {
+      const parsed = await requestJsonResponse(promptText, {
+        temperature: 0.15,
+        maxTokens: 1200,
+        systemPrompt: 'You are a QA validation agent. Return JSON only that conforms exactly to the specified schema.',
+        maxAttempts: 3,
+      })
+
+      const validatedReport = ValidationReportSchema.parse(parsed.validation)
+
+      const criticalErrors = validatedReport.errors
+        .filter((e) => e.severity === 'error')
+        .map((e) => `${e.agent}: ${e.message}`)
+
+      return {
+        validation: validatedReport,
+        canProceed: criticalErrors.length === 0,
+        criticalErrors,
+      }
+    } catch (error) {
+      // Fallback ensures deterministic validation when the LLM call fails
+      return buildFallbackValidation({
+        recipe: input.recipe,
+        calculation: input.calculation,
+        graph: input.graph,
+      })
     }
   }
 }

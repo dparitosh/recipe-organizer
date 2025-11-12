@@ -23,6 +23,7 @@ async def check_service_health(request: Request):
     
     llm_available = False
     neo4j_available = False
+    graphrag_available = False
     genai_available = False
     
     if hasattr(request.app.state, 'ollama_service') and request.app.state.ollama_service:
@@ -37,11 +38,15 @@ async def check_service_health(request: Request):
         except:
             pass
     
-    genai_available = llm_available and neo4j_available
+    if hasattr(request.app.state, "graphrag_retrieval_service"):
+        graphrag_service = getattr(request.app.state, "graphrag_retrieval_service", None)
+        graphrag_available = graphrag_service is not None
+
+    genai_available = llm_available and neo4j_available and graphrag_available
     
     execution_time = int((datetime.now() - start_time).total_seconds() * 1000)
     
-    if llm_available and neo4j_available:
+    if llm_available and neo4j_available and graphrag_available:
         status = "healthy"
     elif llm_available or neo4j_available:
         status = "degraded"
@@ -52,6 +57,7 @@ async def check_service_health(request: Request):
         status=status,
         llm_available=llm_available,
         neo4j_available=neo4j_available,
+        graphrag_available=graphrag_available,
         genai_available=genai_available,
         response_time_ms=execution_time,
         ollama_model=settings.OLLAMA_MODEL if llm_available else None,

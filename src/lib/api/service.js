@@ -94,6 +94,51 @@ class APIService {
     })
   }
 
+  async quickIngestFDC(searchTerm, { count = 10, dataTypes, apiKey } = {}) {
+    const payload = {
+      search_term: searchTerm,
+      count,
+    }
+
+    if (Array.isArray(dataTypes) && dataTypes.length) {
+      payload.data_types = dataTypes
+    }
+
+    if (apiKey) {
+      payload.api_key = apiKey
+    }
+
+    return this.request('/api/fdc/quick-ingest', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async listFDCFoods({ search, page = 1, pageSize = 25, includeNutrients = false } = {}) {
+    const params = new URLSearchParams()
+    params.set('page', String(page))
+    params.set('page_size', String(pageSize))
+    params.set('include_nutrients', includeNutrients ? 'true' : 'false')
+    if (search) {
+      params.set('search', search)
+    }
+
+    return this.request(`/api/fdc/foods?${params.toString()}`)
+  }
+
+  async generateNutritionLabel(formulationId, { servingSize = 100, servingSizeUnit = 'g', servingsPerContainer } = {}) {
+    const params = new URLSearchParams()
+    params.set('serving_size', String(servingSize))
+    params.set('serving_size_unit', servingSizeUnit)
+    if (servingsPerContainer) {
+      params.set('servings_per_container', String(servingsPerContainer))
+    }
+
+    return this.request(`/api/formulations/${formulationId}/nutrition-label?${params.toString()}`, {
+      method: 'POST',
+    })
+  }
+
   async clearDatabase() {
     return this.request('/api/database/clear', {
       method: 'POST',

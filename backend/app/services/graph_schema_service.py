@@ -846,6 +846,9 @@ class GraphSchemaService:
             data = dict(entity)
         except TypeError:
             return {}
+        properties = data.pop("properties", None)
+        if isinstance(properties, dict):
+            data.update(properties)
         return data
 
     def get_schema(self) -> Dict[str, Any]:

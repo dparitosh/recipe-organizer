@@ -34,6 +34,114 @@ const formatRecipeForPrompt = (recipe) => {
   return JSON.stringify(minimalRecipe)
 }
 
+const FALLBACK_LABOR_RATE = 0.2
+const FALLBACK_OVERHEAD_RATE = 0.15
+const FALLBACK_PACKAGING_RATE = 0.08
+const FALLBACK_YIELD_PERCENTAGE = 95
+
+const toNumberOrNull = (value) => {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : null
+}
+
+const resolveCostRate = (ingredient, costMap = {}) => {
+  if (!ingredient) return null
+  if (ingredient.id && toNumberOrNull(costMap[ingredient.id]) !== null) {
+    return Number(costMap[ingredient.id])
+  }
+  if (ingredient.name && toNumberOrNull(costMap[ingredient.name]) !== null) {
+    return Number(costMap[ingredient.name])
+  }
+  return null
+}
+
+const resolveDensity = (ingredient, densityMap = {}) => {
+  if (!ingredient) return null
+  if (ingredient.id && toNumberOrNull(densityMap[ingredient.id]) !== null) {
+    return Number(densityMap[ingredient.id])
+  }
+  if (ingredient.name && toNumberOrNull(densityMap[ingredient.name]) !== null) {
+    return Number(densityMap[ingredient.name])
+  }
+  return null
+}
+
+const buildFallbackCalculation = (input, timestamp) => {
+  const recipe = input.recipe ?? { ingredients: [] }
+  const targetBatchSize = Number(input.targetBatchSize) || 1000
+  const targetUnit = input.targetUnit || 'kg'
+  const densityMap = input.densityMap || {}
+  const costMap = input.costMap || {}
+
+  const scaledIngredients = (recipe.ingredients || []).map((ingredient) => {
+    const percentage = Number(ingredient.percentage) || 0
+    const scaledQuantity = Number(((percentage / 100) * targetBatchSize).toFixed(3))
+    const density = resolveDensity(ingredient, densityMap)
+    const volumeEquivalent = density ? Number((scaledQuantity / density).toFixed(3)) : null
+    const costRate = resolveCostRate(ingredient, costMap)
+    const cost = costRate !== null ? Number((scaledQuantity * costRate).toFixed(2)) : null
+
+    return {
+      id: ingredient.id || ingredient.name || `ingredient-${Math.random().toString(36).slice(2, 8)}`,
+      name: ingredient.name || ingredient.id || 'Ingredient',
+      originalPercentage: percentage,
+      scaledQuantity,
+      scaledUnit: targetUnit,
+      volumeEquivalent,
+      cost,
+      density: density ?? null,
+    }
+  })
+
+  const rawMaterials = scaledIngredients.reduce((total, ing) => total + (ing.cost || 0), 0)
+  const labor = Number((rawMaterials * FALLBACK_LABOR_RATE).toFixed(2))
+  const overhead = Number((rawMaterials * FALLBACK_OVERHEAD_RATE).toFixed(2))
+  const packaging = Number((rawMaterials * FALLBACK_PACKAGING_RATE).toFixed(2))
+  const total = Number((rawMaterials + labor + overhead + packaging).toFixed(2))
+  const perUnit = Number((total / Math.max(targetBatchSize, 1)).toFixed(4))
+
+  const calculation = {
+    recipeId: recipe.id || 'unknown-recipe',
+    recipeName: recipe.name || 'Fallback Formulation',
+    targetBatchSize,
+    targetUnit,
+    scaledIngredients,
+    costs: {
+      rawMaterials: Number(rawMaterials.toFixed(2)),
+      labor,
+      overhead,
+      packaging,
+      total,
+      perUnit,
+    },
+    yield: {
+      theoretical: targetBatchSize,
+      actual: Number((targetBatchSize * (FALLBACK_YIELD_PERCENTAGE / 100)).toFixed(2)),
+      percentage: FALLBACK_YIELD_PERCENTAGE,
+      losses: [
+        {
+          step: 'process',
+          amount: Number((targetBatchSize * ((100 - FALLBACK_YIELD_PERCENTAGE) / 100)).toFixed(2)),
+          reason: 'Assumed process variability',
+        },
+      ],
+    },
+    timestamp,
+  }
+
+  const validated = CalculationSchema.parse(calculation)
+
+  return {
+    calculation: validated,
+    warnings: [
+      'Scaling Calculator fallback logic executed because AI response was unavailable.',
+    ],
+    optimizations: [
+      'Provide ingredient-specific cost and density data to improve automated scaling outputs.',
+    ],
+  }
+}
+
 export class ScalingCalculatorAgent {
   name = 'Scaling Calculator'
   description = 'Computes quantities, costs, and yields with density conversions'
@@ -117,19 +225,23 @@ export class ScalingCalculatorAgent {
 
     const promptText = promptSections.join('\n')
 
-    const parsed = await requestJsonResponse(promptText, {
-      temperature: 0.2,
-      maxTokens: 1400,
-      systemPrompt: 'You are a scaling calculator that must return JSON only. Ensure the data matches the schema exactly.',
-      maxAttempts: 3,
-    })
-    
-    const validatedCalculation = CalculationSchema.parse(parsed.calculation)
-    
-    return {
-      calculation: validatedCalculation,
-      warnings: parsed.warnings || [],
-      optimizations: parsed.optimizations || [],
+    try {
+      const parsed = await requestJsonResponse(promptText, {
+        temperature: 0.2,
+        maxTokens: 1400,
+        systemPrompt: 'You are a scaling calculator that must return JSON only. Ensure the data matches the schema exactly.',
+        maxAttempts: 3,
+      })
+
+      const validatedCalculation = CalculationSchema.parse(parsed.calculation)
+
+      return {
+        calculation: validatedCalculation,
+        warnings: parsed.warnings || [],
+        optimizations: parsed.optimizations || [],
+      }
+    } catch (error) {
+      return buildFallbackCalculation(input, timestamp)
     }
   }
 }

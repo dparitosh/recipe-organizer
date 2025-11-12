@@ -48,6 +48,7 @@ export function OrchestrationView() {
   const [targetUnit, setTargetUnit] = useState('kg')
   
   const [currentResult, setCurrentResult] = useState(null)
+  const [persistSummary, setPersistSummary] = useState(null)
   const [orchestrationHistory, setOrchestrationHistory] = useRecoilState(orchestrationHistoryAtom)
   const [showHistory, setShowHistory] = useState(false)
   const [pipelineStatus, setPipelineStatus] = useState(() => AGENT_PIPELINE.map(() => 'idle'))
@@ -60,6 +61,7 @@ export function OrchestrationView() {
 
     setIsRunning(true)
     setCurrentResult(null)
+  setPersistSummary(null)
     setPipelineStatus(AGENT_PIPELINE.map(() => 'pending'))
 
     try {
@@ -137,12 +139,18 @@ export function OrchestrationView() {
         },
       }
 
-      try {
-        await orchestrationService.persistRun(persistencePayload)
-      } catch (persistError) {
-        console.error('Failed to persist orchestration run:', persistError)
-        toast.warning('Unable to persist orchestration run to Neo4j.')
+      let persistenceSummary = null
+      if (result.status !== 'failed' && result.graph?.nodes?.length) {
+        try {
+          persistenceSummary = await orchestrationService.persistRun(persistencePayload)
+          toast.success('Orchestration run saved to Neo4j')
+        } catch (persistError) {
+          console.error('Failed to persist orchestration run:', persistError)
+          toast.warning('Unable to persist orchestration run to Neo4j.')
+        }
       }
+
+      setPersistSummary(persistenceSummary)
 
       if (result.status === 'success') {
         toast.success(`Orchestration completed in ${(result.totalDuration / 1000).toFixed(2)}s`)
@@ -275,7 +283,7 @@ export function OrchestrationView() {
           </Card>
 
           {currentResult && (
-            <OrchestrationResultView result={currentResult} />
+            <OrchestrationResultView result={currentResult} persistSummary={persistSummary} />
           )}
         </div>
 

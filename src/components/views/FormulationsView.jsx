@@ -2,45 +2,25 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
 import { DataExportButton } from '@/components/DataExportButton'
 import ParetoAnalysis from '@/components/formulation/ParetoAnalysis'
 import { FormulationEditor } from '@/components/formulation/FormulationEditor'
+import { NutritionLabel } from '@/components/nutrition/NutritionLabel'
 import { apiService } from '@/lib/api/service'
+import { normalizeFormulation } from '@/lib/utils/formulation-utils'
 import { toast } from 'sonner'
-import { Plus, Flask, Trash, FloppyDiskBack, ArrowCounterClockwise } from '@phosphor-icons/react'
-
-const normalizeFormulation = (formulation) => {
-  if (!formulation) {
-    return null
-  }
-
-  const ingredients = Array.isArray(formulation.ingredients) ? formulation.ingredients : []
-
-  const normalizedIngredients = ingredients.map((ingredient, index) => ({
-    id: ingredient.id ?? `${formulation.id}-ingredient-${index}`,
-    name: ingredient.name || '',
-    percentage: Number.isFinite(Number(ingredient.percentage)) ? Number(ingredient.percentage) : 0,
-    function: ingredient.function || 'unspecified',
-    cost_per_kg: Number.isFinite(Number(ingredient.cost_per_kg))
-      ? Number(ingredient.cost_per_kg)
-      : Number.isFinite(Number(ingredient.costPerKg))
-        ? Number(ingredient.costPerKg)
-        : 0,
-  }))
-
-  const totalPercentage = normalizedIngredients.reduce((sum, ing) => sum + (ing.percentage || 0), 0)
-
-  return {
-    id: formulation.id,
-    name: formulation.name || 'Untitled Formulation',
-    description: formulation.description || '',
-    status: formulation.status || 'draft',
-    created_at: formulation.created_at,
-    updated_at: formulation.updated_at,
-    ingredients: normalizedIngredients,
-    total_percentage: totalPercentage,
-  }
-}
+import { MagnifyingGlass, Plus, Flask, Trash, FloppyDiskBack, ArrowCounterClockwise, Article } from '@phosphor-icons/react'
 
 export function FormulationsView({ backendUrl }) {
   const [formulations, setFormulations] = useState([])
@@ -48,6 +28,10 @@ export function FormulationsView({ backendUrl }) {
   const [isSaving, setIsSaving] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [editorDraft, setEditorDraft] = useState(null)
+  const [nutritionLabel, setNutritionLabel] = useState(null)
+  const [loadingNutrition, setLoadingNutrition] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
 
   apiService.setBaseUrl(backendUrl)
 
@@ -55,7 +39,9 @@ export function FormulationsView({ backendUrl }) {
     setLoading(true)
     try {
       const data = await apiService.getFormulations()
-      const items = Array.isArray(data?.formulations) ? data.formulations.map(normalizeFormulation) : []
+      const items = Array.isArray(data?.formulations)
+        ? data.formulations.map(normalizeFormulation).filter(Boolean)
+        : []
       setFormulations(items)
       if (!selectedId && items.length > 0) {
         setSelectedId(items[0].id)
@@ -75,6 +61,45 @@ export function FormulationsView({ backendUrl }) {
   useEffect(() => {
     loadFormulations()
   }, [loadFormulations])
+
+  const filteredFormulations = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+
+    return formulations.filter((formulation) => {
+      if (!formulation) {
+        return false
+      }
+
+      const matchesStatus = statusFilter === 'all' || formulation.status === statusFilter
+      const matchesSearch =
+        term.length === 0 ||
+        formulation.name?.toLowerCase().includes(term) ||
+        formulation.description?.toLowerCase().includes(term)
+
+      return matchesStatus && matchesSearch
+    })
+  }, [formulations, statusFilter, searchTerm])
+
+  useEffect(() => {
+    if (!selectedId) {
+      if (filteredFormulations.length > 0) {
+        setSelectedId(filteredFormulations[0].id)
+      }
+      return
+    }
+
+    const selectedStillVisible = filteredFormulations.some((item) => item.id === selectedId)
+    if (!selectedStillVisible) {
+      setSelectedId(filteredFormulations[0]?.id ?? null)
+    }
+  }, [filteredFormulations, selectedId])
+
+  const filtersActive = statusFilter !== 'all' || searchTerm.trim().length > 0
+
+  const handleClearFilters = useCallback(() => {
+    setSearchTerm('')
+    setStatusFilter('all')
+  }, [])
 
   const resolveCurrentUser = async () => {
     const storedLogin = typeof window !== 'undefined' ? window.localStorage?.getItem('app-user-login') : null
@@ -151,6 +176,125 @@ export function FormulationsView({ backendUrl }) {
     return JSON.stringify(editorDraft) !== JSON.stringify(normalizedSelected)
   }, [editorDraft, normalizedSelected])
 
+  // Derive quick-glance analytics for the currently edited formulation.
+  const formulationMetrics = useMemo(() => {
+    if (!editorDraft) {
+      return null
+    }
+
+    const ingredientCount = editorDraft.ingredients.length
+    const totalPercentage = editorDraft.ingredients.reduce(
+      (sum, ing) => sum + (Number(ing.percentage) || 0),
+      0
+    )
+
+    if (ingredientCount === 0) {
+      return {
+        ingredientCount: 0,
+        totalPercentage,
+        totalCostPerKg: 0,
+        missingCostCount: 0,
+        dominantFunctionLabel: 'Unspecified',
+        costCoverage: 0,
+        highestCostIngredient: null,
+      }
+    }
+
+    const totalCostPerKg = editorDraft.ingredients.reduce((sum, ing) => {
+      const percentage = Number(ing.percentage) || 0
+      const cost = Number(ing.cost_per_kg) || 0
+      return sum + (percentage / 100) * cost
+    }, 0)
+
+    const missingCostCount = editorDraft.ingredients.filter((ing) => !(Number(ing.cost_per_kg) > 0)).length
+
+    const highestCostIngredient = editorDraft.ingredients.reduce(
+      (acc, ing) => {
+        const cost = Number(ing.cost_per_kg) || 0
+        if (cost > acc.cost) {
+          return { name: ing.name || 'Unnamed Ingredient', cost }
+        }
+        return acc
+      },
+      { name: null, cost: -Infinity }
+    )
+
+    const functionTally = editorDraft.ingredients.reduce((map, ing) => {
+      const key = ing.function || 'unspecified'
+      map[key] = (map[key] || 0) + 1
+      return map
+    }, {})
+
+    const dominantFunctionEntry = Object.entries(functionTally).sort((a, b) => b[1] - a[1])[0] ?? ['unspecified', 0]
+
+    const formatLabel = (label) =>
+      label
+        .split(/[_\s-]+/)
+        .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : ''))
+        .join(' ')
+
+    const costCoverage = ((ingredientCount - missingCostCount) / ingredientCount) * 100
+
+    return {
+      ingredientCount,
+      totalPercentage,
+      totalCostPerKg,
+      missingCostCount,
+      dominantFunctionLabel: formatLabel(dominantFunctionEntry[0]),
+      costCoverage,
+      highestCostIngredient: highestCostIngredient.name ? highestCostIngredient : null,
+    }
+  }, [editorDraft])
+
+  const issueMessages = useMemo(() => {
+    if (!formulationMetrics) {
+      return []
+    }
+
+    const issues = []
+    const delta = Math.abs(formulationMetrics.totalPercentage - 100)
+
+    if (formulationMetrics.ingredientCount === 0) {
+      issues.push({
+        severity: 'warning',
+        text: 'Add at least one ingredient to start evaluating this formulation.',
+      })
+    }
+
+    if (delta > 1) {
+      issues.push({
+        severity: 'error',
+        text: `Ingredient percentages sum to ${formulationMetrics.totalPercentage.toFixed(2)}% (target 100%).`,
+      })
+    } else if (delta > 0.1) {
+      issues.push({
+        severity: 'warning',
+        text: `Ingredient percentages are ${delta.toFixed(2)}% away from 100%.`,
+      })
+    }
+
+    if (formulationMetrics.missingCostCount > 0) {
+      issues.push({
+        severity: 'warning',
+        text: `${formulationMetrics.missingCostCount} ingredient${
+          formulationMetrics.missingCostCount === 1 ? '' : 's'
+        } missing cost per kg values.`,
+      })
+    }
+
+    if (formulationMetrics.totalCostPerKg <= 0 && formulationMetrics.ingredientCount > 0) {
+      issues.push({
+        severity: 'warning',
+        text: 'Estimated cost per kg is zero; update ingredient costs to unlock pricing analytics.',
+      })
+    }
+
+    return issues
+  }, [formulationMetrics])
+
+  const hasIssues = issueMessages.length > 0
+  const hasCriticalIssue = issueMessages.some((issue) => issue.severity === 'error')
+
   const handleSave = async () => {
     if (!editorDraft || !selectedId) {
       return
@@ -195,6 +339,32 @@ export function FormulationsView({ backendUrl }) {
     }
   }
 
+  const handleGenerateNutritionLabel = async () => {
+    if (!selectedId) return
+    
+    setLoadingNutrition(true)
+    setNutritionLabel(null)
+    
+    try {
+      const response = await fetch(
+        `${backendUrl}/api/formulations/${selectedId}/nutrition-label?serving_size=100&serving_size_unit=g`,
+        { method: 'POST' }
+      )
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate nutrition label')
+      }
+      
+      const data = await response.json()
+      setNutritionLabel(data)
+      toast.success('Nutrition label generated')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to generate nutrition label')
+    } finally {
+      setLoadingNutrition(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -219,18 +389,58 @@ export function FormulationsView({ backendUrl }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
-          <Card className="p-4">
-            <h3 className="font-semibold mb-4">All Formulations</h3>
+          <Card className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">All Formulations</h3>
+              <Badge variant="outline" className="text-xs">
+                {filteredFormulations.length} / {formulations.length || 0}
+              </Badge>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="relative">
+                <MagnifyingGlass
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search formulations..."
+                  className="pl-8"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
+
             {loading ? (
               <div className="text-center text-muted-foreground py-8">Loading...</div>
-            ) : formulations.length === 0 ? (
+            ) : filteredFormulations.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
                 <Flask size={48} className="mx-auto mb-2 opacity-50" />
-                <p>No formulations yet</p>
+                <p>{filtersActive ? 'No formulations match your filters' : 'No formulations yet'}</p>
+                {filtersActive && (
+                  <Button variant="ghost" size="sm" className="mt-3" onClick={handleClearFilters}>
+                    Clear filters
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
-                {formulations.map(formulation => (
+                {filteredFormulations.map((formulation) => (
                   <div
                     key={formulation.id}
                     className={`p-3 rounded-lg border cursor-pointer transition-all ${
@@ -240,7 +450,7 @@ export function FormulationsView({ backendUrl }) {
                     }`}
                     onClick={() => setSelectedId(formulation.id)}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex-1">
                         <h4 className="font-medium">{formulation.name}</h4>
                         <p className="text-xs text-muted-foreground">
@@ -248,6 +458,9 @@ export function FormulationsView({ backendUrl }) {
                         </p>
                       </div>
                       <Badge variant="secondary">{formulation.status}</Badge>
+                    </div>
+                    <div className="mt-3">
+                      <Progress value={Math.min(Number(formulation.total_percentage) || 0, 100)} />
                     </div>
                   </div>
                 ))}
@@ -271,6 +484,16 @@ export function FormulationsView({ backendUrl }) {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="secondary">{editorDraft.status}</Badge>
+                  <Button
+                    variant="outline"
+                    onClick={handleGenerateNutritionLabel}
+                    disabled={loadingNutrition}
+                    className="gap-2"
+                    title="Generate nutrition facts label"
+                  >
+                    <Article size={18} />
+                    {loadingNutrition ? 'Generating...' : 'Nutrition Label'}
+                  </Button>
                   <Button
                     variant="outline"
                     size="icon"
@@ -299,7 +522,78 @@ export function FormulationsView({ backendUrl }) {
                 </div>
               </div>
 
+              {formulationMetrics && (
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-lg border bg-secondary/20 p-4">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ingredients</p>
+                      <p className="mt-2 text-2xl font-semibold">{formulationMetrics.ingredientCount}</p>
+                    </div>
+                    <div className="rounded-lg border bg-secondary/20 p-4">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Est. Cost / kg</p>
+                      <p className="mt-2 text-2xl font-semibold">{formulationMetrics.totalCostPerKg.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-secondary/20 p-4">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dominant Function</p>
+                      <p className="mt-2 text-base font-medium">{formulationMetrics.dominantFunctionLabel}</p>
+                      <p className="text-xs text-muted-foreground mt-2">Cost coverage {Math.round(formulationMetrics.costCoverage)}%</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between text-sm font-medium">
+                      <span>Formula completion</span>
+                      <span
+                        className={
+                          Math.abs(formulationMetrics.totalPercentage - 100) <= 0.1
+                            ? 'text-muted-foreground'
+                            : 'text-destructive'
+                        }
+                      >
+                        {formulationMetrics.totalPercentage.toFixed(2)}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={Math.min(formulationMetrics.totalPercentage, 100)}
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <Alert variant={hasCriticalIssue ? 'destructive' : 'default'}>
+                    <AlertTitle>
+                      {hasIssues
+                        ? hasCriticalIssue
+                          ? 'Formulation Needs Attention'
+                          : 'Review Suggested Adjustments'
+                        : 'Formulation Looks Good'}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {hasIssues ? (
+                        issueMessages.map((issue, index) => (
+                          <p key={`${issue.text}-${index}`}>{issue.text}</p>
+                        ))
+                      ) : (
+                        <p>
+                          {formulationMetrics.totalCostPerKg > 0
+                            ? `Estimated cost per kg is ${formulationMetrics.totalCostPerKg.toFixed(2)}.`
+                            : 'Estimated cost per kg is not available yet.'}
+                          {formulationMetrics.highestCostIngredient
+                            ? ` Highest cost ingredient: ${formulationMetrics.highestCostIngredient.name} (${formulationMetrics.highestCostIngredient.cost.toFixed(2)} per kg).`
+                            : ''}
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
               <FormulationEditor formulation={editorDraft} onChange={setEditorDraft} />
+
+              {nutritionLabel && (
+                <div className="flex justify-center">
+                  <NutritionLabel nutritionFacts={nutritionLabel} />
+                </div>
+              )}
 
               {editorDraft.ingredients.length > 0 && (
                 <ParetoAnalysis ingredients={editorDraft.ingredients} />

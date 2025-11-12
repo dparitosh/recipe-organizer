@@ -33,6 +33,24 @@ def _build_write_set():
         recipe_version={"recipeId": "recipe", "name": "Recipe", "version": "v1", "totalPercentage": 100, "metadata": {"key": "value"}, "createdAt": "2025-01-01T00:00:00Z"},
         calculation={"calculationId": "calc", "payload": {"list": [1, 2, 3]}, "createdAt": "2025-01-01T00:00:00Z"},
         graph_snapshot={"graphId": "graph", "metadata": {"nodeCount": 2}, "checksum": "abc", "blobUri": None, "createdAt": "2025-01-01T00:00:00Z"},
+        graph_nodes=[
+            {
+                "id": "formulation-RT001",
+                "label": "Recipe",
+                "type": "formulation",
+                "properties": {"totalPercentage": 100, "metadata": {"version": "v1"}},
+            }
+        ],
+        graph_edges=[
+            {
+                "id": "edge-formulation-RT001-ingredient-ING001",
+                "edgeId": "edge-formulation-RT001-ingredient-ING001",
+                "source": "formulation-RT001",
+                "target": "ingredient-ING001",
+                "type": "CONTAINS",
+                "properties": {"percentage": 60},
+            }
+        ],
         validation={"validationId": "validation", "payload": {"valid": True}, "createdAt": "2025-01-01T00:00:00Z", "valid": True},
         ui_config={"uiConfigId": "ui", "payload": {"layout": "grid"}, "createdAt": "2025-01-01T00:00:00Z"},
         agent_invocations=[],
@@ -85,5 +103,9 @@ def test_snapshot_parameters_are_neo4j_safe():
     assert isinstance(params["recipeVersion"]["metadata"], str)
     assert isinstance(params["calculation"]["payload"], str)
     assert isinstance(params["graphSnapshot"]["metadata"], str)
+    assert isinstance(params["graphNodes"], list)
+    assert params["graphNodes"][0]["id"] == "formulation-RT001"
+    assert isinstance(params["graphEdges"], list)
+    assert params["graphEdges"][0]["source"] == "formulation-RT001"
     assert isinstance(params["validation"]["payload"], str)
     assert isinstance(params["uiConfig"]["payload"], str)
