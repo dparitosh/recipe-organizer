@@ -2,6 +2,7 @@ import asyncio
 import copy
 import logging
 import re
+import sys
 from contextlib import asynccontextmanager
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
@@ -14,6 +15,16 @@ from fastapi.responses import Response
 
 from aiohttp import ClientError
 from neo4j import exceptions as neo4j_exceptions
+
+CURRENT_DIR = Path(__file__).resolve().parent
+PARENT_DIR = CURRENT_DIR.parent
+
+# Ensure the backend and project roots are on sys.path even when the script is invoked
+# from an external working directory (e.g., `python C:\App\backend\main.py`).
+for candidate in (CURRENT_DIR, PARENT_DIR):
+    candidate_str = str(candidate)
+    if candidate_str not in sys.path:
+        sys.path.insert(0, candidate_str)
 
 try:  # pragma: no cover - dependency import guard
     from slowapi import _rate_limit_exceeded_handler  # type: ignore[import-not-found]
