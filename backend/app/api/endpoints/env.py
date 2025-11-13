@@ -81,6 +81,7 @@ ALLOWED_ENV_SETTINGS: Dict[str, Dict[str, Any]] = {
     "DEBUG": {"attr": "DEBUG", "type": bool, "sensitive": False},
     "API_KEY": {"attr": "API_KEY", "type": str, "validator": _validate_non_empty, "sensitive": True},
     "ADMIN_API_KEY": {"attr": "ADMIN_API_KEY", "type": str, "validator": _validate_non_empty, "sensitive": True},
+    "DISABLE_API_KEY_SECURITY": {"attr": "DISABLE_API_KEY_SECURITY", "type": bool, "sensitive": False},
     "LOG_DIRECTORY": {"attr": "LOG_DIRECTORY", "type": str, "validator": _validate_non_empty, "sensitive": False},
     "LOG_FILE_NAME": {"attr": "LOG_FILE_NAME", "type": str, "validator": _validate_non_empty, "sensitive": False},
     "LOG_MAX_BYTES": {"attr": "LOG_MAX_BYTES", "type": int, "min": 1024, "sensitive": False},

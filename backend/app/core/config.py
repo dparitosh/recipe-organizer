@@ -69,6 +69,7 @@ class Settings(BaseSettings):
 
     API_KEY: str = Field(default="")
     ADMIN_API_KEY: str = Field(default="")
+    DISABLE_API_KEY_SECURITY: bool = False
 
     AI_SERVICE_MODE: str = "auto"
     AI_RETRY_ATTEMPTS: int = 3
@@ -117,8 +118,10 @@ class Settings(BaseSettings):
             "NEO4J_PASSWORD": self.NEO4J_PASSWORD,
             "OLLAMA_BASE_URL": self.OLLAMA_BASE_URL,
             "OLLAMA_EMBED_MODEL": self.OLLAMA_EMBED_MODEL,
-            "API_KEY": self.API_KEY,
         }
+
+        if not self.DISABLE_API_KEY_SECURITY:
+            required["API_KEY"] = self.API_KEY
 
         for name, val in required.items():
             if not val:

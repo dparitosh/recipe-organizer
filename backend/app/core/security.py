@@ -35,6 +35,9 @@ def _validate_key(provided: Optional[str], expected: str) -> str:
 async def require_api_key(api_key: Optional[str] = Security(_api_key_header)) -> str:
     """Validate the primary API key presented in the request."""
 
+    if settings.DISABLE_API_KEY_SECURITY:
+        return settings.API_KEY or ""
+
     expected = _ensure_configured(settings.API_KEY)
     return _validate_key(api_key, expected)
 
@@ -47,6 +50,8 @@ async def require_admin_api_key(
 
     Falls back to the primary API key if a dedicated admin key is not configured.
     """
+    if settings.DISABLE_API_KEY_SECURITY:
+        return settings.ADMIN_API_KEY or settings.API_KEY or ""
 
     expected_admin_key = settings.ADMIN_API_KEY or settings.API_KEY
     expected = _ensure_configured(expected_admin_key)

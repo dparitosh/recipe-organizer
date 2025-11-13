@@ -122,6 +122,10 @@ HOST=0.0.0.0
 PORT=8000
 DEBUG=False
 
+# API API Key (REQUIRED for authenticated deployments)
+API_KEY=your-generated-secret
+ADMIN_API_KEY=optional-admin-only-secret
+
 # GraphRAG Settings
 GRAPHRAG_CHUNK_INDEX_NAME=knowledge_chunks
 GRAPHRAG_CACHE_MAX_ENTRIES=64
@@ -141,7 +145,9 @@ Create `backend/env.local.json`:
   "OLLAMA_MODEL": "llama3:latest",
   "OLLAMA_EMBED_MODEL": "nomic-embed-text:latest",
   "FDC_API_KEY": "your-fdc-api-key",
-  "FDC_API_BASE_URL": "https://api.nal.usda.gov/fdc/v1"
+      "FDC_API_BASE_URL": "https://api.nal.usda.gov/fdc/v1",
+      "API_KEY": "<inject-from-secret-manager>",
+      "ADMIN_API_KEY": "<optional-admin-secret>"
 }
 ```
 
@@ -164,6 +170,71 @@ python main.py
 
 Backend will be available at: **http://localhost:8000**  
 API Documentation: **http://localhost:8000/docs**
+
+---
+
+## Part 2a: Generate API Key Credentials (All Environments)
+
+The backend uses an `API_KEY` (and optional `ADMIN_API_KEY`) to protect authenticated endpoints. Follow these steps during installation for each environment:
+
+1. **Generate a random secret locally**
+   ```bash
+   # Linux/macOS
+   export API_KEY=$(openssl rand -base64 48)
+
+   # Windows PowerShell
+   $Env:API_KEY = [Convert]::ToBase64String((New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes(48))
+
+   # Windows Command Prompt (requires OpenSSL)
+   for /f "delims=" %i in ('openssl rand -base64 48') do set API_KEY=%i
+   ```
+
+2. **(Optional) Generate an admin-only key**
+   Repeat the command above, storing the result in `ADMIN_API_KEY`. Skip this step if the admin endpoints can reuse the primary key.
+
+3. **Store the secrets in your manager of choice**
+   - Copy the generated value into Azure Key Vault, AWS Secrets Manager, HashiCorp Vault, or your deployment password store.
+   - Use the commands below to create/update the secret directly from your terminal if you prefer:
+
+### Option A: Command Line (Temporary / Local)
+```bash
+# Linux/macOS
+export API_KEY=$(openssl rand -base64 48)
+
+# Windows PowerShell
+$Env:API_KEY = [Convert]::ToBase64String((New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes(48))
+
+# Windows Command Prompt (requires OpenSSL for Windows)
+for /f "delims=" %i in ('openssl rand -base64 48') do set API_KEY=%i
+```
+
+### Option B: Cloud Secret Managers (Recommended)
+- **Azure Key Vault**
+   ```bash
+      az keyvault secret set \
+      --vault-name <vault-name> \
+         --name API-KEY \
+      --value (openssl rand -base64 48)
+   ```
+- **AWS Secrets Manager**
+   ```bash
+      aws secretsmanager create-secret \
+         --name /recipe/api-key \
+      --secret-string $(openssl rand -base64 48)
+   ```
+- **HashiCorp Vault**
+   ```bash
+      vault kv put secret/recipe/api-key value=$(openssl rand -base64 48)
+   ```
+
+### Inject the Key During Deployment
+- Populate the `.env`/`env.local.json` value `API_KEY=...` (and optionally `ADMIN_API_KEY=...`) from your secret store or CI/CD pipeline.
+- CI/CD pipelines should fetch the secret at deploy time and supply it as an environment variable.
+- Rotate keys periodically by updating the secret store and restarting the backend to pick up the new value.
+
+All environments (dev, stage, prod) must have their own unique key. Never commit the key to source control.
+
+> **Development note:** You can temporarily bypass header validation by setting `DISABLE_API_KEY_SECURITY=true` in `backend/env.local.json` or the backend environment. Do not enable this flag in shared or production environments.
 
 ---
 
@@ -528,6 +599,8 @@ NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
 NEO4J_PASSWORD=your-password
 OLLAMA_BASE_URL=http://localhost:11434
 FDC_API_KEY=your-fdc-key
+API_KEY=your-generated-secret
+ADMIN_API_KEY=optional-admin-secret
 ```
 
 **Frontend:** Works with defaults, no `.env` required for mock mode.
