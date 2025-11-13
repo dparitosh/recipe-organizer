@@ -2,6 +2,9 @@ import aiohttp
 import logging
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
+from aiohttp import ClientError
+from neo4j.exceptions import AuthError, Neo4jError, ServiceUnavailable
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -25,18 +28,43 @@ class FDCService:
         self._timeout_seconds = timeout
         self._session: Optional[aiohttp.ClientSession] = None
         self._schema_ready = False
+        self._started = False
 
     async def start(self) -> None:
         if self._session is None:
             timeout = aiohttp.ClientTimeout(total=self._timeout_seconds)
             self._session = aiohttp.ClientSession(timeout=timeout)
             logger.info("Initialized FDC service client")
+        self._started = True
 
     async def close(self) -> None:
         if self._session is not None:
             await self._session.close()
             self._session = None
             logger.info("Closed FDC service client")
+        self._started = False
+
+    async def update_configuration(self, *, base_url: str, timeout: int) -> None:
+        """Update service connection settings and recycle the client session if needed."""
+
+        normalized_url = base_url.rstrip("/")
+
+        if normalized_url == self._base_url and timeout == self._timeout_seconds:
+            return
+
+        self._base_url = normalized_url
+        self._timeout_seconds = timeout
+
+        if self._session is not None and not self._session.closed:
+            await self.close()
+
+    async def check_health(self) -> bool:
+        try:
+            await self.start()
+        except ClientError as exc:  # pragma: no cover - external dependency
+            logger.warning("FDC health check failed: %s", exc)
+            return False
+        return self._session is not None and not self._session.closed
 
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None:
@@ -135,7 +163,7 @@ class FDCService:
         for constraint in constraints:
             try:
                 neo4j_client.execute_query(constraint)
-            except Exception as exc:  # pragma: no cover - best effort
+            except (Neo4jError, ServiceUnavailable, AuthError) as exc:  # pragma: no cover - best effort
                 logger.debug("FDC schema constraint creation skipped: %s", exc)
 
         self._schema_ready = True

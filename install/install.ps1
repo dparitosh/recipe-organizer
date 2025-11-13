@@ -140,7 +140,7 @@ if (Test-Path $envLocalPath) {
     & $activateScript
     
     Push-Location $backendDir
-    $validationResult = python -c "import sys; sys.path.insert(0, '.'); from app.core.config import settings; settings.validate(); print('Configuration valid')" 2>&1
+    $validationResult = python -c "import sys; sys.path.insert(0, '.'); from app.core.config import settings; settings.warn_for_missing_configuration(); print('Configuration validated')" 2>&1
     Pop-Location
     
     if ($LASTEXITCODE -eq 0) {

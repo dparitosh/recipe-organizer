@@ -1,7 +1,12 @@
-import requests
+import os
+import requests  # type: ignore[import-untyped]
+
+API_KEY = os.environ.get("FDC_API_KEY") or os.environ.get("FDC_DEFAULT_API_KEY")
+if not API_KEY:
+    raise RuntimeError("Set FDC_API_KEY environment variable before running this script.")
 
 payload = {
-    "api_key": "N8J01VZvGtq3CwIrgJpgvlW4p2R03aSdOXcGcSke",
+    "api_key": API_KEY,
     "search_term": "almond butter",
     "count": 5,
 }

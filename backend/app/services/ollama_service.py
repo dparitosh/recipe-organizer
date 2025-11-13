@@ -4,6 +4,18 @@ import json
 import logging
 from typing import Optional, Dict, Any, List
 
+
+class OllamaServiceError(Exception):
+    """Base class for OLLAMA service errors."""
+
+
+class OllamaAPIError(OllamaServiceError):
+    """Raised when the remote OLLAMA API returns an error response."""
+
+
+class OllamaConnectionError(OllamaServiceError):
+    """Raised when the OLLAMA service cannot be reached."""
+
 logger = logging.getLogger(__name__)
 
 class OllamaService:
@@ -36,8 +48,8 @@ class OllamaService:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
                 async with session.get(f"{self.base_url}/api/tags") as response:
                     return response.status == 200
-        except Exception as e:
-            logger.warning(f"OLLAMA health check failed: {e}")
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as exc:
+            logger.warning("OLLAMA health check failed: %s", exc)
             return False
     
     async def generate_completion(
@@ -73,12 +85,21 @@ class OllamaService:
                 if response.status == 504:
                     raise asyncio.TimeoutError("OLLAMA request timed out")
                 error_text = await response.text()
-                raise Exception(f"OLLAMA API error: {error_text}")
+                raise OllamaAPIError(f"OLLAMA API error: {error_text}") from None
 
-        except asyncio.TimeoutError as exc:
+        except asyncio.TimeoutError:
             logger.error("OLLAMA generation timed out", exc_info=True)
             raise
-        except Exception as exc:
+        except aiohttp.ContentTypeError as exc:
+            logger.error("OLLAMA returned unexpected content type", exc_info=True)
+            raise OllamaAPIError("OLLAMA returned an unexpected content type") from exc
+        except aiohttp.ClientError as exc:
+            logger.error("OLLAMA generation failed due to client error", exc_info=True)
+            raise OllamaConnectionError("OLLAMA request failed") from exc
+        except json.JSONDecodeError as exc:
+            logger.error("OLLAMA returned invalid JSON", exc_info=True)
+            raise OllamaAPIError("OLLAMA returned invalid JSON") from exc
+        except OllamaServiceError:
             logger.error("OLLAMA generation failed", exc_info=True)
             raise
     
@@ -227,8 +248,8 @@ Return ONLY the JSON array, no other text."""
             else:
                 return []
         
-        except Exception as e:
-            logger.warning(f"Failed to generate recommendations: {e}")
+        except (json.JSONDecodeError, OllamaServiceError, aiohttp.ClientError, asyncio.TimeoutError) as exc:
+            logger.warning("Failed to generate recommendations: %s", exc)
             return [
                 {
                     "type": "general",

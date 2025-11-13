@@ -1,5 +1,7 @@
 const DEFAULT_CONFIG = {
   backendUrl: 'http://localhost:8000',
+  apiKey: '',
+  adminApiKey: '',
 }
 
 class EnvironmentService {
@@ -16,12 +18,48 @@ class EnvironmentService {
     return this.config.backendUrl || DEFAULT_CONFIG.backendUrl
   }
 
-  async _request(path, { method = 'GET', body } = {}) {
+  setApiKey(key) {
+    this.config.apiKey = (key || '').trim()
+  }
+
+  getApiKey() {
+    return this.config.apiKey || ''
+  }
+
+  setAdminApiKey(key) {
+    this.config.adminApiKey = (key || '').trim()
+  }
+
+  getAdminApiKey() {
+    return this.config.adminApiKey || ''
+  }
+
+  getAuthHeaders({ requireAdmin = false } = {}) {
+    const headers = {}
+    const apiKey = this.getApiKey()
+    if (apiKey) {
+      headers['X-API-Key'] = apiKey
+    }
+
+    const adminKey = this.getAdminApiKey()
+    if (adminKey) {
+      headers['X-Admin-API-Key'] = adminKey
+    } else if (requireAdmin && apiKey) {
+      headers['X-Admin-API-Key'] = apiKey
+    }
+
+    return headers
+  }
+
+  async _request(path, { method = 'GET', body, headers = {}, requireAdmin = false } = {}) {
     const url = `${this.getBackendUrl()}${path}`
+    const authHeaders = this.getAuthHeaders({ requireAdmin })
     const init = {
       method,
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders,
+        ...headers,
       },
     }
 
@@ -51,7 +89,7 @@ class EnvironmentService {
   }
 
   async getEnvSettings() {
-    return this._request('/api/env')
+    return this._request('/api/env', { requireAdmin: true })
   }
 
   async updateEnvSettings(values) {
@@ -60,6 +98,7 @@ class EnvironmentService {
       body: {
         values,
       },
+      requireAdmin: true,
     })
   }
 

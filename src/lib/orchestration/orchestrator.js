@@ -5,6 +5,19 @@ import { QAValidatorAgent } from './agents/qa-validator-agent.js'
 import { UIDesignerAgent } from './agents/ui-designer-agent.js'
 import { OrchestrationResultSchema } from './agent-schemas.js'
 
+const safeClone = (value) => {
+  if (value === null || value === undefined) {
+    return value
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(value))
+  } catch (error) {
+    console.warn('Failed to clone agent payload:', error)
+    return value
+  }
+}
+
 export class AgentOrchestrator {
   constructor(options = {}) {
     this.recipeEngineer = new RecipeEngineerAgent()
@@ -23,15 +36,15 @@ export class AgentOrchestrator {
     this.history = []
 
     try {
+      const recipeInput = {
+        userRequest: config.userRequest,
+        context: config.context,
+      }
+
       const recipeResult = await this.runAgent(
         this.recipeEngineer.name,
-        async () => {
-          const input = {
-            userRequest: config.userRequest,
-            context: config.context,
-          }
-          return await this.recipeEngineer.execute(input)
-        },
+        recipeInput,
+        async (payload) => this.recipeEngineer.execute(payload),
         0
       )
 
@@ -39,18 +52,18 @@ export class AgentOrchestrator {
         throw new Error('Recipe Engineer failed')
       }
 
+      const scalingInput = {
+        recipe: recipeResult.recipe,
+        targetBatchSize: config.targetBatchSize || 1000,
+        targetUnit: config.targetUnit || 'kg',
+        densityMap: config.context?.densityMap,
+        costMap: config.context?.costMap,
+      }
+
       const calculationResult = await this.runAgent(
         this.scalingCalculator.name,
-        async () => {
-          const input = {
-            recipe: recipeResult.recipe,
-            targetBatchSize: config.targetBatchSize || 1000,
-            targetUnit: config.targetUnit || 'kg',
-            densityMap: config.context?.densityMap,
-            costMap: config.context?.costMap,
-          }
-          return await this.scalingCalculator.execute(input)
-        },
+        scalingInput,
+        async (payload) => this.scalingCalculator.execute(payload),
         1
       )
 
@@ -58,17 +71,17 @@ export class AgentOrchestrator {
         throw new Error('Scaling Calculator failed')
       }
 
+      const graphInput = {
+        recipe: recipeResult.recipe,
+        calculation: calculationResult.calculation,
+        includeNutrients: config.includeNutrients ?? false,
+        includeCosts: config.includeCosts ?? true,
+      }
+
       const graphResult = await this.runAgent(
         this.graphBuilder.name,
-        async () => {
-          const input = {
-            recipe: recipeResult.recipe,
-            calculation: calculationResult.calculation,
-            includeNutrients: config.includeNutrients ?? false,
-            includeCosts: config.includeCosts ?? true,
-          }
-          return await this.graphBuilder.execute(input)
-        },
+        graphInput,
+        async (payload) => this.graphBuilder.execute(payload),
         2
       )
 
@@ -76,16 +89,16 @@ export class AgentOrchestrator {
         throw new Error('Graph Builder failed')
       }
 
+      const validationInput = {
+        recipe: recipeResult.recipe,
+        calculation: calculationResult.calculation,
+        graph: graphResult.graph,
+      }
+
       const validationResult = await this.runAgent(
         this.qaValidator.name,
-        async () => {
-          const input = {
-            recipe: recipeResult.recipe,
-            calculation: calculationResult.calculation,
-            graph: graphResult.graph,
-          }
-          return await this.qaValidator.execute(input)
-        },
+        validationInput,
+        async (payload) => this.qaValidator.execute(payload),
         3
       )
 
@@ -93,16 +106,16 @@ export class AgentOrchestrator {
         throw new Error('QA Validator failed')
       }
 
+      const uiInput = {
+        recipe: recipeResult.recipe,
+        calculation: calculationResult.calculation,
+        validation: validationResult.validation,
+      }
+
       const uiResult = await this.runAgent(
         this.uiDesigner.name,
-        async () => {
-          const input = {
-            recipe: recipeResult.recipe,
-            calculation: calculationResult.calculation,
-            validation: validationResult.validation,
-          }
-          return await this.uiDesigner.execute(input)
-        },
+        uiInput,
+        async (payload) => this.uiDesigner.execute(payload),
         4
       )
 
@@ -173,9 +186,10 @@ export class AgentOrchestrator {
     }
   }
 
-  async runAgent(agentName, executor, index) {
+  async runAgent(agentName, inputPayload, executor, index) {
     const startTime = Date.now()
     const timestamp = new Date().toISOString()
+    const inputSnapshot = safeClone(inputPayload)
 
     try {
       if (typeof this.onAgentStart === 'function') {
@@ -186,15 +200,16 @@ export class AgentOrchestrator {
     }
 
     try {
-      const output = await executor()
+      const output = await executor(inputPayload)
       const duration = Date.now() - startTime
+      const outputSnapshot = safeClone(output)
 
       this.history.push({
         agent: agentName,
         timestamp,
         duration,
-        input: {},
-        output,
+        input: inputSnapshot,
+        output: outputSnapshot,
         status: 'success',
       })
 
@@ -209,15 +224,16 @@ export class AgentOrchestrator {
       return output
     } catch (error) {
       const duration = Date.now() - startTime
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
       this.history.push({
         agent: agentName,
         timestamp,
         duration,
-        input: {},
+        input: inputSnapshot,
         output: null,
         status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
       })
 
       try {
@@ -227,7 +243,7 @@ export class AgentOrchestrator {
             index,
             status: 'failed',
             duration,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: errorMessage,
           })
         }
       } catch (callbackError) {

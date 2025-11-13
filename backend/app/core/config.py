@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Dict, List
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     NEO4J_USER: str = Field(default="")
     NEO4J_PASSWORD: str = Field(default="")
     NEO4J_DATABASE: str = Field(default="neo4j")
+    NEO4J_MAX_CONNECTION_POOL_SIZE: int = Field(default=50, ge=1)
+    NEO4J_MAX_CONNECTION_LIFETIME_SECONDS: int = Field(default=3600, ge=0)
+    NEO4J_CONNECTION_ACQUISITION_TIMEOUT_SECONDS: int = Field(default=60, ge=0)
+    NEO4J_ENCRYPTED: bool = False
 
     OLLAMA_BASE_URL: str = Field(default="")
     OLLAMA_MODEL: str = Field(default="llama2")
@@ -59,7 +63,12 @@ class Settings(BaseSettings):
     OLLAMA_EMBED_MODEL: str = Field(default="")
     OLLAMA_EMBED_BATCH_SIZE: int = Field(default=16)
 
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080", "*"]
+    CORS_ORIGINS: List[str] = Field(
+        default_factory=lambda: ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
+    )
+
+    API_KEY: str = Field(default="")
+    ADMIN_API_KEY: str = Field(default="")
 
     AI_SERVICE_MODE: str = "auto"
     AI_RETRY_ATTEMPTS: int = 3
@@ -83,7 +92,19 @@ class Settings(BaseSettings):
     FORMULATION_RETRY_BACKOFF_SECONDS: float = 0.35
     FORMULATION_RETRY_MAX_BACKOFF_SECONDS: float = 2.0
 
-    def validate(self) -> None:
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_DEFAULT: str | list[str] | None = "120/minute"
+    RATE_LIMIT_FORMULATION_WRITE: str = "30/minute"
+    RATE_LIMIT_GRAPH_READ: str = "120/minute"
+    RATE_LIMIT_ENV_WRITE: str = "10/hour"
+    RATE_LIMIT_FDC: str = "90/minute"
+
+    LOG_DIRECTORY: str = "logs"
+    LOG_FILE_NAME: str = "backend.log"
+    LOG_MAX_BYTES: int = Field(default=5_000_000, ge=1024)
+    LOG_BACKUP_COUNT: int = Field(default=5, ge=1)
+
+    def warn_for_missing_configuration(self) -> None:
         """Validate that required environment-backed settings are present.
 
         This method does not raise in CI but will log warnings for missing values.
@@ -96,6 +117,7 @@ class Settings(BaseSettings):
             "NEO4J_PASSWORD": self.NEO4J_PASSWORD,
             "OLLAMA_BASE_URL": self.OLLAMA_BASE_URL,
             "OLLAMA_EMBED_MODEL": self.OLLAMA_EMBED_MODEL,
+            "API_KEY": self.API_KEY,
         }
 
         for name, val in required.items():
@@ -108,6 +130,20 @@ class Settings(BaseSettings):
                 "Provide them via environment variables or backend/env.local.json.",
                 ", ".join(missing),
             )
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _normalise_cors_origins(cls, value: List[str] | str) -> List[str]:
+        if isinstance(value, str):
+            value = [origin.strip() for origin in value.split(",") if origin.strip()]
+
+        if not isinstance(value, list):  # pragma: no cover - defensive guard
+            raise ValueError("CORS_ORIGINS must be a list or comma separated string")
+
+        if any(origin == "*" for origin in value):
+            raise ValueError("Wildcard CORS origins are not permitted. Specify explicit origins instead.")
+
+        return value
 
     def reload(self) -> None:
         load_dotenv(override=True)

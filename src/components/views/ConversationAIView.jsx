@@ -82,7 +82,7 @@ export function ConversationAIView({ backendUrl }) {
   const loadFdcFoods = useCallback(async () => {
     setLoadingFoods(true)
     try {
-      const result = await apiService.listFDCFoods({ pageSize: 6 })
+      const result = await apiService.listFDCFoods({ pageSize: 6, includeNutrients: true })
       setFdcFoods(result?.items || [])
     } catch (error) {
       console.error('Failed to load FDC foods', error)
@@ -319,24 +319,94 @@ export function ConversationAIView({ backendUrl }) {
                   {!loadingFoods && fdcFoods.length === 0 && (
                     <p className="text-xs text-muted-foreground">No ingested foods yet.</p>
                   )}
-                  {fdcFoods.map((food) => (
-                    <div key={food.fdcId} className="border rounded-md p-3 bg-accent/20">
-                      <p className="text-sm font-semibold leading-tight">{food.description}</p>
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        {(food.brandOwner || food.brandName) ?? 'USDA FoodData Central'}
-                      </p>
-                      <div className="flex flex-wrap gap-2 mt-2 text-[10px]">
-                        {food.foodCategory && (
-                          <Badge variant="outline" className="text-[10px]">
-                            {food.foodCategory}
-                          </Badge>
+                  {fdcFoods.map((food) => {
+                    const nutrients = Array.isArray(food.nutrients) ? food.nutrients : []
+                    const topNutrients = nutrients
+                      .filter((item) => typeof item.value === 'number')
+                      .sort((a, b) => {
+                        const rankA = Number.isFinite(a.rank) ? a.rank : Number.MAX_SAFE_INTEGER
+                        const rankB = Number.isFinite(b.rank) ? b.rank : Number.MAX_SAFE_INTEGER
+                        if (rankA !== rankB) {
+                          return rankA - rankB
+                        }
+                        return (b.value || 0) - (a.value || 0)
+                      })
+                      .slice(0, 3)
+
+                    const hasServingInfo = food.servingSize && food.servingSizeUnit
+                    const publicationDate = food.publicationDate ? new Date(food.publicationDate) : null
+                    const publicationLabel =
+                      publicationDate && !Number.isNaN(publicationDate.getTime())
+                        ? publicationDate.toLocaleDateString()
+                        : null
+
+                    return (
+                      <div key={food.fdcId} className="border rounded-md p-3 bg-accent/20 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold leading-tight">{food.description}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1">
+                              {(food.brandOwner || food.brandName) ?? 'USDA FoodData Central'}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 text-[10px]">
+                            {food.dataType && (
+                              <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                                {food.dataType}
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-[10px]">
+                              FDC {food.fdcId}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 text-[10px]">
+                          {food.foodCategory && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {food.foodCategory}
+                            </Badge>
+                          )}
+                          {hasServingInfo && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Serving {food.servingSize} {food.servingSizeUnit}
+                            </Badge>
+                          )}
+                          {publicationLabel && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Published {publicationLabel}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {food.ingredients && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-2">
+                            {food.ingredients}
+                          </p>
                         )}
-                        <Badge variant="outline" className="text-[10px]">
-                          FDC {food.fdcId}
-                        </Badge>
+
+                        {topNutrients.length > 0 && (
+                          <div className="rounded-md border border-primary/20 bg-primary/5 p-2">
+                            <p className="text-[10px] font-semibold text-primary uppercase tracking-wide mb-1">
+                              Key Nutrients (per 100g)
+                            </p>
+                            <div className="grid grid-cols-3 gap-2 text-[11px]">
+                              {topNutrients.map((nutrient) => (
+                                <div key={`${food.fdcId}-${nutrient.nutrientId}`} className="space-y-0.5">
+                                  <p className="font-medium leading-tight truncate" title={nutrient.nutrientName}>
+                                    {nutrient.nutrientName}
+                                  </p>
+                                  <p className="text-muted-foreground">
+                                    {nutrient.value} {nutrient.unit || nutrient.unitName}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </ScrollArea>
             </div>

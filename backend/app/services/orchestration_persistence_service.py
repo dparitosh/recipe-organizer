@@ -226,10 +226,14 @@ class OrchestrationPersistenceService:
                         agent.duration = agentInvocation.duration,
                         agent.status = agentInvocation.status,
                         agent.error = agentInvocation.error,
-                        agent.createdAt = agentInvocation.createdAt
+                                                agent.createdAt = agentInvocation.createdAt,
+                                                agent.inputSnapshot = agentInvocation.inputSnapshot,
+                                                agent.outputSnapshot = agentInvocation.outputSnapshot
           ON MATCH SET agent.duration = agentInvocation.duration,
                       agent.status = agentInvocation.status,
                       agent.error = agentInvocation.error,
+                                            agent.inputSnapshot = agentInvocation.inputSnapshot,
+                                            agent.outputSnapshot = agentInvocation.outputSnapshot,
                       agent.updatedAt = timestamp()
         MERGE (run)-[:HAS_AGENT_INVOCATION]->(agent)
         """

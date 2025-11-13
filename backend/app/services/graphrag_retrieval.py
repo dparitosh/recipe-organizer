@@ -11,8 +11,10 @@ from dataclasses import dataclass, field
 from threading import Lock
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
+from neo4j import exceptions as neo4j_exceptions
+
 from app.db.neo4j_client import Neo4jClient
-from app.services.embedding_service import EmbeddingClient
+from app.services.embedding_service import EmbeddingClient, EmbeddingClientError
 
 
 class GraphRAGRetrievalError(RuntimeError):
@@ -123,7 +125,7 @@ class GraphRAGRetrievalService:
     def _embed_query(self, query: str) -> Sequence[float]:
         try:
             vectors = self.embedding_client.embed_texts([query])
-        except Exception as exc:  # pragma: no cover - defensive network failure
+        except EmbeddingClientError as exc:  # pragma: no cover - embedding backend failure
             raise GraphRAGRetrievalError(f"Failed to embed query: {exc}") from exc
 
         if not vectors:
@@ -153,7 +155,7 @@ class GraphRAGRetrievalService:
                     "embedding": list(embedding),
                 },
             )
-        except Exception as exc:
+        except (neo4j_exceptions.Neo4jError, RuntimeError, ValueError, TypeError) as exc:
             raise GraphRAGRetrievalError(f"Vector search failed: {exc}") from exc
 
         chunks: List[RetrievalChunk] = []
@@ -266,10 +268,13 @@ class GraphRAGRetrievalService:
         WHERE n.id IN $entity_ids
         RETURN n
         """
-        node_records = self.neo4j_client.execute_query(
-            nodes_query,
-            {"entity_ids": list(entity_ids)},
-        )
+        try:
+            node_records = self.neo4j_client.execute_query(
+                nodes_query,
+                {"entity_ids": list(entity_ids)},
+            )
+        except (neo4j_exceptions.Neo4jError, RuntimeError, ValueError, TypeError) as exc:
+            raise GraphRAGRetrievalError(f"Failed to load entity nodes: {exc}") from exc
 
         node_lookup: Dict[str, StructuredEntityContext] = {}
         for record in node_records:
@@ -292,13 +297,16 @@ class GraphRAGRetrievalService:
         ORDER BY source_id
         LIMIT $limit
         """
-        rel_records = self.neo4j_client.execute_query(
-            rel_query,
-            {
-                "entity_ids": list(node_lookup.keys()),
-                "limit": int(max(0, structured_limit)),
-            },
-        )
+        try:
+            rel_records = self.neo4j_client.execute_query(
+                rel_query,
+                {
+                    "entity_ids": list(node_lookup.keys()),
+                    "limit": int(max(0, structured_limit)),
+                },
+            )
+        except (neo4j_exceptions.Neo4jError, RuntimeError, ValueError, TypeError) as exc:
+            raise GraphRAGRetrievalError(f"Failed to load relationships: {exc}") from exc
 
         for record in rel_records:
             source_id = record.get("source_id")

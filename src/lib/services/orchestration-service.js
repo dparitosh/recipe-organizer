@@ -11,6 +11,7 @@ class OrchestrationService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...envService.getAuthHeaders({ requireAdmin: true }),
       },
       body: JSON.stringify(payload),
     })
@@ -40,6 +41,7 @@ class OrchestrationService {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        ...envService.getAuthHeaders({ requireAdmin: true }),
       },
     })
 

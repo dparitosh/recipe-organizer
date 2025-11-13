@@ -1,6 +1,7 @@
 """Nutrition label API endpoints."""
 
 from fastapi import APIRouter, Request, HTTPException, status, Query
+from neo4j import exceptions as neo4j_exceptions
 from typing import Optional
 import logging
 
@@ -168,7 +169,7 @@ async def generate_nutrition_label(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc)
         ) from exc
-    except Exception as exc:
+    except (neo4j_exceptions.Neo4jError, RuntimeError) as exc:
         logger.error("Failed to generate nutrition label for %s", formulation_id, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

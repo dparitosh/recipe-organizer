@@ -1,5 +1,8 @@
 import { FDC_CONSTANTS, NEO4J_CONSTANTS } from '@/lib/constants.js'
 import { neo4jManager } from '@/lib/managers/neo4j-manager'
+import { envService } from './env-service.js'
+
+const MASK_PLACEHOLDER = '********'
 
 const DEFAULT_CONFIG = {
 	apiKey: '',
@@ -30,19 +33,31 @@ class FDCService {
 	}
 
 	_resolveApiKey(override) {
-		const apiKey = (override || this.config.apiKey || '').trim()
-		if (!apiKey) {
-			throw new Error('FDC API key is not configured. Please add it in settings.')
+		const overrideKey = (override || '').trim()
+		if (overrideKey && overrideKey !== MASK_PLACEHOLDER) {
+			return overrideKey
 		}
-		return apiKey
+
+		const storedKey = (this.config.apiKey || '').trim()
+		if (storedKey && storedKey !== MASK_PLACEHOLDER) {
+			return storedKey
+		}
+
+		if (overrideKey === MASK_PLACEHOLDER || storedKey === MASK_PLACEHOLDER) {
+			return undefined
+		}
+
+		throw new Error('FDC API key is not configured. Please add it in settings.')
 	}
 
 	async _request(path, { method = 'POST', body, headers } = {}) {
 		const url = `${this.getBackendUrl()}${path}`
+		const authHeaders = envService.getAuthHeaders()
 		const init = {
 			method,
 			headers: {
 				'Content-Type': 'application/json',
+				...authHeaders,
 				...(headers || {}),
 			},
 		}

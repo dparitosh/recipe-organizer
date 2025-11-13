@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { Upload, ArrowsLeftRight, Database, CheckCircle, X } from '@phosphor-icons/react'
+import { envService } from '@/lib/services/env-service.js'
 
 const FDC_SCHEMA_FIELDS = [
   { value: 'fdcId', label: 'FDC ID', required: true },
@@ -188,7 +189,10 @@ export function DataImportMapper({ onImportComplete, backendUrl }) {
         try {
           const response = await fetch(`${backendUrl}/api/fdc/import`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...envService.getAuthHeaders({ requireAdmin: true }),
+            },
             body: JSON.stringify(record)
           })
 

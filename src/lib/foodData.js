@@ -1,6 +1,11 @@
 import { FDC_CONSTANTS } from './constants.js'
 
-let FDC_API_KEY = 'N8J01VZvGtq3CwIrgJpgvlW4p2R03aSdOXcGcSke'
+const DEFAULT_API_KEY =
+  typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_FDC_API_KEY
+    ? import.meta.env.VITE_FDC_API_KEY
+    : ''
+
+let FDC_API_KEY = DEFAULT_API_KEY
 
 export function setFDCApiKey(apiKey) {
   FDC_API_KEY = apiKey
@@ -86,9 +91,7 @@ export async function searchFoods(query, pageSize = FDC_CONSTANTS.DEFAULT_PAGE_S
 
 export async function getFoodDetails(fdcId) {
   try {
-    const response = await fetch(
-      `${FDC_CONSTANTS.API_BASE_URL}/food/${fdcId}?api_key=${FDC_API_KEY}`
-    )
+    const response = await fetch(`${FDC_CONSTANTS.API_BASE_URL}/food/${fdcId}?api_key=${FDC_API_KEY}`)
 
     if (!response.ok) {
       throw new Error('Failed to fetch food details')

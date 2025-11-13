@@ -92,6 +92,7 @@ class AIService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...envService.getAuthHeaders(),
       },
       body: JSON.stringify({
         prompt,

@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { parseCSV } from '@/lib/utils/export.js'
+import { envService } from '@/lib/services/env-service.js'
 import { toast } from 'sonner'
 import {
   Upload,
@@ -288,7 +289,10 @@ export function UnifiedDataImport({ backendUrl, onImportComplete }) {
         try {
           const response = await fetch(`${backendUrl}/api/data/import`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...envService.getAuthHeaders({ requireAdmin: true }),
+            },
             body: JSON.stringify(record)
           })
 

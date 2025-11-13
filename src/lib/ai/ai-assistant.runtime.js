@@ -46,7 +46,11 @@ class AIAssistantService {
   }
 
   async checkHealth() {
-    const resp = await fetch(this.buildUrl('/api/health'))
+    const resp = await fetch(this.buildUrl('/api/health'), {
+      headers: {
+        ...envService.getAuthHeaders(),
+      },
+    })
     if (!resp.ok) throw new Error(`Health check failed: ${resp.status}`)
     return resp.json()
   }
@@ -64,7 +68,10 @@ class AIAssistantService {
     try {
       const resp = await fetch(this.buildUrl('/api/ai/query'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...envService.getAuthHeaders(),
+        },
         body: JSON.stringify(payload)
       })
 

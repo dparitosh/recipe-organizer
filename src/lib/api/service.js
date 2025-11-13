@@ -1,3 +1,5 @@
+import { envService } from '@/lib/services/env-service.js'
+
 class APIService {
   constructor(baseUrl = 'http://localhost:8000') {
     this.baseUrl = baseUrl
@@ -7,13 +9,14 @@ class APIService {
     this.baseUrl = url
   }
 
-  async request(endpoint, options) {
+  async request(endpoint, options = {}) {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...options?.headers,
+        ...envService.getAuthHeaders(),
+        ...options.headers,
       },
-      ...options,
     })
 
     if (!response.ok) {
@@ -39,6 +42,38 @@ class APIService {
   async installDefaultGraphSchema() {
     return this.request('/api/graph/schema/install-default', {
       method: 'POST',
+    })
+  }
+
+  async resetGraphSchema(options = {}) {
+    const payload = {
+      drop_data: options.dropData ?? true,
+      drop_constraints: options.dropConstraints ?? true,
+      drop_indexes: options.dropIndexes ?? true,
+      drop_vector_indexes: options.dropVectorIndexes ?? true,
+    }
+
+    return this.request('/api/graph/schema/reset', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async searchGraph({ query, mode = 'auto', limit = 50, includeRelated = true } = {}) {
+    if (!query || !query.trim()) {
+      throw new Error('Search query is required')
+    }
+
+    const payload = {
+      query: query.trim(),
+      mode,
+      limit,
+      include_related: includeRelated,
+    }
+
+    return this.request('/api/graph/search', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     })
   }
 
@@ -159,6 +194,9 @@ class APIService {
     const response = await fetch(`${this.baseUrl}/api/upload/csv`, {
       method: 'POST',
       body: formData,
+      headers: {
+        ...envService.getAuthHeaders(),
+      },
     })
 
     if (!response.ok) {
@@ -177,6 +215,9 @@ class APIService {
     const response = await fetch(`${this.baseUrl}/api/upload/json`, {
       method: 'POST',
       body: formData,
+      headers: {
+        ...envService.getAuthHeaders(),
+      },
     })
 
     if (!response.ok) {
@@ -191,6 +232,7 @@ class APIService {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       headers: {
         Accept: accept,
+        ...envService.getAuthHeaders(),
       },
     })
 

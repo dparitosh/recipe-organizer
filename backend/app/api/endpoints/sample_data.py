@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException, status
+from neo4j import exceptions as neo4j_exceptions
 from datetime import datetime
 import logging
 
@@ -47,8 +48,10 @@ async def load_sample_data(load_request: SampleDataLoadRequest, request: Request
         for query in constraint_queries:
             try:
                 neo4j_client.execute_query(query)
-            except:
+            except neo4j_exceptions.ConstraintError:
                 pass
+            except neo4j_exceptions.Neo4jError as exc:
+                logger.debug("Constraint setup skipped due to Neo4j error: %s", exc)
         
         should_load_all = "all" in load_request.datasets
         
@@ -81,12 +84,12 @@ async def load_sample_data(load_request: SampleDataLoadRequest, request: Request
             message=f"Successfully loaded {len(datasets_loaded)} datasets with {nodes_created} nodes and {relationships_created} relationships"
         )
     
-    except Exception as e:
-        logger.error(f"Failed to load sample data: {e}")
+    except (neo4j_exceptions.Neo4jError, RuntimeError, ValueError) as exc:
+        logger.error("Failed to load sample data", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to load sample data: {str(e)}"
-        )
+            detail=f"Failed to load sample data: {exc}"
+        ) from exc
 
 
 def load_potato_chips_data(neo4j_client) -> dict:
@@ -442,9 +445,9 @@ async def clear_database(request: Request):
         
         return {"success": True, "message": "Database cleared successfully"}
     
-    except Exception as e:
-        logger.error(f"Failed to clear database: {e}")
+    except (neo4j_exceptions.Neo4jError, RuntimeError, ValueError) as exc:
+        logger.error("Failed to clear database", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear database: {str(e)}"
-        )
+            detail=f"Failed to clear database: {exc}"
+        ) from exc

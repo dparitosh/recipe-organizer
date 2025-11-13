@@ -268,7 +268,7 @@ class NutritionCalculationService:
 
             try:
                 percentage = float(ingredient.get("percentage", 0)) / 100.0
-            except Exception:  # pragma: no cover - defensive fallback
+            except (TypeError, ValueError):  # pragma: no cover - defensive fallback
                 percentage = 0.0
 
             if not nutrients:
@@ -325,7 +325,7 @@ class NutritionCalculationService:
 
                 try:
                     amount_val = 0.0 if amount is None else float(amount)
-                except Exception as exc:  # pragma: no cover - defensive fallback
+                except (TypeError, ValueError) as exc:  # pragma: no cover - defensive fallback
                     logger.debug(
                         "Skipping nutrient %s for %s due to non-numeric amount %s (%s)",
                         name,

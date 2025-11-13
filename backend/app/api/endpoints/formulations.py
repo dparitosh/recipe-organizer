@@ -1,19 +1,31 @@
-from fastapi import APIRouter, Request, HTTPException, status
-from typing import Optional
 import logging
 
+from fastapi import APIRouter, HTTPException, Request, status
+
+from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.models.schemas import (
     FormulationCreate,
     FormulationUpdate,
     FormulationResponse,
-    FormulationListResponse
+    FormulationListResponse,
 )
-from app.services.formulation_pipeline import get_formulation_pipeline
+from app.services.formulation_pipeline import (
+    FormulationDependencyError,
+    FormulationPipelineError,
+    get_formulation_pipeline,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-@router.post("", response_model=FormulationResponse, status_code=status.HTTP_201_CREATED, summary="Create Formulation")
+@router.post(
+    "",
+    response_model=FormulationResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create Formulation",
+)
+@limiter.limit(settings.RATE_LIMIT_FORMULATION_WRITE)
 async def create_formulation(formulation: FormulationCreate, request: Request):
     """
     Create a new formulation with ingredients.
@@ -30,11 +42,17 @@ async def create_formulation(formulation: FormulationCreate, request: Request):
         return await pipeline.create(formulation)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except Exception as exc:
+    except FormulationDependencyError as exc:
+        logger.warning("Formulation create blocked by dependency", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Formulation pipeline dependency unavailable",
+        ) from exc
+    except FormulationPipelineError as exc:
         logger.error("Failed to create formulation", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create formulation"
+            detail="Failed to create formulation",
         ) from exc
 
 
@@ -50,11 +68,17 @@ async def list_formulations(request: Request, limit: int = 50, skip: int = 0):
 
     try:
         return await pipeline.list(skip=skip, limit=limit)
-    except Exception as exc:
+    except FormulationDependencyError as exc:
+        logger.warning("Formulation list blocked by dependency", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Formulation pipeline dependency unavailable",
+        ) from exc
+    except FormulationPipelineError as exc:
         logger.error("Failed to list formulations", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch formulations"
+            detail="Failed to fetch formulations",
         ) from exc
 
 
@@ -72,11 +96,17 @@ async def get_formulation(formulation_id: str, request: Request):
 
     try:
         formulation = await pipeline.get(formulation_id)
-    except Exception as exc:
+    except FormulationDependencyError as exc:
+        logger.warning("Formulation fetch blocked by dependency", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Formulation pipeline dependency unavailable",
+        ) from exc
+    except FormulationPipelineError as exc:
         logger.error("Failed to get formulation", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch formulation"
+            detail="Failed to fetch formulation",
         ) from exc
 
     if not formulation:
@@ -88,7 +118,12 @@ async def get_formulation(formulation_id: str, request: Request):
     return formulation
 
 
-@router.put("/{formulation_id}", response_model=FormulationResponse, summary="Update Formulation")
+@router.put(
+    "/{formulation_id}",
+    response_model=FormulationResponse,
+    summary="Update Formulation",
+)
+@limiter.limit(settings.RATE_LIMIT_FORMULATION_WRITE)
 async def update_formulation(formulation_id: str, update: FormulationUpdate, request: Request):
     """Update formulation metadata and, optionally, ingredient composition."""
     pipeline = get_formulation_pipeline(request)
@@ -106,15 +141,25 @@ async def update_formulation(formulation_id: str, update: FormulationUpdate, req
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    except Exception as exc:
+    except FormulationDependencyError as exc:
+        logger.warning("Formulation update blocked by dependency", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Formulation pipeline dependency unavailable",
+        ) from exc
+    except FormulationPipelineError as exc:
         logger.error("Failed to update formulation", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update formulation"
+            detail="Failed to update formulation",
         ) from exc
 
 
-@router.delete("/{formulation_id}", summary="Delete Formulation")
+@router.delete(
+    "/{formulation_id}",
+    summary="Delete Formulation",
+)
+@limiter.limit(settings.RATE_LIMIT_FORMULATION_WRITE)
 async def delete_formulation(formulation_id: str, request: Request):
     """Delete a formulation and its ingredient relationships."""
     pipeline = get_formulation_pipeline(request)
@@ -130,11 +175,17 @@ async def delete_formulation(formulation_id: str, request: Request):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    except Exception as exc:
+    except FormulationDependencyError as exc:
+        logger.warning("Formulation delete blocked by dependency", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Formulation pipeline dependency unavailable",
+        ) from exc
+    except FormulationPipelineError as exc:
         logger.error("Failed to delete formulation", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete formulation"
+            detail="Failed to delete formulation",
         ) from exc
 
     return {"detail": f"Formulation {formulation_id} deleted"}

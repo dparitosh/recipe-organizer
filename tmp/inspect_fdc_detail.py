@@ -1,7 +1,10 @@
 import json
-import requests
+import os
+import requests  # type: ignore[import-untyped]
 
-API_KEY = "N8J01VZvGtq3CwIrgJpgvlW4p2R03aSdOXcGcSke"
+API_KEY = os.environ.get("FDC_API_KEY") or os.environ.get("FDC_DEFAULT_API_KEY")
+if not API_KEY:
+    raise RuntimeError("Set FDC_API_KEY environment variable before running this script.")
 FDC_ID = 2262074
 
 resp = requests.get(

@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Sequence
 import asyncio
 import logging
 
+from neo4j import exceptions as neo4j_exceptions
+
 from app.models.schemas import (
     AICompletionRequest,
     AICompletionResponse,
@@ -17,6 +19,11 @@ from app.services.graphrag_retrieval import (
     GraphRAGRetrievalError,
     RetrievalChunk,
     StructuredEntityContext,
+)
+from app.services.ollama_service import (
+    OllamaAPIError,
+    OllamaConnectionError,
+    OllamaServiceError,
 )
 
 router = APIRouter()
@@ -191,15 +198,29 @@ async def process_ai_query(request_data: AIQueryRequest, request: Request):
             response.execution_time_ms = execution_time
             response.mode = "online"
             return response
-        
-        except Exception as e:
-            logger.warning(f"Online query failed: {e}")
+        except HTTPException:
+            raise
+        except asyncio.TimeoutError as exc:
+            logger.warning("Online query timed out: %s", exc)
+            if service_mode == "online":
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                    detail="AI service timed out",
+                ) from exc
+
+            response = await process_offline_query(request_data.query)
+            execution_time = int((datetime.now() - start_time).total_seconds() * 1000)
+            response.execution_time_ms = execution_time
+            response.mode = "offline"
+            return response
+        except (OllamaConnectionError, OllamaServiceError) as exc:
+            logger.warning("Online query failed: %s", exc)
             if service_mode == "online":
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"AI service unavailable: {str(e)}"
-                )
-            
+                    detail="AI service unavailable",
+                ) from exc
+
             response = await process_offline_query(request_data.query)
             execution_time = int((datetime.now() - start_time).total_seconds() * 1000)
             response.execution_time_ms = execution_time
@@ -234,9 +255,15 @@ async def generate_completion(payload: AICompletionRequest, request: Request) ->
     except asyncio.TimeoutError as exc:
         logger.error("OLLAMA completion timed out: %s", exc)
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="OLLAMA request timed out")
-    except Exception as exc:  # pragma: no cover - passthrough to caller with context
+    except OllamaConnectionError as exc:
         logger.error("OLLAMA completion failed: %s", exc)
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OLLAMA service unavailable") from exc
+    except OllamaAPIError as exc:
+        logger.error("OLLAMA completion failed with API error: %s", exc)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    except OllamaServiceError as exc:  # pragma: no cover - passthrough to caller with context
+        logger.error("OLLAMA completion failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
     duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
 
@@ -251,7 +278,7 @@ async def process_online_query(query: str, include_graph: bool, request: Request
     retrieval_service = getattr(request.app.state, "graphrag_retrieval_service", None)
     
     if not ollama_service:
-        raise Exception("OLLAMA service not initialized")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OLLAMA service not initialized")
     
     cypher_query = None
     node_highlights = []
@@ -274,7 +301,7 @@ async def process_online_query(query: str, include_graph: bool, request: Request
             structured_entities = retrieval_result.structured_entities
         except GraphRAGRetrievalError as exc:
             logger.warning("GraphRAG retrieval failed: %s", exc)
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except RuntimeError as exc:  # pragma: no cover - defensive logging
             logger.warning("GraphRAG retrieval raised unexpected error: %s", exc)
 
     if include_graph and retrieval_chunks:
@@ -348,8 +375,8 @@ async def process_online_query(query: str, include_graph: bool, request: Request
             )
             data_sources.append("Neo4j Graph Database")
         
-        except Exception as e:
-            logger.warning(f"Graph query failed: {e}")
+        except (neo4j_exceptions.Neo4jError, RuntimeError, ValueError) as exc:
+            logger.warning("Graph query failed: %s", exc)
             graph_context_sections.append("Note: Graph query encountered an issue, fallback context only.")
     
     graph_context = "\n\n".join(section for section in graph_context_sections if section)
@@ -534,7 +561,7 @@ async def nutrition_query(
                     serving_size=100.0,
                     serving_size_unit="g"
                 )
-                
+
                 nutrition_labels.append({
                     "formulation_id": nutrition_facts.formulation_id,
                     "formulation_name": nutrition_facts.formulation_name,
@@ -563,8 +590,8 @@ async def nutrition_query(
                         }
                     }
                 })
-            except Exception as e:
-                logger.warning(f"Failed to calculate nutrition for {formulation_id}: {e}")
+            except (ValueError, RuntimeError) as exc:
+                logger.warning("Failed to calculate nutrition for %s: %s", formulation_id, exc)
                 continue
         
         # Step 4: Generate AI summary if Ollama available
@@ -578,14 +605,16 @@ async def nutrition_query(
                     summary_context += f"- Fat: {label['nutrients']['total_fat']['amount']}g\n"
                     summary_context += f"- Carbs: {label['nutrients']['total_carbohydrate']['amount']}g\n"
                     summary_context += f"- Protein: {label['nutrients']['protein']['amount']}g\n"
-                
+
                 answer = await ollama.generate_answer(
                     query=query_text,
                     context=summary_context,
                     data_sources=["Neo4j Nutrition Data", "GraphRAG"] if graphrag_service else ["Neo4j Nutrition Data"]
                 )
-            except Exception as e:
-                logger.warning(f"Failed to generate AI summary: {e}")
+            except asyncio.TimeoutError as exc:
+                logger.warning("Failed to generate AI summary due to timeout: %s", exc)
+            except (OllamaConnectionError, OllamaServiceError) as exc:
+                logger.warning("Failed to generate AI summary: %s", exc)
         
         execution_time = int((datetime.now() - start_time).total_seconds() * 1000)
         
@@ -596,9 +625,17 @@ async def nutrition_query(
             "data_sources": ["Neo4j", "GraphRAG", "Ollama"] if (graphrag_service and ollama) else ["Neo4j"]
         }
         
-    except Exception as exc:
+    except HTTPException:
+        raise
+    except GraphRAGRetrievalError as exc:
+        logger.error("Nutrition query failed during GraphRAG retrieval: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Graph retrieval failed while processing nutrition query",
+        ) from exc
+    except (neo4j_exceptions.Neo4jError, RuntimeError, ValueError) as exc:
         logger.error("Nutrition query failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Nutrition query failed: {str(exc)}"
+            detail=f"Nutrition query failed: {exc}",
         ) from exc

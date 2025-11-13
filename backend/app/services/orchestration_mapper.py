@@ -13,6 +13,7 @@ _CONTEXT_MAX_ITEMS = 8
 _CONTEXT_MAX_DEPTH = 2
 _CONTEXT_MAX_STRING = 512
 _AGENT_HISTORY_LIMIT = 25
+_AGENT_PAYLOAD_MAX_CHARS = 6000
 
 
 def map_orchestration_payload_to_graph_write_set(payload: OrchestrationPersistRequest) -> GraphWriteSet:
@@ -224,6 +225,8 @@ def _build_agent_invocations(agent_history: List[Dict[str, Any]], run_id: str) -
         truncated_error = None
         if error_text is not None:
             truncated_error = _truncate_string(str(error_text), 512)
+        input_snapshot = _encode_agent_payload(entry.get("input"))
+        output_snapshot = _encode_agent_payload(entry.get("output"))
         invocations.append({
             "runId": run_id,
             "sequence": idx,
@@ -232,6 +235,8 @@ def _build_agent_invocations(agent_history: List[Dict[str, Any]], run_id: str) -
             "status": entry.get("status", "unknown"),
             "error": truncated_error,
             "createdAt": _coerce_iso(timestamp) if timestamp else _utc_now_iso(),
+            "inputSnapshot": input_snapshot,
+            "outputSnapshot": output_snapshot,
         })
 
     return invocations
@@ -278,6 +283,18 @@ def _truncate_string(value: str, max_length: int) -> str:
     if max_length <= 3:
         return value[:max_length]
     return value[: max_length - 3] + "..."
+
+
+def _encode_agent_payload(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+
+    try:
+        serialized = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+    except TypeError:
+        serialized = json.dumps(_stringify_unknown(value), sort_keys=True, separators=(",", ":"))
+
+    return _truncate_string(serialized, _AGENT_PAYLOAD_MAX_CHARS)
 
 
 def _compute_checksum(payload: Any) -> str:

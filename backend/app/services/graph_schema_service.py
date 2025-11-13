@@ -2,8 +2,10 @@ import copy
 import json
 import logging
 import math
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from xml.etree.ElementTree import Element, SubElement, tostring
+
+from neo4j import exceptions as neo4j_exceptions
 
 from app.db.neo4j_client import Neo4jClient
 
@@ -15,10 +17,10 @@ class GraphSchemaService:
 
     DEFAULT_SCHEMA: Dict[str, Any] = {
         "name": "FormulationGraph",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "description": (
             "Graph schema optimized for multi-agent orchestration, bill of material reasoning, "
-            "FDC enrichment, and GraphRAG retrieval."
+            "FDC enrichment, GraphRAG retrieval, and persisted agent outputs."
         ),
         "defaults": {
             "node": {
@@ -261,6 +263,132 @@ class GraphSchemaService:
                 "metadata": {
                     "primary_key": "task_id",
                     "indexed_properties": ["task_id", "kind"],
+                    "domain": "automation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "GraphEntity",
+                "label": "Generated Entity",
+                "color": "#1e40af",
+                "shape": "roundrectangle",
+                "size": 74,
+                "icon": "Cube",
+                "metadata": {
+                    "primary_key": "id",
+                    "indexed_properties": ["id", "type", "name"],
+                    "domain": "automation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "UserRequest",
+                "label": "User Request",
+                "color": "#64748b",
+                "shape": "rectangle",
+                "size": 72,
+                "icon": "ChatCircleText",
+                "metadata": {
+                    "primary_key": "requestId",
+                    "indexed_properties": ["requestId", "createdAt"],
+                    "domain": "automation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "OrchestrationRun",
+                "label": "Orchestration Run",
+                "color": "#0ea5e9",
+                "shape": "hexagon",
+                "size": 86,
+                "icon": "GearSix",
+                "metadata": {
+                    "primary_key": "runId",
+                    "indexed_properties": ["runId", "status", "timestamp"],
+                    "domain": "automation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "RecipeVersion",
+                "label": "Recipe Version",
+                "color": "#6366f1",
+                "shape": "roundrectangle",
+                "size": 78,
+                "icon": "Notebook",
+                "metadata": {
+                    "primary_key": ["recipeId", "version"],
+                    "indexed_properties": ["recipeId", "version", "name"],
+                    "domain": "formulation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "CalculationResult",
+                "label": "Calculation Result",
+                "color": "#22c55e",
+                "shape": "roundrectangle",
+                "size": 76,
+                "icon": "Calculator",
+                "metadata": {
+                    "primary_key": "calculationId",
+                    "indexed_properties": ["calculationId", "createdAt"],
+                    "domain": "analytics",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "GraphSnapshot",
+                "label": "Graph Snapshot",
+                "color": "#f97316",
+                "shape": "rectangle",
+                "size": 76,
+                "icon": "ChartLine",
+                "metadata": {
+                    "primary_key": "graphId",
+                    "indexed_properties": ["graphId", "checksum"],
+                    "domain": "automation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "ValidationReport",
+                "label": "Validation Report",
+                "color": "#ef4444",
+                "shape": "diamond",
+                "size": 74,
+                "icon": "ShieldCheck",
+                "metadata": {
+                    "primary_key": "validationId",
+                    "indexed_properties": ["validationId", "valid"],
+                    "domain": "quality",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "UIConfig",
+                "label": "UI Config",
+                "color": "#a855f7",
+                "shape": "rectangle",
+                "size": 72,
+                "icon": "DesktopTower",
+                "metadata": {
+                    "primary_key": "uiConfigId",
+                    "indexed_properties": ["uiConfigId", "createdAt"],
+                    "domain": "automation",
+                    "vector_property": None,
+                },
+            },
+            {
+                "type": "AgentInvocation",
+                "label": "Agent Invocation",
+                "color": "#14b8a6",
+                "shape": "roundrectangle",
+                "size": 72,
+                "icon": "Robot",
+                "metadata": {
+                    "primary_key": ["runId", "sequence"],
+                    "indexed_properties": ["runId", "sequence", "agentName"],
                     "domain": "automation",
                     "vector_property": None,
                 },
@@ -791,6 +919,110 @@ class GraphSchemaService:
                     "cardinality": "many-to-one",
                 },
             },
+            {
+                "type": "TRIGGERED",
+                "label": "Triggered",
+                "color": "#0ea5e9",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["UserRequest"],
+                "allowed_target_types": ["OrchestrationRun"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                },
+            },
+            {
+                "type": "USED_RECIPE",
+                "label": "Used Recipe",
+                "color": "#6366f1",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["OrchestrationRun"],
+                "allowed_target_types": ["RecipeVersion"],
+                "metadata": {
+                    "cardinality": "one-to-one",
+                },
+            },
+            {
+                "type": "PRODUCED_CALCULATION",
+                "label": "Produced Calculation",
+                "color": "#22c55e",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["OrchestrationRun"],
+                "allowed_target_types": ["CalculationResult"],
+                "metadata": {
+                    "cardinality": "one-to-one",
+                },
+            },
+            {
+                "type": "PRODUCED_GRAPH",
+                "label": "Produced Graph",
+                "color": "#f97316",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["OrchestrationRun"],
+                "allowed_target_types": ["GraphSnapshot"],
+                "metadata": {
+                    "cardinality": "one-to-one",
+                },
+            },
+            {
+                "type": "PRODUCED_VALIDATION",
+                "label": "Produced Validation",
+                "color": "#ef4444",
+                "style": "solid",
+                "width": 1.8,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["OrchestrationRun"],
+                "allowed_target_types": ["ValidationReport"],
+                "metadata": {
+                    "cardinality": "one-to-one",
+                },
+            },
+            {
+                "type": "PRODUCED_UI",
+                "label": "Produced UI",
+                "color": "#a855f7",
+                "style": "solid",
+                "width": 1.8,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["OrchestrationRun"],
+                "allowed_target_types": ["UIConfig"],
+                "metadata": {
+                    "cardinality": "one-to-one",
+                },
+            },
+            {
+                "type": "GENERATED_ENTITY",
+                "label": "Generated Entity",
+                "color": "#1e40af",
+                "style": "dashed",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["OrchestrationRun"],
+                "allowed_target_types": ["GraphEntity"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                },
+            },
+            {
+                "type": "HAS_AGENT_INVOCATION",
+                "label": "Has Agent Invocation",
+                "color": "#14b8a6",
+                "style": "solid",
+                "width": 1.6,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["OrchestrationRun"],
+                "allowed_target_types": ["AgentInvocation"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                },
+            },
         ],
     }
 
@@ -804,6 +1036,15 @@ class GraphSchemaService:
         "CREATE CONSTRAINT knowledge_chunk_id IF NOT EXISTS FOR (c:KnowledgeChunk) REQUIRE c.chunk_id IS UNIQUE",
         "CREATE CONSTRAINT risk_model_id IF NOT EXISTS FOR (r:RiskModel) REQUIRE r.model_id IS UNIQUE",
         "CREATE CONSTRAINT regulation_id IF NOT EXISTS FOR (r:Regulation) REQUIRE r.regulation_id IS UNIQUE",
+        "CREATE CONSTRAINT user_request_id IF NOT EXISTS FOR (u:UserRequest) REQUIRE u.requestId IS UNIQUE",
+        "CREATE CONSTRAINT orchestration_run_id IF NOT EXISTS FOR (r:OrchestrationRun) REQUIRE r.runId IS UNIQUE",
+        "CREATE CONSTRAINT recipe_version_pk IF NOT EXISTS FOR (rv:RecipeVersion) REQUIRE (rv.recipeId, rv.version) IS UNIQUE",
+        "CREATE CONSTRAINT calculation_result_id IF NOT EXISTS FOR (c:CalculationResult) REQUIRE c.calculationId IS UNIQUE",
+        "CREATE CONSTRAINT graph_snapshot_id IF NOT EXISTS FOR (g:GraphSnapshot) REQUIRE g.graphId IS UNIQUE",
+        "CREATE CONSTRAINT validation_report_id IF NOT EXISTS FOR (v:ValidationReport) REQUIRE v.validationId IS UNIQUE",
+        "CREATE CONSTRAINT ui_config_id IF NOT EXISTS FOR (u:UIConfig) REQUIRE u.uiConfigId IS UNIQUE",
+        "CREATE CONSTRAINT agent_invocation_pk IF NOT EXISTS FOR (a:AgentInvocation) REQUIRE (a.runId, a.sequence) IS UNIQUE",
+        "CREATE CONSTRAINT graph_entity_id IF NOT EXISTS FOR (g:GraphEntity) REQUIRE g.id IS UNIQUE",
     )
 
     DEFAULT_INDEX_STATEMENTS: Tuple[str, ...] = (
@@ -813,6 +1054,17 @@ class GraphSchemaService:
         "CREATE INDEX label_claim_type_idx IF NOT EXISTS FOR (l:LabelClaim) ON (l.claimType)",
         "CREATE INDEX risk_assessment_target_idx IF NOT EXISTS FOR (r:RiskAssessment) ON (r.target_id)",
         "CREATE INDEX knowledge_chunk_source_idx IF NOT EXISTS FOR (c:KnowledgeChunk) ON (c.source)",
+        "CREATE INDEX recipe_version_name_idx IF NOT EXISTS FOR (rv:RecipeVersion) ON (rv.name)",
+        "CREATE INDEX calculation_result_timestamp_idx IF NOT EXISTS FOR (c:CalculationResult) ON (c.createdAt)",
+        "CREATE INDEX graph_snapshot_checksum_idx IF NOT EXISTS FOR (g:GraphSnapshot) ON (g.checksum)",
+        "CREATE INDEX validation_report_valid_idx IF NOT EXISTS FOR (v:ValidationReport) ON (v.valid)",
+        "CREATE INDEX ui_config_created_idx IF NOT EXISTS FOR (u:UIConfig) ON (u.createdAt)",
+        "CREATE INDEX graph_entity_type_idx IF NOT EXISTS FOR (g:GraphEntity) ON (g.type)",
+        "CREATE INDEX graph_entity_name_idx IF NOT EXISTS FOR (g:GraphEntity) ON (g.name)",
+        "CREATE INDEX orchestration_run_status_idx IF NOT EXISTS FOR (r:OrchestrationRun) ON (r.status)",
+        "CREATE INDEX orchestration_run_timestamp_idx IF NOT EXISTS FOR (r:OrchestrationRun) ON (r.timestamp)",
+        "CREATE INDEX agent_invocation_agent_idx IF NOT EXISTS FOR (a:AgentInvocation) ON (a.agentName)",
+        "CREATE INDEX agent_invocation_status_idx IF NOT EXISTS FOR (a:AgentInvocation) ON (a.status)",
     )
 
     DEFAULT_VECTOR_INDEX_STATEMENTS: Tuple[str, ...] = (
@@ -866,9 +1118,12 @@ class GraphSchemaService:
                 ),
                 {"name": self._schema_name},
             )
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except neo4j_exceptions.Neo4jError as exc:
             logger.warning("Failed to load graph schema metadata, using defaults: %s", exc)
             return self._default_schema()
+        except (RuntimeError, OSError):  # pragma: no cover - defensive guard
+            logger.exception("System error while loading graph schema")
+            raise
 
         if not records:
             return self._default_schema()
@@ -982,18 +1237,124 @@ class GraphSchemaService:
                 ),
                 parameters,
             )
-        except Exception as exc:
+        except neo4j_exceptions.Neo4jError as exc:
             logger.error("Failed to apply graph schema to Neo4j: %s", exc)
+            raise
+        except (RuntimeError, OSError, ValueError, TypeError):
+            logger.exception("Unexpected error while applying graph schema")
             raise
 
         self._schema_name = name
-        return self.get_schema()
+        schema_state = self.get_schema()
+        self._ensure_indexes()
+        return schema_state
 
     def install_default_schema(self) -> Dict[str, Any]:
         """Persist the built-in default schema to Neo4j."""
 
         default_payload = self._default_schema()
-        return self.apply_schema(default_payload)
+        schema_state = self.apply_schema(default_payload)
+        return schema_state
+
+    def reset_and_install_default_schema(
+        self,
+        *,
+        drop_data: bool = True,
+        drop_constraints: bool = True,
+        drop_indexes: bool = True,
+        drop_vector_indexes: bool = True,
+    ) -> Dict[str, Any]:
+        if not self._neo4j:
+            raise RuntimeError("Neo4j client is not available for schema reset")
+
+        if drop_data:
+            self._drop_all_graph_data()
+
+        if drop_constraints:
+            self._drop_constraints()
+
+        if drop_indexes or drop_vector_indexes:
+            self._drop_indexes(include_vector=drop_vector_indexes)
+
+        return self.install_default_schema()
+
+    def _ensure_indexes(self) -> None:
+        if not self._neo4j:
+            return
+
+        for statement in self.DEFAULT_CONSTRAINT_STATEMENTS:
+            try:
+                self._neo4j.execute_write(statement)
+            except neo4j_exceptions.Neo4jError as exc:
+                logger.warning("Failed to apply constraint '%s': %s", statement, exc)
+
+        for statement in self.DEFAULT_INDEX_STATEMENTS:
+            try:
+                self._neo4j.execute_write(statement)
+            except neo4j_exceptions.Neo4jError as exc:
+                logger.warning("Failed to apply index '%s': %s", statement, exc)
+
+        for statement in self.DEFAULT_VECTOR_INDEX_STATEMENTS:
+            query = statement.strip()
+            if not query:
+                continue
+            try:
+                self._neo4j.execute_write(query)
+            except neo4j_exceptions.Neo4jError as exc:
+                logger.warning("Failed to apply vector index: %s", exc)
+
+    def _drop_all_graph_data(self) -> None:
+        if not self._neo4j:
+            return
+
+        try:
+            self._neo4j.execute_write("MATCH (n) DETACH DELETE n")
+        except neo4j_exceptions.Neo4jError as exc:
+            logger.error("Failed to clear Neo4j graph data: %s", exc)
+            raise
+
+    def _drop_constraints(self) -> None:
+        if not self._neo4j:
+            return
+
+        try:
+            records = self._neo4j.execute_query("SHOW CONSTRAINTS")
+        except neo4j_exceptions.Neo4jError as exc:
+            logger.warning("Unable to list constraints for removal: %s", exc)
+            return
+
+        for record in records:
+            name = record.get("name")
+            if not name:
+                continue
+            try:
+                safe_name = str(name).replace("`", "")
+                self._neo4j.execute_write(f"DROP CONSTRAINT `{safe_name}` IF EXISTS")
+            except neo4j_exceptions.Neo4jError as exc:
+                logger.warning("Failed to drop constraint %s: %s", name, exc)
+
+    def _drop_indexes(self, *, include_vector: bool) -> None:
+        if not self._neo4j:
+            return
+
+        try:
+            records = self._neo4j.execute_query("SHOW INDEXES")
+        except neo4j_exceptions.Neo4jError as exc:
+            logger.warning("Unable to list indexes for removal: %s", exc)
+            return
+
+        for record in records:
+            name = record.get("name")
+            if not name:
+                continue
+            index_type = str(record.get("type") or "").upper()
+            if not include_vector and index_type == "VECTOR":
+                continue
+            try:
+                safe_name = str(name).replace("`", "")
+                self._neo4j.execute_write(f"DROP INDEX `{safe_name}` IF EXISTS")
+            except neo4j_exceptions.Neo4jError as exc:
+                logger.warning("Failed to drop index %s: %s", name, exc)
 
     def export_schema_graphml(self) -> str:
         """Return the current schema encoded as GraphML."""
@@ -1206,12 +1567,15 @@ class GraphSchemaService:
             rel_type = rel.get("type")
             if not rel_type:
                 continue
-            sources = rel.get("allowed_source_types") or []
-            targets = rel.get("allowed_target_types") or []
+            raw_sources = rel.get("allowed_source_types") or rel.get("allowedSourceTypes")
+            raw_targets = rel.get("allowed_target_types") or rel.get("allowedTargetTypes")
+            sources = GraphSchemaService._string_list(raw_sources)
+            targets = GraphSchemaService._string_list(raw_targets)
+            fallback_label = rel_type if isinstance(rel_type, str) and rel_type else "*"
             if not sources:
-                sources = [rel_type]
+                sources = [fallback_label]
             if not targets:
-                targets = [rel_type]
+                targets = [fallback_label]
 
             for index, source in enumerate(sources):
                 for target in targets:
@@ -1265,8 +1629,16 @@ class GraphSchemaService:
 
     @staticmethod
     def _schema_to_svg(schema: Dict[str, Any]) -> str:
-        node_types = schema.get("node_types", [])
-        relationship_types = schema.get("relationship_types", [])
+        raw_node_types = schema.get("node_types", [])
+        raw_relationship_types = schema.get("relationship_types", [])
+
+        node_types: List[Dict[str, Any]] = [entry for entry in raw_node_types if isinstance(entry, dict)]
+        if not node_types:
+            node_types = [{}]
+
+        relationship_types: List[Dict[str, Any]] = [
+            entry for entry in raw_relationship_types if isinstance(entry, dict)
+        ]
 
         margin = 16
         row_height = 72
@@ -1305,7 +1677,7 @@ class GraphSchemaService:
         )
         title.text = schema.get("name") or "Graph Schema"
 
-        for index, node in enumerate(node_types or [{}]):
+        for index, node in enumerate(node_types):
             group = SubElement(
                 svg,
                 "g",
@@ -1315,8 +1687,10 @@ class GraphSchemaService:
             )
             GraphSchemaService._append_node_shape(group, node, 32, 20)
 
-            label_text = node.get("label") or node.get("type") or "Node"
-            details = f"type={node.get('type', 'n/a')} shape={node.get('shape', 'ellipse')}"
+            label_text = str(node.get("label") or node.get("type") or "Node")
+            node_type_value = node.get("type") if isinstance(node.get("type"), str) else "n/a"
+            shape_value = node.get("shape") if isinstance(node.get("shape"), str) else "ellipse"
+            details_text = f"type={node_type_value} shape={shape_value}"
 
             label = SubElement(
                 group,
@@ -1343,10 +1717,23 @@ class GraphSchemaService:
                     "fill": "#4B5563",
                 },
             )
-            meta.text = details
+            meta.text = details_text
 
         start_y = margin + nodes_height + legend_gap
         for index, rel in enumerate(relationship_types):
+            rel_type_raw = rel.get("type")
+            rel_type = rel_type_raw if isinstance(rel_type_raw, str) else None
+            raw_sources = rel.get("allowed_source_types") or rel.get("allowedSourceTypes")
+            raw_targets = rel.get("allowed_target_types") or rel.get("allowedTargetTypes")
+            sources = GraphSchemaService._string_list(raw_sources)
+            targets = GraphSchemaService._string_list(raw_targets)
+            if not sources:
+                fallback_source = rel_type or "*"
+                sources = [fallback_source]
+            if not targets:
+                fallback_target = rel_type or "*"
+                targets = [fallback_target]
+
             group = SubElement(
                 svg,
                 "g",
@@ -1355,9 +1742,10 @@ class GraphSchemaService:
                 },
             )
 
-            color = rel.get("color") or "#2563EB"
-            style = rel.get("style") or "solid"
-            marker_id = GraphSchemaService._pick_marker(rel.get("target_arrow"))
+            color = str(rel.get("color") or "#2563EB")
+            style = str(rel.get("style") or "solid")
+            target_arrow = rel.get("target_arrow") or rel.get("targetArrow")
+            marker_id = GraphSchemaService._pick_marker(target_arrow if isinstance(target_arrow, str) else None)
             line = SubElement(
                 group,
                 "line",
@@ -1389,9 +1777,9 @@ class GraphSchemaService:
                     "fill": "#111827",
                 },
             )
-            label.text = rel.get("label") or rel.get("type") or "Relationship"
+            label.text = str(rel.get("label") or rel_type or "Relationship")
 
-            details = SubElement(
+            details_elem = SubElement(
                 group,
                 "text",
                 attrib={
@@ -1402,13 +1790,19 @@ class GraphSchemaService:
                     "fill": "#4B5563",
                 },
             )
-            details.text = (
-                f"{', '.join(rel.get('allowed_source_types') or ['*'])}"  # sources
-                + " → "
-                + f"{', '.join(rel.get('allowed_target_types') or ['*'])}"
-            )
+            details_elem.text = f"{', '.join(sources)} → {', '.join(targets)}"
 
         return tostring(svg, encoding="unicode")
+
+    @staticmethod
+    def _string_list(value: Any) -> List[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, (list, tuple, set)):
+            return [str(item) for item in value if isinstance(item, str)]
+        return []
 
     @staticmethod
     def _set_data(parent: Element, key: str, value: Any) -> None:

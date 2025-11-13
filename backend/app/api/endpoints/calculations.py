@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException, status
+from neo4j import exceptions as neo4j_exceptions
 from datetime import datetime
 import logging
 
@@ -110,9 +111,9 @@ async def calculate_scale(calc_request: CalculationRequest, request: Request):
     
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Calculation failed: {e}")
+    except (neo4j_exceptions.Neo4jError, RuntimeError, ValueError, TypeError) as exc:
+        logger.error("Calculation failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Calculation failed: {str(e)}"
-        )
+            detail=f"Calculation failed: {exc}"
+        ) from exc

@@ -50,7 +50,7 @@ npm run dev
    ```env
    NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
    NEO4J_USER=neo4j
-   NEO4J_PASSWORD=tcs12345
+   NEO4J_PASSWORD=your-secure-password
    NEO4J_DATABASE=neo4j
    OPENAI_API_KEY=sk-your-actual-key-here
    ```
@@ -267,7 +267,7 @@ lsof -ti:8000 | xargs kill -9
 # Neo4j Connection
 NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=tcs12345
+NEO4J_PASSWORD=your-secure-password
 NEO4J_DATABASE=neo4j
 
 # OpenAI API

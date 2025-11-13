@@ -11,7 +11,7 @@ from app.db.neo4j_client import Neo4jClient
 
 
 def main() -> None:
-    settings.validate()
+    settings.warn_for_missing_configuration()
     client = Neo4jClient(
         uri=settings.NEO4J_URI,
         user=settings.NEO4J_USER,

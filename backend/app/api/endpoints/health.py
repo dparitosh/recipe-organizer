@@ -1,8 +1,10 @@
 from datetime import datetime
+import asyncio
+import logging
 
 from fastapi import APIRouter, Request
 from neo4j import GraphDatabase
-from neo4j.exceptions import Neo4jError
+from neo4j.exceptions import Neo4jError, ServiceUnavailable, AuthError
 
 from app.core.config import settings
 from app.models.schemas import (
@@ -10,6 +12,9 @@ from app.models.schemas import (
     Neo4jConnectionTestResponse,
     ServiceHealthResponse,
 )
+from app.services.ollama_service import OllamaConnectionError, OllamaServiceError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -29,14 +34,14 @@ async def check_service_health(request: Request):
     if hasattr(request.app.state, 'ollama_service') and request.app.state.ollama_service:
         try:
             llm_available = await request.app.state.ollama_service.check_health()
-        except:
-            pass
+        except (OllamaConnectionError, OllamaServiceError, asyncio.TimeoutError, OSError) as exc:
+            logger.debug("OLLAMA health probe failed: %s", exc)
     
     if hasattr(request.app.state, 'neo4j_client') and request.app.state.neo4j_client:
         try:
             neo4j_available = request.app.state.neo4j_client.check_health()
-        except:
-            pass
+        except (Neo4jError, ServiceUnavailable, AuthError, OSError) as exc:
+            logger.debug("Neo4j health probe failed: %s", exc)
     
     if hasattr(request.app.state, "graphrag_retrieval_service"):
         graphrag_service = getattr(request.app.state, "graphrag_retrieval_service", None)
@@ -68,9 +73,13 @@ async def check_service_health(request: Request):
 async def test_neo4j_connection(payload: Neo4jConnectionTest) -> Neo4jConnectionTestResponse:
     """Attempt a one-off Neo4j connection using the supplied credentials."""
 
+    password = payload.password or settings.NEO4J_PASSWORD
+    if password == "********":
+        password = settings.NEO4J_PASSWORD
+
     driver = None
     try:
-        driver = GraphDatabase.driver(payload.uri, auth=(payload.username, payload.password))
+        driver = GraphDatabase.driver(payload.uri, auth=(payload.username, password))
         driver.verify_connectivity()
 
         server_version = None
@@ -90,7 +99,7 @@ async def test_neo4j_connection(payload: Neo4jConnectionTest) -> Neo4jConnection
             message="Neo4j connection successful.",
             server_version=server_version,
         )
-    except Exception as exc:  # pragma: no cover - network/auth errors vary
+    except (Neo4jError, ServiceUnavailable, AuthError, OSError, ValueError) as exc:  # pragma: no cover - network/auth errors vary
         return Neo4jConnectionTestResponse(success=False, message=str(exc))
     finally:
         if driver is not None:

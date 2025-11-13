@@ -3,7 +3,9 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, TypeVar
+
+from neo4j.exceptions import AuthError, Neo4jError, ServiceUnavailable
 
 from app.models.schemas import (
     FormulationCreate,
@@ -13,6 +15,18 @@ from app.models.schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class FormulationPipelineError(Exception):
+    """Base exception for formulation pipeline failures."""
+
+
+class FormulationDependencyError(FormulationPipelineError):
+    """Raised when dependent services such as Neo4j are unavailable."""
+
+
+class FormulationEventError(FormulationPipelineError):
+    """Raised when an event handler fails unexpectedly."""
 
 T = TypeVar("T")
 
@@ -62,12 +76,27 @@ class FormulationEventBus:
 
         event = FormulationEvent(type=event_type, payload=payload)
         for listener in listeners:
+            listener_name = getattr(listener, "__name__", listener.__class__.__name__)
             try:
                 result = listener(event)
                 if asyncio.iscoroutine(result):
                     await result
-            except Exception:  # pragma: no cover - defensive logging
-                logger.exception("Formulation event handler failed", extra={"event": event_type})
+            except (FormulationPipelineError, RuntimeError, ValueError):
+                logger.error(
+                    "Formulation event handler failed",
+                    exc_info=True,
+                    extra={"event": event_type, "listener": listener_name},
+                )
+                raise
+            except Exception as exc:  # pragma: no cover - defensive logging
+                logger.error(
+                    "Formulation event handler raised unexpected error",
+                    exc_info=True,
+                    extra={"event": event_type, "listener": listener_name},
+                )
+                raise FormulationEventError(
+                    f"Unexpected failure in '{event_type}' handler '{listener_name}'"
+                ) from exc
 
 
 class FormulationPipelineCache:
@@ -117,8 +146,15 @@ def _safe_copy(value: Any) -> Any:
         from copy import deepcopy
 
         return deepcopy(value)
-    except Exception:  # pragma: no cover - defensive
+    except (TypeError, ValueError):  # pragma: no cover - defensive copy failures
         return value
+
+
+def _is_neo4j_exception(exc: BaseException) -> bool:
+    return isinstance(exc, (ServiceUnavailable, AuthError, Neo4jError))
+
+
+_NON_RETRY_EXCEPTIONS: Tuple[type[BaseException], ...] = (ValueError, LookupError, RuntimeError)
 
 
 def _compute_cost_fields(percentage: Optional[float], cost_per_kg: Optional[float]) -> Tuple[float, float]:
@@ -244,14 +280,7 @@ class FormulationPipelineService:
                 cost_updated_at=datetime.now().isoformat(),
             )
 
-        try:
-            result = await self._execute_with_retry(operation)
-        except ValueError:
-            raise
-        except Exception:
-            logger.exception("Failed to create formulation")
-            raise
-
+        result = await self._execute_with_retry(operation, op_name="create formulation")
         await self._cache.invalidate()
         await self._publish("formulation.created", {"id": result.id})
         return result
@@ -363,7 +392,7 @@ class FormulationPipelineService:
 
             return FormulationListResponse(formulations=formulations, total_count=total_count)
 
-        response = await self._execute_with_retry(operation)
+        response = await self._execute_with_retry(operation, op_name="list formulations")
         await self._cache.set(cache_key, response.model_dump())
         return response
 
@@ -379,7 +408,7 @@ class FormulationPipelineService:
         def operation() -> Optional[FormulationResponse]:
             return _fetch_formulation(self._neo4j, formulation_id)
 
-        result = await self._execute_with_retry(operation)
+        result = await self._execute_with_retry(operation, op_name=f"get formulation {formulation_id}")
         if result:
             await self._cache.set(cache_key, result.model_dump())
         return result
@@ -486,7 +515,7 @@ class FormulationPipelineService:
 
             return updated_formulation
 
-        response = await self._execute_with_retry(operation)
+        response = await self._execute_with_retry(operation, op_name=f"update formulation {formulation_id}")
         await self._cache.invalidate(lambda key: isinstance(key, tuple) and key[0] in {"list", "get"})
         await self._cache.set(("get", response.id), response.model_dump())
         await self._publish("formulation.updated", {"id": response.id})
@@ -509,7 +538,7 @@ class FormulationPipelineService:
                 {"id": formulation_id},
             )
 
-        await self._execute_with_retry(operation)
+        await self._execute_with_retry(operation, op_name=f"delete formulation {formulation_id}")
         await self._cache.invalidate(lambda key: isinstance(key, tuple) and key[0] in {"list", "get"})
         await self._publish("formulation.deleted", {"id": formulation_id})
 
@@ -518,20 +547,24 @@ class FormulationPipelineService:
             return
         await self._event_bus.publish(event_type, payload)
 
-    async def _execute_with_retry(self, operation: Callable[[], T]) -> T:
+    async def _execute_with_retry(self, operation: Callable[[], T], *, op_name: str | None = None) -> T:
         attempt = 0
         while True:
             try:
                 return operation()
-            except Exception as exc:
+            except (Neo4jError, ServiceUnavailable, AuthError) as exc:
+                raise FormulationDependencyError(str(exc)) from exc
+            except (OSError, TimeoutError) as exc:
                 attempt += 1
                 if attempt >= self._max_retries:
-                    raise
+                    raise FormulationPipelineError(str(exc)) from exc
 
                 sleep_for = min(self._backoff_seconds * (2 ** (attempt - 1)), self._max_backoff_seconds)
+                context = {"operation": op_name or operation.__name__, "attempt": attempt}
                 logger.debug(
-                    "Formulation pipeline operation failed, retrying",
+                    "Formulation pipeline operation timed out, retrying",
                     exc_info=True,
+                    extra=context,
                 )
                 await asyncio.sleep(sleep_for)
 
@@ -566,6 +599,9 @@ def attach_formulation_pipeline(
 
 
 __all__ = [
+    "FormulationDependencyError",
+    "FormulationPipelineError",
+    "FormulationEventError",
     "FormulationEvent",
     "FormulationEventBus",
     "FormulationPipelineCache",

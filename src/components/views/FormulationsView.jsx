@@ -18,9 +18,11 @@ import ParetoAnalysis from '@/components/formulation/ParetoAnalysis'
 import { FormulationEditor } from '@/components/formulation/FormulationEditor'
 import { NutritionLabel } from '@/components/nutrition/NutritionLabel'
 import { apiService } from '@/lib/api/service'
+import { envService } from '@/lib/services/env-service.js'
 import { normalizeFormulation } from '@/lib/utils/formulation-utils'
 import { toast } from 'sonner'
 import { MagnifyingGlass, Plus, Flask, Trash, FloppyDiskBack, ArrowCounterClockwise, Article } from '@phosphor-icons/react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export function FormulationsView({ backendUrl }) {
   const [formulations, setFormulations] = useState([])
@@ -348,7 +350,12 @@ export function FormulationsView({ backendUrl }) {
     try {
       const response = await fetch(
         `${backendUrl}/api/formulations/${selectedId}/nutrition-label?serving_size=100&serving_size_unit=g`,
-        { method: 'POST' }
+        {
+          method: 'POST',
+          headers: {
+            ...envService.getAuthHeaders(),
+          },
+        }
       )
       
       if (!response.ok) {
@@ -427,9 +434,9 @@ export function FormulationsView({ backendUrl }) {
             <Separator />
 
             {loading ? (
-              <div className="text-center text-muted-foreground py-8">Loading...</div>
+              <div className="py-8 text-center text-muted-foreground">Loading...</div>
             ) : filteredFormulations.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
+              <div className="py-8 text-center text-muted-foreground">
                 <Flask size={48} className="mx-auto mb-2 opacity-50" />
                 <p>{filtersActive ? 'No formulations match your filters' : 'No formulations yet'}</p>
                 {filtersActive && (
@@ -439,31 +446,56 @@ export function FormulationsView({ backendUrl }) {
                 )}
               </div>
             ) : (
-              <div className="space-y-2">
-                {filteredFormulations.map((formulation) => (
-                  <div
-                    key={formulation.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      selectedId === formulation.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => setSelectedId(formulation.id)}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{formulation.name}</h4>
-                        <p className="text-xs text-muted-foreground">
-                          {formulation.total_percentage?.toFixed?.(2) ?? '0.00'}% total • {formulation.status}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">{formulation.status}</Badge>
-                    </div>
-                    <div className="mt-3">
-                      <Progress value={Math.min(Number(formulation.total_percentage) || 0, 100)} />
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-[420px] overflow-auto rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ingredients</TableHead>
+                      <TableHead className="text-right">Total %</TableHead>
+                      <TableHead className="text-right">Cost / kg</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredFormulations.map((formulation) => {
+                      const isSelected = selectedId === formulation.id
+                      const totalPercentage = Number(formulation.total_percentage) || 0
+                      const costPerKg = Number(formulation.cost_per_kg)
+
+                      return (
+                        <TableRow
+                          key={formulation.id}
+                          className={`cursor-pointer transition-colors ${
+                            isSelected ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-muted/40'
+                          }`}
+                          onClick={() => setSelectedId(formulation.id)}
+                        >
+                          <TableCell className="max-w-[180px]">
+                            <div className="flex flex-col">
+                              <span className="truncate font-medium">{formulation.name}</span>
+                              {formulation.description && (
+                                <span className="truncate text-xs text-muted-foreground">
+                                  {formulation.description}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={isSelected ? 'default' : 'secondary'}>{formulation.status}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {Array.isArray(formulation.ingredients) ? formulation.ingredients.length : 0}
+                          </TableCell>
+                          <TableCell className="text-right">{totalPercentage.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">
+                            {Number.isFinite(costPerKg) && costPerKg > 0 ? costPerKg.toFixed(2) : '—'}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </Card>

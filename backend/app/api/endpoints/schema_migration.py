@@ -1,6 +1,7 @@
 """Schema migration API endpoint."""
 
 from fastapi import APIRouter, Request, HTTPException, status
+from neo4j import exceptions as neo4j_exceptions
 from typing import Dict, Any
 import logging
 
@@ -144,8 +145,10 @@ async def migrate_to_knowledge_graph(request: Request) -> Dict[str, Any]:
         for idx_query in index_queries:
             try:
                 neo4j_client.execute_write(idx_query)
-            except Exception as e:
-                logger.warning(f"Index creation: {e}")
+            except neo4j_exceptions.ConstraintError:
+                continue
+            except neo4j_exceptions.Neo4jError as exc:
+                logger.warning("Index creation skipped due to Neo4j error: %s", exc)
         
         return {
             "status": "success",
@@ -160,9 +163,9 @@ async def migrate_to_knowledge_graph(request: Request) -> Dict[str, Any]:
             ]
         }
         
-    except Exception as e:
+    except (neo4j_exceptions.Neo4jError, RuntimeError, ValueError) as exc:
         logger.error("Migration failed", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Migration failed: {str(e)}"
-        ) from e
+            detail=f"Migration failed: {exc}"
+        ) from exc

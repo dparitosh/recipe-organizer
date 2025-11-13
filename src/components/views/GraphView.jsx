@@ -23,10 +23,6 @@ import {
 
 const CORPORATE_PALETTE = {
   background: '#f5f7fb',
-  backgroundDark: '#0f172a',
-  border: 'rgba(15, 23, 42, 0.18)',
-  edgeLabelBorder: 'rgba(148, 163, 184, 0.4)',
-  edgeLabelBackground: '#f8fafc',
   edgeLabelText: '#1f2937',
   blue600: '#0F6CBD',
   blue700: '#0B5AA7',
@@ -158,6 +154,15 @@ const mixHexColors = (colorA, colorB, amountA = 0.5) => {
   return `#${toHex(mixed.r)}${toHex(mixed.g)}${toHex(mixed.b)}`
 }
 
+const lightenHexColor = (hexColor, intensity = 0.55) => {
+  const normalized = normalizeHexColor(hexColor)
+  if (!normalized) {
+    return hexColor
+  }
+  const weight = clamp01(intensity)
+  return mixHexColors('#ffffff', normalized, weight)
+}
+
 const calculateLuminance = (hexColor) => {
   const rgb = hexToRgb(hexColor)
   if (!rgb) {
@@ -280,12 +285,18 @@ export function GraphView({ backendUrl }) {
   const [selectedNode, setSelectedNode] = useState(null)
   const [filterNodeType, setFilterNodeType] = useState('all')
   const [layout, setLayout] = useState('hierarchical')
+  const [nodeLabelMode, setNodeLabelMode] = useState('name')
   const [showFilters, setShowFilters] = useState(false)
   const [schema, setSchema] = useState(null)
   const [installingSchema, setInstallingSchema] = useState(false)
   const [legendOpen, setLegendOpen] = useState(true)
   const [legendTab, setLegendTab] = useState('nodes')
   const [tooltip, setTooltip] = useState(null)
+  const [remoteQuery, setRemoteQuery] = useState('')
+  const [searchMode, setSearchMode] = useState('keyword')
+  const [searching, setSearching] = useState(false)
+  const [searchMeta, setSearchMeta] = useState(null)
+  const [resettingSchema, setResettingSchema] = useState(false)
   
   const containerRef = useRef(null)
   const cyRef = useRef(null)
@@ -377,18 +388,19 @@ export function GraphView({ backendUrl }) {
   const nodeStyleMap = useMemo(() => {
     const defaultsColor = getCorporateNodeColor('__default__', schema?.defaults?.node?.color)
     const defaultsShape = schema?.defaults?.node?.shape || DEFAULT_NODE_SHAPE
-
     const defaults = {
       color: defaultsColor,
       shape: defaultsShape,
       textColor: pickAccessibleTextColor(defaultsColor),
       borderColor: buildBorderColor(defaultsColor),
+      fillColor: lightenHexColor(defaultsColor, 0.65) || defaultsColor,
     }
 
     const colors = {}
-  const shapes = { ...CORPORATE_NODE_SHAPES }
+    const shapes = { ...CORPORATE_NODE_SHAPES }
     const textColors = {}
     const borderColors = {}
+    const fillColors = {}
 
     Object.entries(CORPORATE_NODE_COLORS).forEach(([type, color]) => {
       if (type === '__default__') {
@@ -397,6 +409,7 @@ export function GraphView({ backendUrl }) {
       colors[type] = color
       textColors[type] = pickAccessibleTextColor(color)
       borderColors[type] = buildBorderColor(color)
+      fillColors[type] = lightenHexColor(color, 0.6) || color
     })
 
     if (schema?.node_types) {
@@ -409,6 +422,7 @@ export function GraphView({ backendUrl }) {
         colors[typeConfig.type] = paletteColor
         textColors[typeConfig.type] = pickAccessibleTextColor(paletteColor)
         borderColors[typeConfig.type] = buildBorderColor(paletteColor)
+        fillColors[typeConfig.type] = lightenHexColor(paletteColor, 0.6) || paletteColor
 
         if (typeConfig.shape) {
           shapes[typeConfig.type] = typeConfig.shape
@@ -416,7 +430,7 @@ export function GraphView({ backendUrl }) {
       })
     }
 
-    return { colors, shapes, textColors, borderColors, defaults }
+    return { colors, shapes, textColors, borderColors, fillColors, defaults }
   }, [schema])
 
   const edgeStyleMap = useMemo(() => {
@@ -455,6 +469,11 @@ export function GraphView({ backendUrl }) {
 
   const getNodeColor = useCallback(
     (type) => nodeStyleMap.colors[type] || nodeStyleMap.defaults.color,
+    [nodeStyleMap]
+  )
+
+  const getNodeFillColor = useCallback(
+    (type) => nodeStyleMap.fillColors?.[type] || nodeStyleMap.defaults.fillColor || lightenHexColor(nodeStyleMap.defaults.color, 0.6),
     [nodeStyleMap]
   )
 
@@ -502,13 +521,24 @@ export function GraphView({ backendUrl }) {
     if (!graphData?.nodes) {
       return []
     }
+
+    const determineLabel = (node) => {
+      if (nodeLabelMode === 'type') {
+        return node.labels?.[0] || node.properties?.type || 'Unknown'
+      }
+      if (nodeLabelMode === 'id') {
+        return node.id
+      }
+      return node.properties?.name || node.properties?.label || node.id
+    }
+
     return graphData.nodes.map((node) => ({
       id: node.id,
-      label: node.properties?.name || node.id,
+      label: determineLabel(node),
       type: node.labels?.[0] || 'Unknown',
       properties: node.properties ?? {},
     }))
-  }, [graphData])
+  }, [graphData, nodeLabelMode])
 
   const normalizedEdges = useMemo(() => {
     const rawEdges = graphData?.edges ?? graphData?.relationships ?? []
@@ -549,26 +579,26 @@ export function GraphView({ backendUrl }) {
         {
           selector: 'node',
           style: {
-            'background-color': (ele) => getNodeColor(ele.data('type')),
+            'background-color': (ele) => getNodeFillColor(ele.data('type')),
             'label': 'data(label)',
-            'color': (ele) => getNodeTextColor(ele.data('type')),
+            'font-family': 'Inter, "Helvetica Neue", Arial, sans-serif',
+            'color': '#111827',
             'text-valign': 'center',
             'text-halign': 'center',
             'font-size': '12px',
-            'font-weight': 600,
+            'font-weight': 400,
             'width': '64px',
             'height': '64px',
             'shape': (ele) => getNodeShape(ele.data('type')),
             'border-width': '2px',
-            'border-color': (ele) => getNodeBorderColor(ele.data('type')),
-            'text-outline-color': (ele) => getNodeBorderColor(ele.data('type')),
-            'text-outline-width': '1.5px',
-            'background-opacity': 0.98,
-            'shadow-blur': 18,
-            'shadow-color': 'rgba(15, 23, 42, 0.2)',
-            'shadow-opacity': 0.7,
+            'border-color': (ele) => getNodeColor(ele.data('type')),
+            'text-outline-width': 0,
+            'background-opacity': 0.97,
+            'shadow-blur': 10,
+            'shadow-color': 'rgba(15, 23, 42, 0.15)',
+            'shadow-opacity': 0.5,
             'shadow-offset-x': 0,
-            'shadow-offset-y': 6,
+            'shadow-offset-y': 4,
             'overlay-padding': 4,
           },
         },
@@ -589,10 +619,11 @@ export function GraphView({ backendUrl }) {
             'label': 'data(label)',
             'color': CORPORATE_PALETTE.edgeLabelText,
             'font-size': '10px',
-            'font-weight': 500,
+            'font-family': 'Inter, "Helvetica Neue", Arial, sans-serif',
+            'font-weight': 400,
             'text-rotation': 'autorotate',
-            'text-background-color': CORPORATE_PALETTE.edgeLabelBackground,
-            'text-background-opacity': 0.95,
+            'text-background-color': '#ffffff',
+            'text-background-opacity': 0.85,
             'text-background-padding': '4px',
             'text-border-width': 1,
             'text-border-color': CORPORATE_PALETTE.edgeLabelBorder,
@@ -770,6 +801,7 @@ export function GraphView({ backendUrl }) {
     normalizedEdges,
     getNodeColor,
     getNodeShape,
+    getNodeFillColor,
     getNodeTextColor,
     getNodeBorderColor,
     showTooltip,
@@ -823,6 +855,9 @@ export function GraphView({ backendUrl }) {
     setLoading(true)
     try {
       const data = await apiService.getGraph()
+      setFilterNodeType('all')
+      setSearchTerm('')
+      setSearchMeta(null)
       setGraphData(data)
       const nodeCount = data?.node_count ?? data?.nodes?.length ?? 0
       const edgeCount = data?.edge_count ?? data?.edges?.length ?? data?.relationships?.length ?? 0
@@ -843,9 +878,11 @@ export function GraphView({ backendUrl }) {
       return
     }
 
+    const lowerTerm = term.toLowerCase()
     const matching = cyRef.current.nodes().filter(node => {
-      const label = node.data('label').toLowerCase()
-      return label.includes(term.toLowerCase())
+      const rawLabel = node.data('label')
+      const label = typeof rawLabel === 'string' ? rawLabel.toLowerCase() : ''
+      return label.includes(lowerTerm)
     })
 
     cyRef.current.elements().addClass('dimmed')
@@ -926,11 +963,66 @@ export function GraphView({ backendUrl }) {
     try {
       const payload = await apiService.installDefaultGraphSchema()
       setSchema(payload)
+      setSearchMeta(null)
       toast.success('Default schema installed')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to install default schema')
     } finally {
       setInstallingSchema(false)
+    }
+  }
+
+  const handleResetSchema = async () => {
+    setResettingSchema(true)
+    try {
+      const payload = await apiService.resetGraphSchema()
+      setSchema(payload)
+      setGraphData(null)
+      setSearchMeta(null)
+      setFilterNodeType('all')
+      setSearchTerm('')
+      toast.success('Graph schema reset and reinstalled')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to reset graph schema')
+    } finally {
+      setResettingSchema(false)
+    }
+  }
+
+  const handleRemoteSearch = async () => {
+    const trimmed = remoteQuery.trim()
+    if (!trimmed) {
+      toast.error('Enter a search query to continue')
+      return
+    }
+
+    setSearching(true)
+    setFilterNodeType('all')
+    setSearchTerm('')
+  setSearchMeta(null)
+
+    try {
+      const response = await apiService.searchGraph({
+        query: trimmed,
+        mode: searchMode,
+        limit: 120,
+        includeRelated: true,
+      })
+      setGraphData(response)
+      setSearchMeta(response)
+      const nodeCount = response?.node_count ?? response?.nodes?.length ?? 0
+      toast.success(`Search returned ${nodeCount} nodes`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Search failed')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const handleRemoteSearchSubmit = (event) => {
+    event.preventDefault()
+    if (!searching) {
+      handleRemoteSearch()
     }
   }
 
@@ -992,6 +1084,19 @@ export function GraphView({ backendUrl }) {
     return Object.keys(edgeStyleMap.lookup)
   }, [observedRelationshipTypes, schemaRelationshipTypes, edgeStyleMap.lookup])
 
+  const remoteSearchPlaceholder = useMemo(() => {
+    if (searchMode === 'orchestration') {
+      return 'Orchestration run ID (e.g., orch-123456)'
+    }
+    if (searchMode === 'graphrag') {
+      return 'Ask a natural language question about the graph'
+    }
+    if (searchMode === 'keyword') {
+      return 'Search by node name, id, or description'
+    }
+    return 'Search graph (auto mode)'
+  }, [searchMode])
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1004,6 +1109,13 @@ export function GraphView({ backendUrl }) {
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button variant="outline" onClick={handleInstallDefaultSchema} disabled={loading || installingSchema}>
             {installingSchema ? 'Installing...' : 'Install Default Schema'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleResetSchema}
+            disabled={loading || installingSchema || resettingSchema}
+          >
+            {resettingSchema ? 'Resetting...' : 'Reset Schema'}
           </Button>
           <Button variant="outline" onClick={handleDownloadGraphML} disabled={loading}>
             <FileArrowDown size={18} className="mr-2" />
@@ -1066,6 +1178,17 @@ export function GraphView({ backendUrl }) {
               </SelectContent>
             </Select>
 
+            <Select value={nodeLabelMode} onValueChange={setNodeLabelMode}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Node label" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Show Name</SelectItem>
+                <SelectItem value="type">Show Type</SelectItem>
+                <SelectItem value="id">Show ID</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Button variant="outline" size="icon" onClick={handleZoomIn}>
               <ArrowsIn size={20} />
             </Button>
@@ -1080,6 +1203,131 @@ export function GraphView({ backendUrl }) {
             </Button>
           </div>
         </div>
+
+        <form
+          className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center"
+          onSubmit={handleRemoteSearchSubmit}
+        >
+          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              placeholder={remoteSearchPlaceholder}
+              value={remoteQuery}
+              onChange={(event) => setRemoteQuery(event.target.value)}
+              className="flex-1"
+            />
+            <Select value={searchMode} onValueChange={setSearchMode}>
+              <SelectTrigger className="sm:w-48">
+                <SelectValue placeholder="Search mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="keyword">Keyword</SelectItem>
+                <SelectItem value="orchestration">Orchestration Run</SelectItem>
+                <SelectItem value="graphrag">GraphRAG</SelectItem>
+                <SelectItem value="auto">Auto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={searching} className="min-w-[140px]">
+              {searching ? 'Searching...' : 'Run Search'}
+            </Button>
+          </div>
+        </form>
+
+        {searchMeta?.summary && (
+          <div className="mb-6 rounded-lg border border-border/60 bg-muted/40 p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold text-slate-900 dark:text-slate-100">{searchMeta.summary}</p>
+              {(typeof searchMeta.node_count === 'number' || typeof searchMeta.edge_count === 'number') && (
+                <span className="text-xs text-muted-foreground">
+                  {(searchMeta.node_count ?? 0).toLocaleString()} nodes • {(searchMeta.edge_count ?? 0).toLocaleString()} edges
+                </span>
+              )}
+            </div>
+            {Array.isArray(searchMeta.data_sources) && searchMeta.data_sources.length > 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Sources: {searchMeta.data_sources.join(', ')}
+              </p>
+            )}
+            {Array.isArray(searchMeta.highlights) && searchMeta.highlights.length > 0 && (
+              <div className="mt-3 text-sm">
+                <p className="font-semibold">Highlights</p>
+                <ul className="mt-1 space-y-2">
+                  {searchMeta.highlights.slice(0, 3).map((item) => {
+                    const match = Array.isArray(item?.properties?.matches)
+                      ? item.properties.matches[0]
+                      : null
+                    const status = item?.properties?.status
+                    const totalDuration = item?.properties?.totalDuration
+                    return (
+                      <li
+                        key={`${item.id}-${item.type || 'node'}`}
+                        className="rounded-md bg-background/70 px-3 py-2 text-xs shadow-sm dark:bg-slate-900/60"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-slate-900 dark:text-slate-100">
+                            {item.name || item.id}
+                          </span>
+                          {typeof item.relevance === 'number' && (
+                            <span className="text-[10px] uppercase text-muted-foreground">
+                              Relevance {Math.round(item.relevance * 100)}%
+                            </span>
+                          )}
+                        </div>
+                        {match && (
+                          <p className="mt-1 text-muted-foreground">
+                            {match.field}: {match.value}
+                          </p>
+                        )}
+                        {!match && (status || totalDuration) && (
+                          <p className="mt-1 text-muted-foreground">
+                            {status ? `Status: ${status}` : ''}
+                            {typeof totalDuration === 'number'
+                              ? `${status ? ' • ' : ''}Duration ${(totalDuration / 1000).toFixed(2)}s`
+                              : ''}
+                          </p>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+            {Array.isArray(searchMeta.graphrag_chunks) && searchMeta.graphrag_chunks.length > 0 && (
+              <div className="mt-4 text-sm">
+                <p className="font-semibold">Knowledge Chunks</p>
+                <ul className="mt-1 space-y-2">
+                  {searchMeta.graphrag_chunks.slice(0, 2).map((chunk) => {
+                    const content = typeof chunk.content === 'string' ? chunk.content : ''
+                    const preview = content.slice(0, 220)
+                    const suffix = content.length > 220 ? '...' : ''
+                    return (
+                      <li
+                        key={chunk.chunk_id}
+                        className="rounded-md border border-border/40 bg-background/80 p-3 text-xs shadow-sm dark:bg-slate-900/40"
+                      >
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <span className="font-medium text-slate-900 dark:text-slate-100">
+                            {chunk.source_description || chunk.source_type || 'Knowledge Chunk'}
+                          </span>
+                          {typeof chunk.score === 'number' && (
+                            <span className="text-[10px] uppercase text-muted-foreground">
+                              Score {chunk.score.toFixed(3)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="leading-relaxed text-muted-foreground">
+                          {preview}
+                          {suffix}
+                        </p>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
         {showFilters && (
           <div className="mb-6 p-4 bg-muted/50 rounded-lg">
@@ -1237,7 +1485,7 @@ export function GraphView({ backendUrl }) {
                                     <div
                                       className="h-5 w-5 rounded-md border shadow-sm"
                                       style={{
-                                        backgroundColor: getNodeColor(type),
+                                        backgroundColor: getNodeFillColor(type),
                                         borderColor: getNodeBorderColor(type),
                                       }}
                                     />

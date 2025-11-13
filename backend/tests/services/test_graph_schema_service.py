@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -70,3 +71,44 @@ def test_export_schema_svg_contains_shapes_and_markers():
 
     lines = root.findall(".//svg:line", ns)
     assert any(line.get("marker-end") for line in lines)
+
+
+def test_schema_exports_normalize_relationship_lists():
+    service = GraphSchemaService(None, "CustomSchema")
+    schema = {
+        "name": "CustomSchema",
+        "node_types": [
+            {"type": "ValidNode", "label": "Valid Node", "color": "#ff0000", "shape": "ellipse"}
+        ],
+        "relationship_types": [
+            {
+                "type": "WEIRD_REL",
+                "label": "Weird Relationship",
+                "color": "#00ff00",
+                "style": "dotted",
+                "allowed_source_types": ["ValidNode", 42, None],
+                "allowed_target_types": [None, {"type": "Ignored"}],
+            }
+        ],
+    }
+
+    graphml = service._schema_to_graphml(schema)
+    root = ET.fromstring(graphml)
+    ns = {"g": "http://graphml.graphdrawing.org/xmlns"}
+    edge = root.find(".//g:edge", ns)
+    assert edge is not None
+
+    sources_data = edge.find("g:data[@key='e_sources']", ns)
+    targets_data = edge.find("g:data[@key='e_targets']", ns)
+    assert sources_data is not None
+    assert targets_data is not None
+    assert json.loads(sources_data.text) == ["ValidNode"]
+    assert json.loads(targets_data.text) == ["WEIRD_REL"]
+
+    svg = GraphSchemaService._schema_to_svg(schema)
+    svg_root = ET.fromstring(svg)
+    svg_ns = {"svg": "http://www.w3.org/2000/svg"}
+    detail_texts = [
+        elem.text for elem in svg_root.findall(".//svg:text", svg_ns) if elem.text and "→" in elem.text
+    ]
+    assert "ValidNode → WEIRD_REL" in detail_texts

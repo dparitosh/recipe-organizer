@@ -1,5 +1,6 @@
 from .fdc_service import FDCService
 from .graph_schema_service import GraphSchemaService
+from .graph_search_service import GraphSearchService
 from .graphrag_retrieval import (
 	GraphRAGRetrievalService,
 	GraphRAGRetrievalError,
@@ -15,6 +16,7 @@ from .orchestration_types import GraphWriteSet, PersistenceSummary
 __all__ = [
 	"FDCService",
 	"GraphSchemaService",
+	"GraphSearchService",
 	"GraphRAGRetrievalService",
 	"GraphRAGRetrievalError",
 	"HybridRetrievalResult",

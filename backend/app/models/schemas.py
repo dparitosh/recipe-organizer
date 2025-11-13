@@ -165,6 +165,13 @@ class GraphDataResponse(BaseModel):
     edge_count: int
 
 
+class GraphSchemaResetRequest(BaseModel):
+    drop_data: bool = Field(default=True, description="Remove all nodes and relationships before reinstalling the schema")
+    drop_constraints: bool = Field(default=True, description="Drop existing Neo4j constraints prior to reinstalling")
+    drop_indexes: bool = Field(default=True, description="Drop property indexes prior to reinstalling")
+    drop_vector_indexes: bool = Field(default=True, description="Drop vector indexes prior to reinstalling")
+
+
 class GraphNodeTypeConfig(BaseModel):
     type: str
     label: Optional[str] = None
@@ -207,6 +214,30 @@ class GraphSchemaUpsertRequest(BaseModel):
     node_types: List[GraphNodeTypeConfig] = Field(default_factory=list)
     relationship_types: List[GraphRelationshipTypeConfig] = Field(default_factory=list)
     defaults: Dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphRAGChunk(BaseModel):
+    chunk_id: str
+    score: float
+    content: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    source_id: Optional[str] = None
+    source_type: Optional[str] = None
+    source_description: Optional[str] = None
+
+
+class GraphSearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=500)
+    mode: Literal["auto", "keyword", "orchestration", "graphrag"] = Field(default="auto")
+    limit: int = Field(default=50, ge=1, le=200)
+    include_related: bool = Field(default=True, description="Include related nodes when constructing the subgraph")
+
+
+class GraphSearchResponse(GraphDataResponse):
+    summary: Optional[str] = None
+    data_sources: List[str] = Field(default_factory=list)
+    highlights: List[NodeHighlight] = Field(default_factory=list)
+    graphrag_chunks: List[GraphRAGChunk] = Field(default_factory=list)
 
 class SampleDataLoadRequest(BaseModel):
     clear_existing: bool = Field(default=True, description="Clear existing data before loading")

@@ -30,7 +30,10 @@ function App() {
       aiAssistant.setBackendUrl(normalizedApiUrl)
       setBackendUrl(normalizedApiUrl)
     }
-  }, [config.backend.apiUrl, setBackendUrl])
+
+    envService.setApiKey((config.backend.apiKey || '').trim())
+    envService.setAdminApiKey((config.backend.adminApiKey || '').trim())
+  }, [config.backend.apiUrl, config.backend.apiKey, config.backend.adminApiKey, setBackendUrl])
 
   useEffect(() => {
     let isActive = true

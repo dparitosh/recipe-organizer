@@ -3,8 +3,10 @@ import time
 from typing import List, TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Request, status
+from neo4j import exceptions as neo4j_exceptions
 
 from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.models.schemas import (
     FDCDetailsRequest,
     FDCIngestFailure,
@@ -22,9 +24,17 @@ if TYPE_CHECKING:  # pragma: no cover
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+MASK_PLACEHOLDER = "********"
+
 
 def _resolve_api_key(api_key: str | None) -> str:
-    resolved = api_key or settings.FDC_DEFAULT_API_KEY
+    candidate = (api_key or "").strip()
+    if candidate == MASK_PLACEHOLDER:
+        candidate = ""
+
+    resolved = candidate or settings.FDC_DEFAULT_API_KEY
+    if resolved == MASK_PLACEHOLDER:
+        resolved = settings.FDC_DEFAULT_API_KEY
     if not resolved:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -47,6 +57,7 @@ def _get_services(request: Request) -> tuple[FDCService, "Neo4jClient"]:
 
 
 @router.post("/search", summary="Search foods from USDA FDC")
+@limiter.limit(settings.RATE_LIMIT_FDC)
 async def search_foods(payload: FDCSearchRequest, request: Request) -> dict:
     api_key = _resolve_api_key(payload.api_key)
     fdc_service = getattr(request.app.state, "fdc_service", None)
@@ -72,10 +83,11 @@ async def search_foods(payload: FDCSearchRequest, request: Request) -> dict:
             "total_pages": data.get("totalPages"),
         }
     except FDCServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @router.post("/foods/{fdc_id}/details", summary="Get FDC food details")
+@limiter.limit(settings.RATE_LIMIT_FDC)
 async def get_food_details(fdc_id: int, payload: FDCDetailsRequest, request: Request) -> dict:
     api_key = _resolve_api_key(payload.api_key)
     fdc_service = getattr(request.app.state, "fdc_service", None)
@@ -86,10 +98,11 @@ async def get_food_details(fdc_id: int, payload: FDCDetailsRequest, request: Req
     try:
         return await fdc_service.get_food_details(api_key, fdc_id)
     except FDCServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @router.post("/ingest", response_model=FDCIngestResponse, summary="Ingest FDC foods into Neo4j")
+@limiter.limit(settings.RATE_LIMIT_FDC)
 async def ingest_foods(payload: FDCIngestRequest, request: Request) -> FDCIngestResponse:
     if not payload.fdc_ids:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Provide at least one FDC ID to ingest")
@@ -101,6 +114,7 @@ async def ingest_foods(payload: FDCIngestRequest, request: Request) -> FDCIngest
 
 
 @router.post("/quick-ingest", response_model=FDCIngestResponse, summary="Search and ingest foods from a term")
+@limiter.limit(settings.RATE_LIMIT_FDC)
 async def quick_ingest(payload: FDCQuickIngestRequest, request: Request) -> FDCIngestResponse:
     api_key = _resolve_api_key(payload.api_key)
     fdc_service, neo4j_client = _get_services(request)
@@ -113,7 +127,7 @@ async def quick_ingest(payload: FDCQuickIngestRequest, request: Request) -> FDCI
             data_types=payload.data_types,
         )
     except FDCServiceError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail)
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
     foods = search_result.get("foods", []) or []
     fdc_ids: List[int] = [item.get("fdcId") for item in foods if isinstance(item.get("fdcId"), int)]
@@ -160,12 +174,12 @@ async def list_ingested_foods(
             page_size=page_size,
             include_nutrients=include_nutrients,
         )
-    except Exception as exc:  # pragma: no cover - defensive logging
+    except (neo4j_exceptions.Neo4jError, ValueError) as exc:  # pragma: no cover - defensive logging
         logger.exception("Failed to list ingested FDC foods")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list FDC foods: {exc}",
-        )
+        ) from exc
 
 
 async def _perform_ingestion(
@@ -200,7 +214,7 @@ async def _perform_ingestion(
         except FDCServiceError as exc:
             failures.append(FDCIngestFailure(fdc_id=fdc_id, message=exc.detail))
             logger.warning("FDC API error for %s: %s", fdc_id, exc.detail)
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except (neo4j_exceptions.Neo4jError, ValueError, RuntimeError) as exc:  # pragma: no cover - defensive logging
             message = str(exc)
             failures.append(FDCIngestFailure(fdc_id=fdc_id, message=message))
             logger.exception("Failed to ingest FDC food %s", fdc_id)

@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { List, Flask } from '@phosphor-icons/react'
 import { useState, useEffect } from 'react'
+import { envService } from '@/lib/services/env-service.js'
 
 export function Header({ onMenuClick, backendUrl }) {
   const [backendStatus, setBackendStatus] = useState('checking')
@@ -9,8 +10,11 @@ export function Header({ onMenuClick, backendUrl }) {
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const response = await fetch(`${backendUrl}/health`, { 
-          signal: AbortSignal.timeout(3000) 
+        const response = await fetch(`${backendUrl}/health`, {
+          signal: AbortSignal.timeout(3000),
+          headers: {
+            ...envService.getAuthHeaders(),
+          },
         })
         if (response.ok) {
           setBackendStatus('connected')
