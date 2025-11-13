@@ -31,9 +31,7 @@ function App() {
       setBackendUrl(normalizedApiUrl)
     }
 
-    envService.setApiKey((config.backend.apiKey || '').trim())
-    envService.setAdminApiKey((config.backend.adminApiKey || '').trim())
-  }, [config.backend.apiUrl, config.backend.apiKey, config.backend.adminApiKey, setBackendUrl])
+  }, [config.backend.apiUrl, setBackendUrl])
 
   useEffect(() => {
     let isActive = true

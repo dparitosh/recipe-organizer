@@ -67,10 +67,6 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
     )
 
-    API_KEY: str = Field(default="")
-    ADMIN_API_KEY: str = Field(default="")
-    DISABLE_API_KEY_SECURITY: bool = False
-
     AI_SERVICE_MODE: str = "auto"
     AI_RETRY_ATTEMPTS: int = 3
     AI_TIMEOUT_SECONDS: int = 30
@@ -119,9 +115,6 @@ class Settings(BaseSettings):
             "OLLAMA_BASE_URL": self.OLLAMA_BASE_URL,
             "OLLAMA_EMBED_MODEL": self.OLLAMA_EMBED_MODEL,
         }
-
-        if not self.DISABLE_API_KEY_SECURITY:
-            required["API_KEY"] = self.API_KEY
 
         for name, val in required.items():
             if not val:

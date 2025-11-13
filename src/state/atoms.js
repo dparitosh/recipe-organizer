@@ -33,8 +33,6 @@ const createLocalStorageEffect = (key) => ({ setSelf, onSet, trigger }) => {
 export const DEFAULT_APP_CONFIG = {
   backend: {
     apiUrl: 'http://localhost:8000',
-    apiKey: 'dev-api-key',
-    adminApiKey: 'dev-admin-key',
     healthCheckIntervalMs: 30000,
     requestTimeoutMs: 10000,
   },

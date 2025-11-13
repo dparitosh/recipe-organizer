@@ -86,13 +86,6 @@ const FIELD_DEFINITIONS = [
     group: 'platform',
   },
   {
-    key: 'DISABLE_API_KEY_SECURITY',
-    label: 'Disable API Key Checks',
-    description: 'Allow unsecured access to backend endpoints (development use only)',
-    type: 'boolean',
-    group: 'platform',
-  },
-  {
     key: 'NEO4J_URI',
     label: 'Neo4j URI',
     description: 'Bolt or Neo4j Aura connection URL',

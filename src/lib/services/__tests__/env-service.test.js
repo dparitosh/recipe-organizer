@@ -12,8 +12,6 @@ describe('EnvironmentService connection helpers', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     envService.setBackendUrl('http://localhost:9999')
-    envService.setApiKey('primary-key')
-    envService.setAdminApiKey('admin-key')
   })
 
   afterEach(() => {
@@ -38,8 +36,8 @@ describe('EnvironmentService connection helpers', () => {
     expect(url).toBe('http://localhost:9999/api/health/neo4j')
     expect(options.method).toBe('POST')
     expect(options.headers['Content-Type']).toBe('application/json')
-    expect(options.headers['X-API-Key']).toBe('primary-key')
-    expect(options.headers['X-Admin-API-Key']).toBe('admin-key')
+  expect(options.headers['X-API-Key']).toBeUndefined()
+  expect(options.headers['X-Admin-API-Key']).toBeUndefined()
     expect(JSON.parse(options.body)).toEqual(payload)
     expect(result).toEqual(responseBody)
   })
