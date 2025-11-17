@@ -12,6 +12,7 @@ from .endpoints import (
 	orchestration,
 	nutrition,
 	schema_migration,
+	manufacturing,
 )
 
 router = APIRouter()
@@ -27,3 +28,4 @@ router.include_router(fdc.router, prefix="/fdc", tags=["FDC"])
 router.include_router(env.router, prefix="/env", tags=["Environment"])
 router.include_router(orchestration.router, prefix="/orchestration", tags=["Orchestration"])
 router.include_router(schema_migration.router, prefix="/schema", tags=["Schema Migration"])
+router.include_router(manufacturing.router, prefix="/manufacturing", tags=["Manufacturing"])

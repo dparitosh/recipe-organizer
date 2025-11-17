@@ -266,15 +266,16 @@ export function OrchestrationView() {
                 disabled={isRunning || !userRequest.trim()}
                 className="w-full"
                 size="lg"
+                aria-label={isRunning ? 'Orchestration in progress' : 'Run agent orchestration'}
               >
                 {isRunning ? (
                   <>
-                    <CircleNotch className="animate-spin" />
+                    <CircleNotch className="animate-spin mr-2" />
                     Running Orchestration...
                   </>
                 ) : (
                   <>
-                    <Play weight="fill" />
+                    <Play weight="fill" className="mr-2" />
                     Run Agent Orchestration
                   </>
                 )}

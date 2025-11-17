@@ -46,6 +46,8 @@ export function OrchestrationResultView({ result, persistSummary }) {
       { key: 'labor', label: 'Labor', value: costs.labor },
       { key: 'overhead', label: 'Overhead', value: costs.overhead },
       { key: 'packaging', label: 'Packaging', value: costs.packaging },
+      { key: 'total', label: 'Total', value: costs.total },
+      { key: 'perUnit', label: 'Per Unit', value: costs.perUnit },
     ].filter((item) => typeof item.value === 'number')
   }, [result.calculation?.costs])
 
@@ -69,8 +71,11 @@ export function OrchestrationResultView({ result, persistSummary }) {
     return `ingredient-${ingredient.id || ingredient.name || 'unknown'}`
   }, [])
 
-  const fetchNeo4jGraph = useCallback(async () => {
+  const fetchNeo4jGraph = useCallback(async (force = false) => {
     if (!result?.id || !persistSummary?.runId) {
+      setNeo4jGraph(null)
+      setNeo4jError(null)
+      setLoadingNeo4j(false)
       return
     }
 
@@ -89,6 +94,8 @@ export function OrchestrationResultView({ result, persistSummary }) {
   }, [persistSummary?.runId, result?.id])
 
   useEffect(() => {
+    let cancelled = false
+
     if (!persistSummary?.runId || !result?.id) {
       setNeo4jGraph(null)
       setNeo4jError(null)
@@ -96,24 +103,9 @@ export function OrchestrationResultView({ result, persistSummary }) {
       return
     }
 
-    let cancelled = false
     const load = async () => {
-      setLoadingNeo4j(true)
-      try {
-        const data = await orchestrationService.fetchRunGraph(result.id)
-        if (!cancelled) {
-          setNeo4jGraph(data)
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setNeo4jError(error instanceof Error ? error.message : 'Failed to fetch Neo4j graph data')
-          setNeo4jGraph(null)
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingNeo4j(false)
-        }
-      }
+      if (cancelled) return
+      await fetchNeo4jGraph()
     }
 
     load()
@@ -121,7 +113,7 @@ export function OrchestrationResultView({ result, persistSummary }) {
     return () => {
       cancelled = true
     }
-  }, [persistSummary?.runId, result?.id])
+  }, [persistSummary?.runId, result?.id, fetchNeo4jGraph])
 
   return (
     <Card>
@@ -168,22 +160,32 @@ export function OrchestrationResultView({ result, persistSummary }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {result.recipe.ingredients.map((ing) => (
-                  <TableRow key={ing.id}>
-                    <TableCell className="font-medium">{ing.name}</TableCell>
-                    <TableCell className="font-mono text-xs">{graphNodeIdForIngredient(ing)}</TableCell>
-                    <TableCell>{typeof ing.percentage === 'number' ? ing.percentage.toFixed(2) : ing.percentage}%</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{ing.function}</Badge>
+                {result.recipe.ingredients.length > 0 ? (
+                  result.recipe.ingredients.map((ing) => (
+                    <TableRow key={ing.id}>
+                      <TableCell className="font-medium">{ing.name}</TableCell>
+                      <TableCell className="font-mono text-xs">{graphNodeIdForIngredient(ing)}</TableCell>
+                      <TableCell>{typeof ing.percentage === 'number' ? ing.percentage.toFixed(2) : ing.percentage}%</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{ing.function}</Badge>
+                      </TableCell>
+                      <TableCell>{ing.category || '—'}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      No ingredients found. The recipe generation may have failed.
                     </TableCell>
-                    <TableCell>{ing.category || '—'}</TableCell>
                   </TableRow>
-                ))}
-                <TableRow className="font-bold">
-                  <TableCell>Total</TableCell>
-                  <TableCell>{result.recipe.totalPercentage.toFixed(2)}%</TableCell>
-                  <TableCell></TableCell>
-                </TableRow>
+                )}
+                {result.recipe.ingredients.length > 0 && (
+                  <TableRow className="font-bold">
+                    <TableCell colSpan={2}>Total</TableCell>
+                    <TableCell>{result.recipe.totalPercentage.toFixed(2)}%</TableCell>
+                    <TableCell colSpan={2}></TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </TabsContent>
@@ -193,23 +195,23 @@ export function OrchestrationResultView({ result, persistSummary }) {
               <Card>
                 <CardHeader className="pb-3">
                   <CardDescription>Total Cost</CardDescription>
-                  <CardTitle className="text-2xl">
-                    ${(result.calculation?.costs?.total ?? 0).toLocaleString()}
+                  <CardTitle className="text-2xl" aria-label={`Total cost: ${(result.calculation?.costs?.total ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`}>
+                    {(result.calculation?.costs?.total ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                   </CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-3">
                   <CardDescription>Cost per Unit</CardDescription>
-                  <CardTitle className="text-2xl">
-                    ${(result.calculation?.costs?.perUnit ?? 0).toFixed(2)}
+                  <CardTitle className="text-2xl" aria-label={`Cost per unit: ${(result.calculation?.costs?.perUnit ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}>
+                    {(result.calculation?.costs?.perUnit ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-3">
                   <CardDescription>Yield</CardDescription>
-                  <CardTitle className="text-2xl">
+                  <CardTitle className="text-2xl" aria-label={`Yield: ${result.calculation?.yield?.percentage ?? 0} percent`}>
                     {result.calculation?.yield?.percentage ?? 0}%
                   </CardTitle>
                 </CardHeader>
@@ -222,8 +224,8 @@ export function OrchestrationResultView({ result, persistSummary }) {
                   <Card key={item.key}>
                     <CardHeader className="pb-3">
                       <CardDescription>{item.label}</CardDescription>
-                      <CardTitle className="text-xl">
-                        ${Number(item.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <CardTitle className="text-xl" aria-label={`${item.label}: ${Number(item.value).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`}>
+                        {Number(item.value).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                       </CardTitle>
                     </CardHeader>
                   </Card>
@@ -235,22 +237,36 @@ export function OrchestrationResultView({ result, persistSummary }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Ingredient</TableHead>
+                  <TableHead>Original %</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Unit</TableHead>
+                  <TableHead>Volume</TableHead>
                   <TableHead>Cost</TableHead>
+                  <TableHead>Density</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {result.calculation.scaledIngredients.map((ing) => (
-                  <TableRow key={ing.id}>
-                    <TableCell className="font-medium">{ing.name}</TableCell>
-                    <TableCell>
-                      {typeof ing.scaledQuantity === 'number' ? ing.scaledQuantity.toFixed(2) : ing.scaledQuantity}
+                {result.calculation?.scaledIngredients?.length > 0 ? (
+                  result.calculation.scaledIngredients.map((ing) => (
+                    <TableRow key={ing.id}>
+                      <TableCell className="font-medium">{ing.name}</TableCell>
+                      <TableCell>{typeof ing.originalPercentage === 'number' ? ing.originalPercentage.toFixed(2) : ing.originalPercentage}%</TableCell>
+                      <TableCell>
+                        {typeof ing.scaledQuantity === 'number' ? ing.scaledQuantity.toFixed(2) : ing.scaledQuantity}
+                      </TableCell>
+                      <TableCell>{ing.scaledUnit}</TableCell>
+                      <TableCell>{ing.volumeEquivalent != null ? (typeof ing.volumeEquivalent === 'number' ? ing.volumeEquivalent.toFixed(2) : ing.volumeEquivalent) : '—'}</TableCell>
+                      <TableCell>{ing.cost != null ? Number(ing.cost).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}</TableCell>
+                      <TableCell>{ing.density != null ? (typeof ing.density === 'number' ? ing.density.toFixed(3) : ing.density) : '—'}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      No scaled ingredients calculated. Check the calculation agent output for errors.
                     </TableCell>
-                    <TableCell>{ing.scaledUnit}</TableCell>
-                    <TableCell>${Number(ing.cost || 0).toFixed(2)}</TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </TabsContent>
@@ -418,7 +434,7 @@ export function OrchestrationResultView({ result, persistSummary }) {
               <Card>
                 <CardHeader className="pb-3">
                   <CardDescription>Validation Score</CardDescription>
-                  <CardTitle className="text-2xl">
+                  <CardTitle className="text-2xl" aria-label={`Validation score: ${result.validation.summary.score} out of 100`}>
                     {result.validation.summary.score}/100
                   </CardTitle>
                 </CardHeader>
@@ -426,7 +442,7 @@ export function OrchestrationResultView({ result, persistSummary }) {
               <Card>
                 <CardHeader className="pb-3">
                   <CardDescription>Checks Passed</CardDescription>
-                  <CardTitle className="text-2xl">
+                  <CardTitle className="text-2xl" aria-label={`Checks passed: ${result.validation.summary.passed} out of ${result.validation.summary.totalChecks}`}>
                     {result.validation.summary.passed}/{result.validation.summary.totalChecks}
                   </CardTitle>
                 </CardHeader>
@@ -469,26 +485,94 @@ export function OrchestrationResultView({ result, persistSummary }) {
             <div>
               <h3 className="font-semibold mb-2">Layout Configuration</h3>
               <div className="p-4 border rounded">
-                <Badge>{result.uiConfig.layout}</Badge>
+                <Badge>{result.uiConfig?.layout || 'not-specified'}</Badge>
               </div>
             </div>
 
-            <div>
-              <h3 className="font-semibold mb-2">Components ({result.uiConfig.components.length})</h3>
-              <div className="space-y-2">
-                {result.uiConfig.components.map((comp, idx) => (
-                  <div key={idx} className="p-3 border rounded">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{comp.title}</div>
-                        <Badge variant="outline" className="text-xs mt-1">{comp.type}</Badge>
+            {result.uiConfig?.theme && (
+              <div>
+                <h3 className="font-semibold mb-2">Theme</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  {result.uiConfig.theme.primaryColor && (
+                    <div className="p-3 border rounded">
+                      <div className="text-xs text-muted-foreground mb-1">Primary Color</div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded border" style={{ backgroundColor: result.uiConfig.theme.primaryColor }}></div>
+                        <code className="text-xs">{result.uiConfig.theme.primaryColor}</code>
                       </div>
-                      {comp.config?.chartType && (
-                        <Badge>{comp.config.chartType}</Badge>
+                    </div>
+                  )}
+                  {result.uiConfig.theme.accentColor && (
+                    <div className="p-3 border rounded">
+                      <div className="text-xs text-muted-foreground mb-1">Accent Color</div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded border" style={{ backgroundColor: result.uiConfig.theme.accentColor }}></div>
+                        <code className="text-xs">{result.uiConfig.theme.accentColor}</code>
+                      </div>
+                    </div>
+                  )}
+                  {result.uiConfig.theme.spacing && (
+                    <div className="p-3 border rounded">
+                      <div className="text-xs text-muted-foreground mb-1">Spacing</div>
+                      <Badge variant="outline">{result.uiConfig.theme.spacing}</Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <h3 className="font-semibold mb-2">Components ({result.uiConfig?.components?.length ?? 0})</h3>
+              <div className="space-y-2">
+                {result.uiConfig?.components?.length > 0 ? (
+                  result.uiConfig.components.map((comp, idx) => (
+                    <div key={idx} className="p-3 border rounded">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <div className="font-medium">{comp.title || 'Untitled Component'}</div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">{comp.type || 'unknown'}</Badge>
+                            {comp.config?.chartType && (
+                              <Badge variant="secondary" className="text-xs">{comp.config.chartType}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        {comp.position && (
+                          <div className="text-xs text-muted-foreground">
+                            Row {comp.position.row}, Col {comp.position.col}
+                            {comp.position.span && `, Span ${comp.position.span}`}
+                          </div>
+                        )}
+                      </div>
+                      {comp.config?.columns && comp.config.columns.length > 0 && (
+                        <div className="mt-2 pt-2 border-t">
+                          <div className="text-xs text-muted-foreground mb-1">Table Columns:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {comp.config.columns.map((col, colIdx) => (
+                              <Badge key={colIdx} variant="outline" className="text-[10px]">
+                                {col.label} ({col.key})
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {comp.config?.colorScheme && (
+                        <div className="mt-2 pt-2 border-t">
+                          <div className="text-xs text-muted-foreground">Color Scheme: <code className="text-xs">{comp.config.colorScheme}</code></div>
+                        </div>
+                      )}
+                      {comp.config?.showLegend !== undefined && (
+                        <div className="mt-2 pt-2 border-t">
+                          <div className="text-xs text-muted-foreground">Show Legend: {comp.config.showLegend ? 'Yes' : 'No'}</div>
+                        </div>
                       )}
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center text-muted-foreground py-8 border rounded">
+                    No UI components generated. The UI Designer agent may have failed or returned empty configuration.
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </TabsContent>

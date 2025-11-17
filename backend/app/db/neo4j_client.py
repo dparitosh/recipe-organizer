@@ -93,6 +93,10 @@ class Neo4jClient:
                 records.append(record_dict)
             return records
     
+    def execute_read(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Alias for execute_query for read operations."""
+        return self.execute_query(query, parameters)
+    
     def execute_write(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         if not self.driver:
             raise RuntimeError("Neo4j driver not initialized")

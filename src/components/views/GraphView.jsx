@@ -21,6 +21,24 @@ import {
   Info,
 } from '@phosphor-icons/react'
 
+// Node type to emoji symbol mapping
+const NODE_TYPE_SYMBOLS = {
+  Formulation: '🧪',
+  Ingredient: '🌿',
+  Food: '🍎',
+  Nutrient: '💧',
+  Process: '⚙️',
+  ProcessStep: '⚡',
+  Recipe: '📋',
+  MasterRecipe: '📘',
+  ManufacturingRecipe: '🏭',
+  Plant: '🏭',
+  Supplier: '📦',
+  SalesOrder: '🛒',
+  AIInsight: '💡',
+  CalculationSnapshot: '📊',
+}
+
 const CORPORATE_PALETTE = {
   background: '#f5f7fb',
   edgeLabelText: '#1f2937',
@@ -56,20 +74,20 @@ const CORPORATE_NODE_COLORS = {
 }
 
 const CORPORATE_NODE_SHAPES = {
-  Formulation: 'hexagon',
-  Ingredient: 'round-rectangle',
-  Food: 'round-rectangle',
-  Nutrient: 'diamond',
-  Process: 'octagon',
-  ProcessStep: 'triangle',
-  Recipe: 'hexagon',
-  MasterRecipe: 'round-rectangle',
-  ManufacturingRecipe: 'octagon',
-  Plant: 'round-diamond',
+  Formulation: 'ellipse',
+  Ingredient: 'ellipse',
+  Food: 'ellipse',
+  Nutrient: 'ellipse',
+  Process: 'ellipse',
+  ProcessStep: 'ellipse',
+  Recipe: 'ellipse',
+  MasterRecipe: 'ellipse',
+  ManufacturingRecipe: 'ellipse',
+  Plant: 'ellipse',
   Supplier: 'ellipse',
-  SalesOrder: 'rhomboid',
-  AIInsight: 'star',
-  CalculationSnapshot: 'rectangle',
+  SalesOrder: 'ellipse',
+  AIInsight: 'ellipse',
+  CalculationSnapshot: 'ellipse',
 }
 
 const CORPORATE_RELATIONSHIP_COLORS = {
@@ -84,7 +102,7 @@ const CORPORATE_RELATIONSHIP_COLORS = {
 }
 
 const DEFAULT_NODE_COLOR = CORPORATE_NODE_COLORS.__default__
-const DEFAULT_NODE_SHAPE = 'round-rectangle'
+const DEFAULT_NODE_SHAPE = 'ellipse'
 const DEFAULT_NODE_TEXT_COLOR = '#f8fafc'
 const DEFAULT_NODE_BORDER_COLOR = CORPORATE_PALETTE.border
 const DEFAULT_EDGE_COLOR = CORPORATE_RELATIONSHIP_COLORS.__default__
@@ -579,27 +597,25 @@ export function GraphView({ backendUrl }) {
         {
           selector: 'node',
           style: {
-            'background-color': (ele) => getNodeFillColor(ele.data('type')),
-            'label': 'data(label)',
+            'background-color': 'transparent',
+            'background-opacity': 0,
+            'label': (ele) => {
+              const nodeType = ele.data('type')
+              const symbol = NODE_TYPE_SYMBOLS[nodeType] || '●'
+              return symbol
+            },
             'font-family': 'Inter, "Helvetica Neue", Arial, sans-serif',
-            'color': '#111827',
+            'color': (ele) => getNodeColor(ele.data('type')),
             'text-valign': 'center',
             'text-halign': 'center',
-            'font-size': '12px',
+            'font-size': '48px',
             'font-weight': 400,
-            'width': '64px',
-            'height': '64px',
-            'shape': (ele) => getNodeShape(ele.data('type')),
-            'border-width': '2px',
-            'border-color': (ele) => getNodeColor(ele.data('type')),
+            'width': '60px',
+            'height': '60px',
+            'shape': 'ellipse',
+            'border-width': 0,
             'text-outline-width': 0,
-            'background-opacity': 0.97,
-            'shadow-blur': 10,
-            'shadow-color': 'rgba(15, 23, 42, 0.15)',
-            'shadow-opacity': 0.5,
-            'shadow-offset-x': 0,
-            'shadow-offset-y': 4,
-            'overlay-padding': 4,
+            'overlay-padding': 8,
           },
         },
         {
@@ -1107,6 +1123,18 @@ export function GraphView({ backendUrl }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {graphData && (
+            <>
+              <Badge variant="secondary" className="text-xs">
+                <span className="font-semibold">{normalizedNodes.length}</span>
+                <span className="ml-1 text-muted-foreground">Nodes</span>
+              </Badge>
+              <Badge variant="secondary" className="text-xs">
+                <span className="font-semibold">{normalizedEdges.length}</span>
+                <span className="ml-1 text-muted-foreground">Edges</span>
+              </Badge>
+            </>
+          )}
           <Button variant="outline" onClick={handleInstallDefaultSchema} disabled={loading || installingSchema}>
             {installingSchema ? 'Installing...' : 'Install Default Schema'}
           </Button>
@@ -1135,21 +1163,16 @@ export function GraphView({ backendUrl }) {
           <Button onClick={handleLoadGraph} disabled={loading}>
             {loading ? 'Loading...' : 'Load Graph Data'}
           </Button>
-          {filterNodeType !== 'all' && (
-            <Badge variant="outline" className="border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
-              Filter: {filterNodeType}
-            </Badge>
-          )}
         </div>
       </div>
 
       <Card className="p-6 border border-border/70 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 shadow-sm">
-        <div className="flex flex-col lg:flex-row gap-4 mb-6">
-          <div className="flex-1 flex flex-wrap gap-2">
+        <div className="flex flex-col gap-4 mb-4">
+          <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
               <Input
-                placeholder="Search nodes..."
+                placeholder="Search nodes, relationships, or properties..."
                 value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
                 className="pl-10"
@@ -1163,9 +1186,7 @@ export function GraphView({ backendUrl }) {
             >
               <FunnelSimple size={20} />
             </Button>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
             <Select value={layout} onValueChange={handleLayoutChange}>
               <SelectTrigger className="w-40">
                 <SelectValue />
@@ -1175,17 +1196,6 @@ export function GraphView({ backendUrl }) {
                 <SelectItem value="force">Force-Directed</SelectItem>
                 <SelectItem value="circular">Circular</SelectItem>
                 <SelectItem value="grid">Grid</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={nodeLabelMode} onValueChange={setNodeLabelMode}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Node label" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">Show Name</SelectItem>
-                <SelectItem value="type">Show Type</SelectItem>
-                <SelectItem value="id">Show ID</SelectItem>
               </SelectContent>
             </Select>
 
@@ -1204,35 +1214,17 @@ export function GraphView({ backendUrl }) {
           </div>
         </div>
 
-        <form
-          className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center"
-          onSubmit={handleRemoteSearchSubmit}
-        >
-          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-            <Input
-              placeholder={remoteSearchPlaceholder}
-              value={remoteQuery}
-              onChange={(event) => setRemoteQuery(event.target.value)}
-              className="flex-1"
-            />
-            <Select value={searchMode} onValueChange={setSearchMode}>
-              <SelectTrigger className="sm:w-48">
-                <SelectValue placeholder="Search mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="keyword">Keyword</SelectItem>
-                <SelectItem value="orchestration">Orchestration Run</SelectItem>
-                <SelectItem value="graphrag">GraphRAG</SelectItem>
-                <SelectItem value="auto">Auto</SelectItem>
-              </SelectContent>
-            </Select>
+        {searchMeta && (
+          <div className="mb-4 rounded-lg border bg-background/95 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
+            <div className="flex items-center gap-2 text-xs">
+              <MagnifyingGlass size={16} className="text-muted-foreground" />
+              <span className="font-medium">{searchMeta.total_results || 0} results</span>
+              {typeof searchMeta.search_time === 'number' && (
+                <span className="text-muted-foreground">• {(searchMeta.search_time * 1000).toFixed(0)}ms</span>
+              )}
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={searching} className="min-w-[140px]">
-              {searching ? 'Searching...' : 'Run Search'}
-            </Button>
-          </div>
-        </form>
+        )}
 
         {searchMeta?.summary && (
           <div className="mb-6 rounded-lg border border-border/60 bg-muted/40 p-4 shadow-sm">
@@ -1362,12 +1354,12 @@ export function GraphView({ backendUrl }) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        <div className="relative">
+          <div className="w-full">
             <div className="relative">
               <div 
                 ref={containerRef}
-                className="w-full h-[620px] rounded-xl border border-border/60 bg-[#f5f7fb] dark:bg-[#0f172a] shadow-inner transition-colors"
+                className="w-full h-[720px] rounded-xl border border-border/60 bg-[#f5f7fb] dark:bg-[#0f172a] shadow-inner transition-colors"
               />
 
               <div className="pointer-events-none absolute inset-0 z-20">
@@ -1425,31 +1417,27 @@ export function GraphView({ backendUrl }) {
                 ) : null}
               </div>
 
-              <div className="pointer-events-none absolute top-4 right-4 z-30 flex flex-col items-end gap-3">
+              <div className="pointer-events-none absolute top-4 left-4 z-30 flex flex-col items-start gap-3">
                 <div className="pointer-events-auto">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="bg-white/85 text-slate-700 shadow-sm backdrop-blur dark:bg-slate-900/85 dark:text-slate-100"
+                    className="bg-white/90 text-slate-700 shadow-lg backdrop-blur dark:bg-slate-900/90 dark:text-slate-100"
                     onClick={() => setLegendOpen((prev) => !prev)}
                   >
-                    <ListBullets size={16} className="mr-2" />
-                    {legendOpen ? 'Hide Legend' : 'Show Legend'}
+                    <ListBullets size={16} />
+                    {legendOpen && <span className="ml-2">Legend</span>}
                   </Button>
                 </div>
 
                 {legendOpen && (
-                  <div className="pointer-events-auto w-72 max-h-[520px] overflow-hidden rounded-2xl border border-white/60 bg-white/95 shadow-2xl backdrop-blur-lg dark:border-slate-700 dark:bg-slate-950/90">
-                    <div className="flex items-center justify-between border-b border-white/50 px-4 py-3 dark:border-slate-800">
-                      <div className="flex items-center gap-2 text-slate-500 dark:text-slate-300">
-                        <Info size={16} />
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.28em]">Legend</span>
-                      </div>
+                  <div className="pointer-events-auto w-56 max-h-[620px] overflow-hidden rounded-xl border border-white/60 bg-white/95 shadow-2xl backdrop-blur-lg dark:border-slate-700 dark:bg-slate-950/95">
+                    <div className="flex items-center justify-between border-b border-white/50 px-3 py-2 dark:border-slate-800">
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => setLegendTab('nodes')}
-                          className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                          className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
                             legendTab === 'nodes'
                               ? 'bg-slate-900 text-white dark:bg-white/95 dark:text-slate-900'
                               : 'bg-white/70 text-slate-600 hover:bg-white/85 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-900/85'
@@ -1460,47 +1448,42 @@ export function GraphView({ backendUrl }) {
                         <button
                           type="button"
                           onClick={() => setLegendTab('relationships')}
-                          className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                          className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
                             legendTab === 'relationships'
                               ? 'bg-slate-900 text-white dark:bg-white/95 dark:text-slate-900'
                               : 'bg-white/70 text-slate-600 hover:bg-white/85 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-900/85'
                           }`}
                         >
-                          Relationships
+                          Edges
                         </button>
                       </div>
                     </div>
-                    <div className="max-h-[440px] overflow-y-auto px-4 py-3 text-sm">
+                    <div className="max-h-[560px] overflow-y-auto px-3 py-2 text-sm">
                       {legendTab === 'nodes' ? (
                         legendTypes.length ? (
-                          <div className="space-y-3">
+                          <div className="space-y-1.5">
                             {legendTypes.map((type) => {
                               const isObserved = observedTypes.includes(type)
+                              const symbol = NODE_TYPE_SYMBOLS[type] || '●'
                               return (
                                 <div
                                   key={`legend-node-${type}`}
-                                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/70 bg-white/80 px-3 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-900/70"
+                                  className="flex items-center justify-between gap-2 rounded-md border border-slate-200/70 bg-white/80 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900/70"
                                 >
                                   <div className="flex items-center gap-2">
                                     <div
-                                      className="h-5 w-5 rounded-md border shadow-sm"
+                                      className="text-lg leading-none"
                                       style={{
-                                        backgroundColor: getNodeFillColor(type),
-                                        borderColor: getNodeBorderColor(type),
+                                        color: getNodeColor(type),
                                       }}
-                                    />
-                                    <div className="flex flex-col leading-tight">
-                                      <span className="font-semibold text-slate-700 dark:text-slate-100">{type}</span>
-                                      <span className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-400">{getNodeShape(type)}</span>
+                                    >
+                                      {symbol}
                                     </div>
+                                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-100">{type}</span>
                                   </div>
-                                  <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${
-                                    isObserved
-                                      ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
-                                      : 'bg-slate-900/10 text-slate-500 dark:bg-white/10 dark:text-slate-200'
-                                  }`}>
-                                    {isObserved ? 'Detected' : 'Schema'}
-                                  </span>
+                                  {isObserved && (
+                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                  )}
                                 </div>
                               )
                             })}
@@ -1509,61 +1492,27 @@ export function GraphView({ backendUrl }) {
                           <p className="text-xs text-slate-500 dark:text-slate-300">No node types detected yet.</p>
                         )
                       ) : relationshipLegendTypes.length ? (
-                        <div className="space-y-3">
+                        <div className="space-y-1.5">
                           {relationshipLegendTypes.map((type) => {
                             const config = edgeStyleMap.lookup[type] || {}
                             const label = config.label || type
-                            const sources = config.sources?.length ? config.sources : ['Any']
-                            const targets = config.targets?.length ? config.targets : ['Any']
                             const color = getEdgeColor(type)
-                            const style = getEdgeStyle(type)
                             const isObserved = observedRelationshipTypes.includes(type)
                             return (
                               <div
                                 key={`legend-edge-${type}`}
-                                className="space-y-2 rounded-lg border border-slate-200/70 bg-white/85 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70"
+                                className="flex items-center justify-between gap-2 rounded-md border border-slate-200/70 bg-white/85 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900/70"
                               >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-100">{label}</span>
-                                  <Badge
-                                    variant="outline"
-                                    className={`border-slate-200 text-[10px] uppercase tracking-wide dark:border-slate-700 dark:text-slate-200 ${
-                                      isObserved
-                                        ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200'
-                                        : 'bg-white/60 text-slate-500 dark:bg-slate-900/60 dark:text-slate-200'
-                                    }`}
-                                  >
-                                    {type}
-                                  </Badge>
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <div
+                                    className="h-0.5 w-6 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-100 truncate">{label}</span>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: color, opacity: 0.92 }} />
-                                  <span className="text-[11px] capitalize text-slate-500 dark:text-slate-300">{style}</span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500 dark:text-slate-300">
-                                  <span className="font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">From</span>
-                                  {sources.map((source) => (
-                                    <Badge
-                                      key={`legend-edge-${type}-source-${source}`}
-                                      variant="outline"
-                                      className="border-slate-200 bg-white/70 text-[10px] dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
-                                    >
-                                      {source}
-                                    </Badge>
-                                  ))}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500 dark:text-slate-300">
-                                  <span className="font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">To</span>
-                                  {targets.map((target) => (
-                                    <Badge
-                                      key={`legend-edge-${type}-target-${target}`}
-                                      variant="outline"
-                                      className="border-slate-200 bg-white/70 text-[10px] dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200"
-                                    >
-                                      {target}
-                                    </Badge>
-                                  ))}
-                                </div>
+                                {isObserved && (
+                                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                                )}
                               </div>
                             )
                           })}
@@ -1577,59 +1526,43 @@ export function GraphView({ backendUrl }) {
               </div>
             </div>
           </div>
-
-          <div className="space-y-4">
-            {selectedNode ? (
-              <Card className="p-4">
-                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className="border"
-                    style={{
-                      backgroundColor: getNodeColor(selectedNode.type),
-                      color: getNodeTextColor(selectedNode.type),
-                      borderColor: getNodeBorderColor(selectedNode.type),
-                    }}
-                  >
-                    {selectedNode.type}
-                  </Badge>
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="font-medium">Name:</span>{' '}
-                    {selectedNode.properties?.name || selectedNode.label || selectedNode.id}
-                  </div>
-                  {Object.entries(selectedNode.properties ?? {}).map(([key, value]) => (
-                    <div key={key}>
-                      <span className="font-medium">{key}:</span> {String(value)}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ) : (
-              <Card className="p-4 text-center text-muted-foreground">
-                Click a node to view details
-              </Card>
-            )}
-
-            {graphData && (
-              <Card className="p-4">
-                <h3 className="font-semibold mb-3">Statistics</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Nodes:</span>
-                    <Badge variant="secondary">{normalizedNodes.length}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Relationships:</span>
-                    <Badge variant="secondary">{normalizedEdges.length}</Badge>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
         </div>
       </Card>
+
+      {selectedNode && (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <h4 className="font-semibold text-sm">Selected Node</h4>
+            <Badge
+              variant="outline"
+              className="text-xs"
+              style={{
+                backgroundColor: getNodeColor(selectedNode.type),
+                color: getNodeTextColor(selectedNode.type),
+                borderColor: getNodeBorderColor(selectedNode.type),
+              }}
+            >
+              {selectedNode.type}
+            </Badge>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <tbody>
+                <tr className="border-b">
+                  <td className="py-1.5 pr-4 font-medium text-muted-foreground w-40">Name</td>
+                  <td className="py-1.5">{selectedNode.properties?.name || selectedNode.label || selectedNode.id}</td>
+                </tr>
+                {Object.entries(selectedNode.properties ?? {}).map(([key, value]) => (
+                  <tr key={key} className="border-b last:border-0">
+                    <td className="py-1.5 pr-4 font-medium text-muted-foreground w-40">{key}</td>
+                    <td className="py-1.5 break-all">{String(value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   )
 }

@@ -12,13 +12,41 @@ from app.models.schemas import (
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Comprehensive unit conversion table (bidirectional)
 UNIT_CONVERSIONS = {
+    # Mass conversions to kg
     "kg": 1.0,
     "g": 0.001,
+    "mg": 0.000001,
+    "lb": 0.45359237,
+    "oz": 0.028349523125,
+    # Volume conversions to L
     "L": 1.0,
+    "ml": 0.001,
     "mL": 0.001,
-    "gal": 3.78541
+    "gal": 3.785411784,
+    "fl_oz": 0.0295735295625,
 }
+
+def convert_to_base_unit(value: float, unit: str) -> float:
+    """Convert any supported unit to its base unit (kg or L)."""
+    return value * UNIT_CONVERSIONS.get(unit, 1.0)
+
+def normalize_unit(unit: str) -> str:
+    """Normalize unit string variations."""
+    unit_map = {
+        "ml": "ml",
+        "mL": "ml",
+        "gram": "g",
+        "grams": "g",
+        "kilogram": "kg",
+        "kilograms": "kg",
+        "liter": "L",
+        "liters": "L",
+        "gallon": "gal",
+        "gallons": "gal",
+    }
+    return unit_map.get(unit, unit)
 
 @router.post("/scale", response_model=CalculationResponse, summary="Scale Formulation")
 async def calculate_scale(calc_request: CalculationRequest, request: Request):
@@ -58,7 +86,9 @@ async def calculate_scale(calc_request: CalculationRequest, request: Request):
         formulation_name = record.get('name', 'Unknown')
         ingredients = record.get('ingredients', [])
         
-        batch_size_kg = calc_request.batch_size * UNIT_CONVERSIONS.get(calc_request.unit, 1.0)
+        # Normalize and convert batch size to base unit
+        normalized_unit = normalize_unit(calc_request.unit)
+        batch_size_base = convert_to_base_unit(calc_request.batch_size, normalized_unit)
         
         scaled_ingredients = []
         total_cost = 0.0
@@ -71,7 +101,7 @@ async def calculate_scale(calc_request: CalculationRequest, request: Request):
             percentage = ing.get('percentage', 0)
             cost_per_kg = ing.get('cost_per_kg')
             
-            scaled_quantity = (percentage / 100.0) * batch_size_kg
+            scaled_quantity = (percentage / 100.0) * batch_size_base
             
             ingredient_cost = None
             if cost_per_kg and calc_request.include_costs:

@@ -1,10 +1,50 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
+import { DownloadSimple } from '@phosphor-icons/react'
+import { useRef } from 'react'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 
 export function NutritionLabel({ nutritionFacts }) {
+  const labelRef = useRef(null)
+
   if (!nutritionFacts) {
     return null
+  }
+
+  const handleExportPDF = async () => {
+    if (!labelRef.current) return
+
+    try {
+      // Capture the nutrition label as canvas
+      const canvas = await html2canvas(labelRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+      })
+
+      // Calculate PDF dimensions to fit the label
+      const imgWidth = 210 // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: imgHeight > imgWidth ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
+      
+      // Download with formulation name
+      const filename = `${nutritionFacts.formulation_name?.replace(/[^a-z0-9]/gi, '_') || 'nutrition-label'}.pdf`
+      pdf.save(filename)
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+    }
   }
 
   const { formulation_name, serving_size, serving_size_unit, servings_per_container, calories, nutrients } = nutritionFacts
@@ -26,9 +66,22 @@ export function NutritionLabel({ nutritionFacts }) {
   )
 
   return (
-    <Card className="w-full max-w-md border-2 border-black font-sans">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-3xl font-black">Nutrition Facts</CardTitle>
+    <div className="space-y-4">
+      {/* Export Button */}
+      <Button
+        onClick={handleExportPDF}
+        variant="outline"
+        size="sm"
+        className="w-full"
+      >
+        <DownloadSimple size={16} className="mr-2" />
+        Export as PDF
+      </Button>
+
+      {/* Nutrition Label */}
+      <Card ref={labelRef} className="w-full max-w-md border-2 border-black font-sans">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-3xl font-black">Nutrition Facts</CardTitle>
         <div className="text-sm">{formulation_name}</div>
         <Separator className="my-2 bg-black h-[8px]" />
         <div className="flex justify-between text-sm">
@@ -239,5 +292,6 @@ export function NutritionLabel({ nutritionFacts }) {
         </div>
       </CardContent>
     </Card>
+    </div>
   )
 }

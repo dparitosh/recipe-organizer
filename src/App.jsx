@@ -9,7 +9,6 @@ import { GraphView } from '@/components/views/GraphView'
 import { FormulationsView } from '@/components/views/FormulationsView'
 import { IngestView } from '@/components/views/IngestView'
 import { SettingsView } from '@/components/views/SettingsView'
-import { ConversationAIView } from '@/components/views/ConversationAIView'
 import { OrchestrationView } from '@/components/orchestration/OrchestrationView.jsx'
 import { useAppConfig } from '@/lib/config/app-config'
 import { backendUrlAtom } from '@/state/atoms'
@@ -76,7 +75,6 @@ function App() {
           {currentView === 'dashboard' && (
             <DashboardView backendUrl={backendUrl} onNavigate={setCurrentView} />
           )}
-          {currentView === 'conversation' && <ConversationAIView backendUrl={backendUrl} />}
           {currentView === 'formulations' && <FormulationsView backendUrl={backendUrl} />}
           {currentView === 'graph' && <GraphView backendUrl={backendUrl} />}
           {currentView === 'ingest' && <IngestView backendUrl={backendUrl} />}

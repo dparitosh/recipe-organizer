@@ -120,7 +120,10 @@ class APIService {
   }
 
   async searchFDC(query) {
-    return this.request(`/api/fdc/search?q=${encodeURIComponent(query)}`)
+    return this.request('/api/fdc/search', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    })
   }
 
   async ingestFDC(fdcId) {
@@ -242,6 +245,23 @@ class APIService {
     }
 
     return response.text()
+  }
+
+  // Manufacturing ISA-88 endpoints
+  async getManufacturingData() {
+    return this.request('/api/manufacturing/all')
+  }
+
+  async getUnitOperations() {
+    return this.request('/api/manufacturing/unit-operations')
+  }
+
+  async getEquipment() {
+    return this.request('/api/manufacturing/equipment')
+  }
+
+  async getMaterialGrades() {
+    return this.request('/api/manufacturing/material-grades')
   }
 }
 

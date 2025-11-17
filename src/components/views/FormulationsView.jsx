@@ -13,15 +13,30 @@ import {
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DataExportButton } from '@/components/DataExportButton'
 import ParetoAnalysis from '@/components/formulation/ParetoAnalysis'
 import { FormulationEditor } from '@/components/formulation/FormulationEditor'
+import { FormulationCalculator } from '@/components/FormulationCalculator'
 import { NutritionLabel } from '@/components/nutrition/NutritionLabel'
+import { AIAssistantPanel } from '@/components/AIAssistantPanel'
 import { apiService } from '@/lib/api/service'
 import { envService } from '@/lib/services/env-service.js'
 import { normalizeFormulation } from '@/lib/utils/formulation-utils'
 import { toast } from 'sonner'
-import { MagnifyingGlass, Plus, Flask, Trash, FloppyDiskBack, ArrowCounterClockwise, Article } from '@phosphor-icons/react'
+import { 
+  MagnifyingGlass, 
+  Plus, 
+  Flask, 
+  Trash, 
+  FloppyDiskBack, 
+  ArrowCounterClockwise, 
+  Article,
+  Calculator as CalcIcon,
+  Brain,
+  ListChecks,
+  ChartBar
+} from '@phosphor-icons/react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export function FormulationsView({ backendUrl }) {
@@ -35,7 +50,11 @@ export function FormulationsView({ backendUrl }) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
 
-  apiService.setBaseUrl(backendUrl)
+  useEffect(() => {
+    if (backendUrl) {
+      apiService.setBaseUrl(backendUrl)
+    }
+  }, [backendUrl])
 
   const loadFormulations = useCallback(async () => {
     setLoading(true)
@@ -376,9 +395,9 @@ export function FormulationsView({ backendUrl }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Formulations</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Product Formulations</h2>
           <p className="text-muted-foreground mt-1">
-            Create and manage F&B formulations
+            Manage product formulations with ISA-88 compliant BOMs, AI assistance, and cost analytics
           </p>
         </div>
         <div className="flex gap-2">
@@ -396,10 +415,10 @@ export function FormulationsView({ backendUrl }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
-          <Card className="p-4 space-y-4">
+          <Card className="p-4 space-y-4 border border-border/70 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">All Formulations</h3>
-              <Badge variant="outline" className="text-xs">
+              <h3 className="text-lg font-bold tracking-tight">Formulation Library</h3>
+              <Badge variant="secondary" className="text-xs font-semibold">
                 {filteredFormulations.length} / {formulations.length || 0}
               </Badge>
             </div>
@@ -502,72 +521,129 @@ export function FormulationsView({ backendUrl }) {
         </div>
 
         <div className="lg:col-span-2">
-          {editorDraft && selectedFormulation ? (
-            <Card className="p-6 space-y-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold">{selectedFormulation.name}</h3>
-                  <p className="text-muted-foreground">
-                    Total percentage: {selectedFormulation.total_percentage?.toFixed?.(2) ?? '0.00'}%
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Last updated: {selectedFormulation.updated_at ? new Date(selectedFormulation.updated_at).toLocaleString() : '—'}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">{editorDraft.status}</Badge>
-                  <Button
-                    variant="outline"
-                    onClick={handleGenerateNutritionLabel}
-                    disabled={loadingNutrition}
-                    className="gap-2"
-                    title="Generate nutrition facts label"
-                  >
-                    <Article size={18} />
-                    {loadingNutrition ? 'Generating...' : 'Nutrition Label'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleResetChanges}
-                    disabled={!hasChanges || isSaving}
-                    title="Reset changes"
-                  >
-                    <ArrowCounterClockwise size={18} />
-                  </Button>
-                  <Button
-                    onClick={handleSave}
-                    disabled={!hasChanges || isSaving}
-                    className="gap-2"
-                  >
-                    <FloppyDiskBack size={18} />
-                    {isSaving ? 'Saving…' : 'Save Changes'}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => handleDelete(selectedFormulation.id)}
-                    disabled={isSaving}
-                  >
-                    <Trash size={18} />
-                  </Button>
-                </div>
-              </div>
+          <Tabs defaultValue="professional" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+              <TabsTrigger value="professional" className="gap-2">
+                <CalcIcon size={16} weight="fill" />
+                Professional
+              </TabsTrigger>
+              <TabsTrigger value="standard" className="gap-2">
+                <ListChecks size={16} weight="fill" />
+                Standard
+              </TabsTrigger>
+              <TabsTrigger value="ai-assistant" className="gap-2">
+                <Brain size={16} weight="fill" />
+                AI Assistant
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="gap-2">
+                <ChartBar size={16} weight="fill" />
+                Analytics
+              </TabsTrigger>
+            </TabsList>
+
+              {/* Professional Calculator Tab */}
+              <TabsContent value="professional" className="space-y-4">
+                <Card className="p-6 border border-border/70 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 shadow-sm">
+                  <div className="mb-4">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <CalcIcon size={24} weight="fill" />
+                      Professional Formulation Calculator
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ISA-88 compliant Bill of Materials with unit operations, equipment selection, and manufacturing cost analysis
+                    </p>
+                  </div>
+                  <Separator className="mb-6" />
+                  <FormulationCalculator />
+                </Card>
+              </TabsContent>
+
+              {/* Standard Editor Tab */}
+              <TabsContent value="standard" className="space-y-4">
+                {editorDraft && selectedFormulation ? (
+                <Card className="p-6 space-y-6 border border-border/70 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 shadow-sm">
+                  <div>
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <ListChecks size={24} weight="fill" />
+                      Standard Formulation Editor
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Edit ingredients, view nutrition facts, and manage formulation details
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                      <h4 className="text-lg font-semibold">{selectedFormulation.name}</h4>
+                      <div className="flex items-center gap-3 text-sm">
+                        <Badge variant="secondary" className="text-xs">{editorDraft.status}</Badge>
+                        <span className="text-muted-foreground">
+                          Total: {selectedFormulation.total_percentage?.toFixed?.(2) ?? '0.00'}%
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Last updated: {selectedFormulation.updated_at ? new Date(selectedFormulation.updated_at).toLocaleString() : '—'}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={handleGenerateNutritionLabel}
+                        disabled={loadingNutrition}
+                        className="gap-2"
+                        title="Generate nutrition facts label"
+                      >
+                        <Article size={18} />
+                        {loadingNutrition ? 'Generating...' : 'Nutrition Label'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleResetChanges}
+                        disabled={!hasChanges || isSaving}
+                        title="Reset changes"
+                      >
+                        <ArrowCounterClockwise size={18} />
+                      </Button>
+                      <Button
+                        onClick={handleSave}
+                        disabled={!hasChanges || isSaving}
+                        className="gap-2"
+                      >
+                        <FloppyDiskBack size={18} />
+                        {isSaving ? 'Saving…' : 'Save Changes'}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleDelete(selectedFormulation.id)}
+                        disabled={isSaving}
+                        title="Delete formulation"
+                      >
+                        <Trash size={18} />
+                      </Button>
+                    </div>
+                  </div>
+
+              <Separator />
 
               {formulationMetrics && (
                 <div className="space-y-4">
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Key Metrics</h4>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border bg-secondary/20 p-4">
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ingredients</p>
-                      <p className="mt-2 text-2xl font-semibold">{formulationMetrics.ingredientCount}</p>
+                      <p className="mt-2 text-2xl font-bold">{formulationMetrics.ingredientCount}</p>
                     </div>
-                    <div className="rounded-lg border bg-secondary/20 p-4">
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Est. Cost / kg</p>
-                      <p className="mt-2 text-2xl font-semibold">{formulationMetrics.totalCostPerKg.toFixed(2)}</p>
+                      <p className="mt-2 text-2xl font-bold">{formulationMetrics.totalCostPerKg.toFixed(2)}</p>
                     </div>
-                    <div className="rounded-lg border bg-secondary/20 p-4">
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dominant Function</p>
-                      <p className="mt-2 text-base font-medium">{formulationMetrics.dominantFunctionLabel}</p>
+                      <p className="mt-2 text-base font-semibold">{formulationMetrics.dominantFunctionLabel}</p>
                       <p className="text-xs text-muted-foreground mt-2">Cost coverage {Math.round(formulationMetrics.costCoverage)}%</p>
                     </div>
                   </div>
@@ -617,29 +693,149 @@ export function FormulationsView({ backendUrl }) {
                     </AlertDescription>
                   </Alert>
                 </div>
-              )}
+                  )}
 
-              <FormulationEditor formulation={editorDraft} onChange={setEditorDraft} />
+                  <Separator />
 
-              {nutritionLabel && (
-                <div className="flex justify-center">
-                  <NutritionLabel nutritionFacts={nutritionLabel} />
-                </div>
-              )}
+                  <div>
+                    <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Ingredient Editor</h4>
+                    <FormulationEditor formulation={editorDraft} onChange={setEditorDraft} />
+                  </div>
 
-              {editorDraft.ingredients.length > 0 && (
-                <ParetoAnalysis ingredients={editorDraft.ingredients} />
-              )}
-            </Card>
-          ) : (
-            <Card className="p-12 text-center">
-              <Flask size={64} className="mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-xl font-semibold mb-2">No Formulation Selected</h3>
-              <p className="text-muted-foreground">
-                Select a formulation from the list to view details
-              </p>
-            </Card>
-          )}
+                  {nutritionLabel && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4 text-center">Nutrition Facts Label</h4>
+                        <div className="flex justify-center">
+                          <NutritionLabel nutritionFacts={nutritionLabel} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </Card>
+                ) : (
+                  <Card className="p-12 text-center border border-border/70 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 shadow-sm">
+                    <ListChecks size={64} className="mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <h3 className="text-xl font-semibold mb-2">No Formulation Selected</h3>
+                    <p className="text-muted-foreground">
+                      Select a formulation from the library to edit ingredients and view details
+                    </p>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* AI Assistant Tab */}
+              <TabsContent value="ai-assistant" className="space-y-4">
+                <AIAssistantPanel 
+                  formulations={selectedFormulation ? [selectedFormulation] : formulations}
+                  activeFormulationId={selectedId}
+                />
+              </TabsContent>
+
+              {/* Analytics Tab */}
+              <TabsContent value="analytics" className="space-y-4">
+                {editorDraft && selectedFormulation ? (
+                <Card className="p-6 space-y-6 border border-border/70 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 shadow-sm">
+                  <div>
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <ChartBar size={24} weight="fill" />
+                      Formulation Analytics
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Cost analysis, ingredient distribution, and quality metrics
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  {formulationMetrics && (
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Performance Metrics</h4>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ingredients</p>
+                          <p className="mt-2 text-2xl font-bold">{formulationMetrics.ingredientCount}</p>
+                        </div>
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Est. Cost / kg</p>
+                          <p className="mt-2 text-2xl font-bold">{formulationMetrics.totalCostPerKg.toFixed(2)}</p>
+                        </div>
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dominant Function</p>
+                          <p className="mt-2 text-base font-semibold">{formulationMetrics.dominantFunctionLabel}</p>
+                          <p className="text-xs text-muted-foreground mt-2">Cost coverage {Math.round(formulationMetrics.costCoverage)}%</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-sm font-medium">
+                          <span>Formula completion</span>
+                          <span
+                            className={
+                              Math.abs(formulationMetrics.totalPercentage - 100) <= 0.1
+                                ? 'text-muted-foreground'
+                                : 'text-destructive'
+                            }
+                          >
+                            {formulationMetrics.totalPercentage.toFixed(2)}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.min(formulationMetrics.totalPercentage, 100)}
+                          className="mt-2"
+                        />
+                      </div>
+
+                      <Alert variant={hasCriticalIssue ? 'destructive' : 'default'}>
+                        <AlertTitle>
+                          {hasIssues
+                            ? hasCriticalIssue
+                              ? 'Formulation Needs Attention'
+                              : 'Review Suggested Adjustments'
+                            : 'Formulation Looks Good'}
+                        </AlertTitle>
+                        <AlertDescription>
+                          {hasIssues ? (
+                            issueMessages.map((issue, index) => (
+                              <p key={`${issue.text}-${index}`}>{issue.text}</p>
+                            ))
+                          ) : (
+                            <p>
+                              {formulationMetrics.totalCostPerKg > 0
+                                ? `Estimated cost per kg is ${formulationMetrics.totalCostPerKg.toFixed(2)}.`
+                                : 'Estimated cost per kg is not available yet.'}
+                              {formulationMetrics.highestCostIngredient
+                                ? ` Highest cost ingredient: ${formulationMetrics.highestCostIngredient.name} (${formulationMetrics.highestCostIngredient.cost.toFixed(2)} per kg).`
+                                : ''}
+                            </p>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                    )}
+
+                    {editorDraft.ingredients.length > 0 && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Cost Distribution Analysis</h4>
+                          <ParetoAnalysis ingredients={editorDraft.ingredients} />
+                        </div>
+                      </>
+                    )}
+                </Card>
+                ) : (
+                  <Card className="p-12 text-center border border-border/70 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 shadow-sm">
+                    <ChartBar size={64} className="mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <h3 className="text-xl font-semibold mb-2">No Formulation Selected</h3>
+                    <p className="text-muted-foreground">
+                      Select a formulation to view cost analysis and performance metrics
+                    </p>
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
         </div>
       </div>
     </div>

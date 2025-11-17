@@ -7,8 +7,8 @@
         "dev": "vite",
         "kill": "fuser -k 5000/tcp",
         "build": "vite build",
-    "lint": "eslint .",
-    "seed:fdc": "node scripts/seed-fdc-data.mjs",
+        "lint": "eslint .",
+        "seed:fdc": "node scripts/seed-fdc-data.mjs",
         "optimize": "vite optimize",
         "preview": "vite preview",
         "test": "vitest"
@@ -58,7 +58,9 @@
         "date-fns": "^3.6.0",
         "embla-carousel-react": "^8.5.2",
         "framer-motion": "^12.6.2",
+        "html2canvas": "^1.4.1",
         "input-otp": "^1.4.2",
+        "jspdf": "^3.0.3",
         "lucide-react": "^0.484.0",
         "marked": "^15.0.7",
         "neo4j-driver": "^6.0.1",
@@ -95,7 +97,7 @@
         "tailwindcss": "^4.1.11",
         "typescript": "^5.6.3",
         "vite": "^6.3.5",
-    "vitest": "3.1.1"
+        "vitest": "3.1.1"
     },
     "workspaces": {
         "packages": [

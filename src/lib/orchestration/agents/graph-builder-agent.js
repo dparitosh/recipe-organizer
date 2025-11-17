@@ -141,13 +141,42 @@ export class GraphBuilderAgent {
     const edgeCount = edges.length
     const graphComplexity = nodeCount + edgeCount > 20 ? 'medium' : 'low'
 
-    const formatNodeIdentifier = (id) => id.replace(/[^a-zA-Z0-9_]/g, '_')
+    // Neo4j 2.0 compatible Cypher generation utilities
+    const sanitizeIdentifier = (id) => {
+      // Allow alphanumeric, hyphens, underscores - escape everything else with backticks
+      const cleaned = String(id).replace(/[^\w-]/g, '_')
+      // Use backticks for identifiers that might contain reserved words or special chars
+      return `\`${cleaned}\``
+    }
 
-    const escapeString = (value) => String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+    const sanitizeLabel = (label) => {
+      // Labels must be alphanumeric + underscore only (no hyphens)
+      const cleaned = String(label).replace(/[^a-zA-Z0-9_]/g, '')
+      // Ensure label starts with letter
+      return cleaned.match(/^[a-zA-Z]/) ? cleaned : `L_${cleaned}`
+    }
 
-    const formatPropertyKey = (key) => key.replace(/[^a-zA-Z0-9_]/g, '_')
+    const escapeString = (value) => {
+      return String(value)
+        .replace(/\\/g, '\\\\')    // Backslash
+        .replace(/'/g, "\\'")       // Single quote
+        .replace(/"/g, '\\"')       // Double quote
+        .replace(/\n/g, '\\n')      // Newline
+        .replace(/\r/g, '\\r')      // Carriage return
+        .replace(/\t/g, '\\t')      // Tab
+    }
 
-    const formatCypherValue = (value) => {
+    const formatPropertyKey = (key) => {
+      // Property keys: alphanumeric + underscore
+      return String(key).replace(/[^a-zA-Z0-9_]/g, '_')
+    }
+
+    const formatCypherValue = (value, depth = 0) => {
+      // Prevent infinite recursion on circular objects
+      if (depth > 5) {
+        return 'null'
+      }
+
       if (value === null || value === undefined) {
         return 'null'
       }
@@ -158,13 +187,25 @@ export class GraphBuilderAgent {
         return value ? 'true' : 'false'
       }
       if (Array.isArray(value)) {
-        const items = value.map((item) => formatCypherValue(item))
+        // Neo4j supports homogeneous arrays; serialize complex items as JSON strings
+        const items = value.map((item) => {
+          if (typeof item === 'object' && item !== null) {
+            return `'${escapeString(JSON.stringify(item))}'`
+          }
+          return formatCypherValue(item, depth + 1)
+        })
         return `[${items.join(', ')}]`
       }
       if (typeof value === 'object') {
-        return formatCypherProperties(value)
+        // Flatten nested objects into dot-notation keys or serialize as JSON string
+        // For Neo4j 2.0, prefer JSON string for complex nested objects
+        try {
+          return `'${escapeString(JSON.stringify(value))}'`
+        } catch {
+          return 'null'
+        }
       }
-      return `'${escapeString(value)}'`
+      return `'${escapeString(String(value))}'`
     }
 
     const formatCypherProperties = (obj) => {
@@ -177,9 +218,10 @@ export class GraphBuilderAgent {
       return `{ ${parts.join(', ')} }`
     }
 
+    // Generate CREATE statements for nodes with sanitized identifiers and labels
     const cypherNodes = nodes.map((node) => {
-      const label = node.type.charAt(0).toUpperCase() + node.type.slice(1)
-      const identifier = formatNodeIdentifier(node.id)
+      const label = sanitizeLabel(node.type)
+      const identifier = sanitizeIdentifier(node.id)
       const properties = formatCypherProperties({
         id: node.id,
         label: node.label,
@@ -188,11 +230,17 @@ export class GraphBuilderAgent {
       return `CREATE (${identifier}:${label} ${properties})`
     })
 
+    // Generate relationship CREATE statements using MATCH with indexed id property
+    // Neo4j 2.0 best practice: rely on id property index for efficient lookups
     const cypherEdges = edges.map((edge) => {
-      const type = edge.type.toUpperCase()
+      const sourceId = sanitizeIdentifier(edge.source)
+      const targetId = sanitizeIdentifier(edge.target)
+      const relType = sanitizeLabel(edge.type)
       const properties = formatCypherProperties(edge.properties || {})
       const propertiesSegment = properties === '{}' ? '' : ` ${properties}`
-      return `MATCH (a {id: '${escapeString(edge.source)}'}), (b {id: '${escapeString(edge.target)}'}) CREATE (a)-[:${type}${propertiesSegment}]->(b)`
+      
+      // Use MATCH with id property (assumes nodes already created in prior statements)
+      return `MATCH (${sourceId} {id: '${escapeString(edge.source)}'}), (${targetId} {id: '${escapeString(edge.target)}'})\\nCREATE (${sourceId})-[:${relType}${propertiesSegment}]->(${targetId})`
     })
 
     const graph = {
