@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CheckCircle, Warning, XCircle, CircleNotch } from '@phosphor-icons/react'
 import { orchestrationService } from '@/lib/services/orchestration-service'
+import { GraphSnapshotViewer } from './GraphSnapshotViewer'
+import { UIMetricsDashboard } from './UIMetricsDashboard'
 
 export function OrchestrationResultView({ result, persistSummary }) {
   const [neo4jGraph, setNeo4jGraph] = useState(null)
@@ -272,7 +274,11 @@ export function OrchestrationResultView({ result, persistSummary }) {
           </TabsContent>
 
           <TabsContent value="graph" className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            {/* Graph Snapshot Viewer */}
+            <GraphSnapshotViewer graphSnapshot={result.graphSnapshot} />
+
+            {/* Metadata Summary */}
+            <div className="grid grid-cols-3 gap-4 mt-4">
               <Card>
                 <CardHeader className="pb-3">
                   <CardDescription>Nodes</CardDescription>
@@ -299,7 +305,8 @@ export function OrchestrationResultView({ result, persistSummary }) {
               </Card>
             </div>
 
-            {persistSummary ? (
+            {/* Persistence Summary */}
+            {persistSummary && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-3">
@@ -319,108 +326,6 @@ export function OrchestrationResultView({ result, persistSummary }) {
                     <CardTitle className="text-2xl">{persistSummary.propertiesSet}</CardTitle>
                   </CardHeader>
                 </Card>
-              </div>
-            ) : (
-              <Alert>
-                <AlertDescription>
-                  Graph data was not persisted to Neo4j for this run. Ensure the pipeline completes successfully to enable Neo4j loading.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div>
-              <h3 className="font-semibold mb-2">Cypher Commands</h3>
-              <div className="bg-muted p-4 rounded-md max-h-64 overflow-y-auto font-mono text-xs">
-                {result.graph.cypherCommands.map((cmd, idx) => (
-                  <div key={idx} className="mb-1">{cmd}</div>
-                ))}
-              </div>
-            </div>
-
-            {persistSummary?.runId && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Neo4j Snapshot</h3>
-                  <Button variant="outline" size="sm" onClick={fetchNeo4jGraph} disabled={loadingNeo4j}>
-                    {loadingNeo4j ? (
-                      <>
-                        <CircleNotch className="mr-2 h-4 w-4 animate-spin" /> Refreshing
-                      </>
-                    ) : (
-                      'Refresh from Neo4j'
-                    )}
-                  </Button>
-                </div>
-
-                {neo4jError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{neo4jError}</AlertDescription>
-                  </Alert>
-                )}
-
-                {loadingNeo4j && !neo4jGraph && (
-                  <div className="text-sm text-muted-foreground">Loading persisted graph data…</div>
-                )}
-
-                {neo4jGraph && (
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-semibold mb-2">Nodes ({neo4jGraph.node_count})</h4>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Node ID</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Labels</TableHead>
-                            <TableHead>Key Properties</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(neo4jGraph.nodes ?? []).map((node) => (
-                            <TableRow key={node.id}>
-                              <TableCell className="font-mono text-xs">{node.id}</TableCell>
-                              <TableCell>{node.type || node.properties?.type || '—'}</TableCell>
-                              <TableCell>{(node.labels || []).join(', ') || '—'}</TableCell>
-                              <TableCell>
-                                <pre className="whitespace-pre-wrap text-xs">
-                                  {JSON.stringify(node.properties ?? {}, null, 2)}
-                                </pre>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold mb-2">Relationships ({neo4jGraph.edge_count})</h4>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Edge ID</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Source → Target</TableHead>
-                            <TableHead>Properties</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(neo4jGraph.edges ?? []).map((edge) => (
-                            <TableRow key={edge.id}>
-                              <TableCell className="font-mono text-xs">{edge.id}</TableCell>
-                              <TableCell>{edge.type}</TableCell>
-                              <TableCell className="font-mono text-xs">{edge.source} → {edge.target}</TableCell>
-                              <TableCell>
-                                <pre className="whitespace-pre-wrap text-xs">
-                                  {JSON.stringify(edge.properties ?? {}, null, 2)}
-                                </pre>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </TabsContent>
@@ -482,99 +387,8 @@ export function OrchestrationResultView({ result, persistSummary }) {
           </TabsContent>
 
           <TabsContent value="ui" className="space-y-4">
-            <div>
-              <h3 className="font-semibold mb-2">Layout Configuration</h3>
-              <div className="p-4 border rounded">
-                <Badge>{result.uiConfig?.layout || 'not-specified'}</Badge>
-              </div>
-            </div>
-
-            {result.uiConfig?.theme && (
-              <div>
-                <h3 className="font-semibold mb-2">Theme</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  {result.uiConfig.theme.primaryColor && (
-                    <div className="p-3 border rounded">
-                      <div className="text-xs text-muted-foreground mb-1">Primary Color</div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded border" style={{ backgroundColor: result.uiConfig.theme.primaryColor }}></div>
-                        <code className="text-xs">{result.uiConfig.theme.primaryColor}</code>
-                      </div>
-                    </div>
-                  )}
-                  {result.uiConfig.theme.accentColor && (
-                    <div className="p-3 border rounded">
-                      <div className="text-xs text-muted-foreground mb-1">Accent Color</div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded border" style={{ backgroundColor: result.uiConfig.theme.accentColor }}></div>
-                        <code className="text-xs">{result.uiConfig.theme.accentColor}</code>
-                      </div>
-                    </div>
-                  )}
-                  {result.uiConfig.theme.spacing && (
-                    <div className="p-3 border rounded">
-                      <div className="text-xs text-muted-foreground mb-1">Spacing</div>
-                      <Badge variant="outline">{result.uiConfig.theme.spacing}</Badge>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <h3 className="font-semibold mb-2">Components ({result.uiConfig?.components?.length ?? 0})</h3>
-              <div className="space-y-2">
-                {result.uiConfig?.components?.length > 0 ? (
-                  result.uiConfig.components.map((comp, idx) => (
-                    <div key={idx} className="p-3 border rounded">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <div className="font-medium">{comp.title || 'Untitled Component'}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs">{comp.type || 'unknown'}</Badge>
-                            {comp.config?.chartType && (
-                              <Badge variant="secondary" className="text-xs">{comp.config.chartType}</Badge>
-                            )}
-                          </div>
-                        </div>
-                        {comp.position && (
-                          <div className="text-xs text-muted-foreground">
-                            Row {comp.position.row}, Col {comp.position.col}
-                            {comp.position.span && `, Span ${comp.position.span}`}
-                          </div>
-                        )}
-                      </div>
-                      {comp.config?.columns && comp.config.columns.length > 0 && (
-                        <div className="mt-2 pt-2 border-t">
-                          <div className="text-xs text-muted-foreground mb-1">Table Columns:</div>
-                          <div className="flex flex-wrap gap-1">
-                            {comp.config.columns.map((col, colIdx) => (
-                              <Badge key={colIdx} variant="outline" className="text-[10px]">
-                                {col.label} ({col.key})
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {comp.config?.colorScheme && (
-                        <div className="mt-2 pt-2 border-t">
-                          <div className="text-xs text-muted-foreground">Color Scheme: <code className="text-xs">{comp.config.colorScheme}</code></div>
-                        </div>
-                      )}
-                      {comp.config?.showLegend !== undefined && (
-                        <div className="mt-2 pt-2 border-t">
-                          <div className="text-xs text-muted-foreground">Show Legend: {comp.config.showLegend ? 'Yes' : 'No'}</div>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-muted-foreground py-8 border rounded">
-                    No UI components generated. The UI Designer agent may have failed or returned empty configuration.
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* UI Metrics Dashboard */}
+            <UIMetricsDashboard uiMetrics={result.uiConfig} />
           </TabsContent>
         </Tabs>
       </CardContent>

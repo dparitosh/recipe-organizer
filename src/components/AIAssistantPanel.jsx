@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { NutritionLabel } from '@/components/nutrition/NutritionLabel'
+import { NutritionLabel } from './nutrition/NutritionLabel'
+import { NutritionLabelHistory } from './nutrition/NutritionLabelHistory'
 import { 
   MagnifyingGlass,
   Sparkle,
@@ -545,6 +546,15 @@ export function AIAssistantPanel({ formulations = [], activeFormulationId }) {
                   Get Alternatives
                 </Button>
               </div>
+
+              <Separator />
+
+              {selectedFormulationId && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2">Label History</h4>
+                  <NutritionLabelHistory formulationId={selectedFormulationId} />
+                </div>
+              )}
             </div>
           )}
 

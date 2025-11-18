@@ -464,6 +464,20 @@ class GraphSchemaService:
                 },
             },
             {
+                "type": "NutritionLabel",
+                "label": "Nutrition Label",
+                "color": "#10b981",
+                "shape": "roundrectangle",
+                "size": 76,
+                "icon": "Certificate",
+                "metadata": {
+                    "primary_key": "labelId",
+                    "indexed_properties": ["labelId", "formulationId", "version", "generatedAt"],
+                    "domain": "nutrition",
+                    "vector_property": None,
+                },
+            },
+            {
                 "type": "AgentInvocation",
                 "label": "Agent Invocation",
                 "color": "#14b8a6",
@@ -778,6 +792,20 @@ class GraphSchemaService:
                 "allowed_target_types": ["ProcessRecipe"],
                 "metadata": {
                     "cardinality": "one-to-many",
+                },
+            },
+            {
+                "type": "HAS_NUTRITION_LABEL",
+                "label": "Has Nutrition Label",
+                "color": "#10b981",
+                "style": "solid",
+                "width": 2,
+                "target_arrow": "triangle",
+                "allowed_source_types": ["Formulation"],
+                "allowed_target_types": ["NutritionLabel"],
+                "metadata": {
+                    "cardinality": "one-to-many",
+                    "versioned": True,
                 },
             },
             {

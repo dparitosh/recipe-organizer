@@ -20,6 +20,7 @@ import { AgentOrchestrator } from '@/lib/orchestration/orchestrator'
 import { toast } from 'sonner'
 import { OrchestrationResultView } from './OrchestrationResultView'
 import { AgentHistoryPanel } from './AgentHistoryPanel'
+import { OrchestrationHistoryBrowser } from './OrchestrationHistoryBrowser'
 import { useRecoilState } from 'recoil'
 import { orchestrationHistoryAtom } from '@/state/atoms'
 import { orchestrationService } from '@/lib/services/orchestration-service'
@@ -51,6 +52,7 @@ export function OrchestrationView() {
   const [persistSummary, setPersistSummary] = useState(null)
   const [orchestrationHistory, setOrchestrationHistory] = useRecoilState(orchestrationHistoryAtom)
   const [showHistory, setShowHistory] = useState(false)
+  const [selectedHistoricalRun, setSelectedHistoricalRun] = useState(null)
   const [pipelineStatus, setPipelineStatus] = useState(() => AGENT_PIPELINE.map(() => 'idle'))
 
   const handleRunOrchestration = async () => {
@@ -170,6 +172,12 @@ export function OrchestrationView() {
     }
   }
 
+  const handleSelectHistoricalRun = (runDetails) => {
+    setSelectedHistoricalRun(runDetails)
+    setShowHistory(false)
+    toast.success(`Loaded orchestration run: ${runDetails.run.runId.substring(0, 8)}...`)
+  }
+
   const exampleRequests = [
     'Create a sports drink formulation with electrolytes',
     'Design a protein smoothie with 25g protein per serving',
@@ -283,8 +291,32 @@ export function OrchestrationView() {
             </CardContent>
           </Card>
 
-          {currentResult && (
+          {showHistory && (
+            <OrchestrationHistoryBrowser onSelectRun={handleSelectHistoricalRun} />
+          )}
+
+          {currentResult && !showHistory && (
             <OrchestrationResultView result={currentResult} persistSummary={persistSummary} />
+          )}
+
+          {selectedHistoricalRun && !showHistory && !currentResult && (
+            <OrchestrationResultView 
+              result={{
+                status: selectedHistoricalRun.run.status,
+                recipe: selectedHistoricalRun.recipe,
+                calculation: selectedHistoricalRun.calculation,
+                graph: selectedHistoricalRun.graphSnapshot,
+                validation: selectedHistoricalRun.validation,
+                uiConfig: selectedHistoricalRun.uiConfig,
+                agentHistory: selectedHistoricalRun.agents || [],
+                timestamp: selectedHistoricalRun.run.timestamp
+              }}
+              persistSummary={{
+                runId: selectedHistoricalRun.run.runId,
+                timestamp: selectedHistoricalRun.run.timestamp,
+                status: 'historical'
+              }}
+            />
           )}
         </div>
 

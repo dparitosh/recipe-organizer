@@ -19,6 +19,8 @@ import ParetoAnalysis from '@/components/formulation/ParetoAnalysis'
 import { FormulationEditor } from '@/components/formulation/FormulationEditor'
 import { FormulationCalculator } from '@/components/FormulationCalculator'
 import { NutritionLabel } from '@/components/nutrition/NutritionLabel'
+import { NutritionLabelHistory } from '@/components/nutrition/NutritionLabelHistory'
+import { UIConfigComparison } from '@/components/orchestration/UIConfigComparison'
 import { AIAssistantPanel } from '@/components/AIAssistantPanel'
 import { apiService } from '@/lib/api/service'
 import { envService } from '@/lib/services/env-service.js'
@@ -710,6 +712,26 @@ export function FormulationsView({ backendUrl }) {
                         <div className="flex justify-center">
                           <NutritionLabel nutritionFacts={nutritionLabel} />
                         </div>
+                      </div>
+                    </>
+                  )}
+
+                  {selectedId && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">Label History</h4>
+                        <NutritionLabelHistory formulationId={selectedId} />
+                      </div>
+                    </>
+                  )}
+
+                  {selectedId && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">UI Configuration Comparison</h4>
+                        <UIConfigComparison formulationId={selectedId} />
                       </div>
                     </>
                   )}

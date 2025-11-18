@@ -1,0 +1,85 @@
+{
+  "userRequest": "Create a nutrition-focused UI for Green Smoothie formulation with health benefits visualization",
+  "result": {
+    "id": "orch_test_20251118_001",
+    "status": "success",
+    "timestamp": "2025-11-18T09:50:00.000Z",
+    "totalDuration": 15500,
+    "recipe": {
+      "name": "Green Smoothie",
+      "version": "1.0",
+      "ingredients": [
+        {"name": "Apple Juice", "percentage": 50.0},
+        {"name": "Spinach", "percentage": 25.0},
+        {"name": "Greek Yogurt", "percentage": 25.0}
+      ]
+    },
+    "calculation": {
+      "batchSize": 1000,
+      "unit": "g",
+      "scalingFactor": 1.0
+    },
+    "graph": {
+      "nodes": [
+        {"id": "ing_1", "label": "Ingredient", "properties": {"name": "Apple Juice", "category": "Beverage"}},
+        {"id": "ing_2", "label": "Ingredient", "properties": {"name": "Spinach", "category": "Vegetable"}},
+        {"id": "ing_3", "label": "Ingredient", "properties": {"name": "Greek Yogurt", "category": "Dairy"}},
+        {"id": "nutrient_1", "label": "Nutrient", "properties": {"name": "Vitamin C", "amount": 45}}
+      ],
+      "edges": [
+        {"from": "ing_1", "to": "nutrient_1", "label": "PROVIDES"},
+        {"from": "ing_1", "to": "ing_2", "label": "COMBINES_WITH", "properties": {"reason": "flavor_balance"}},
+        {"from": "ing_2", "to": "ing_3", "label": "COMBINES_WITH", "properties": {"reason": "texture"}}
+      ]
+    },
+    "validation": {
+      "status": "passed",
+      "checks": [
+        {"rule": "total_percentage", "passed": true, "value": 100.0},
+        {"rule": "min_ingredients", "passed": true, "value": 3}
+      ]
+    },
+    "uiConfig": {
+      "theme": {
+        "primary": "#10b981",
+        "secondary": "#3b82f6",
+        "accent": "#f59e0b"
+      },
+      "layout": "grid",
+      "components": [
+        {"type": "NutritionLabel", "position": "top", "size": "large"},
+        {"type": "IngredientList", "position": "left", "size": "medium"},
+        {"type": "HealthBenefits", "position": "right", "size": "medium"}
+      ]
+    },
+    "agentHistory": [
+      {
+        "agentName": "graph_builder",
+        "status": "success",
+        "startTime": "2025-11-18T09:49:45.000Z",
+        "endTime": "2025-11-18T09:49:50.000Z",
+        "duration": 5200
+      },
+      {
+        "agentName": "ui_designer",
+        "status": "success",
+        "startTime": "2025-11-18T09:49:50.000Z",
+        "endTime": "2025-11-18T09:49:55.000Z",
+        "duration": 5000
+      },
+      {
+        "agentName": "nutrition_analyzer",
+        "status": "success",
+        "startTime": "2025-11-18T09:49:55.000Z",
+        "endTime": "2025-11-18T09:50:00.000Z",
+        "duration": 5300
+      }
+    ]
+  },
+  "requestId": "req_test_001",
+  "requestTimestamp": "2025-11-18T09:49:45.000Z",
+  "targetBatchSize": 1000.0,
+  "targetUnit": "g",
+  "includeNutrients": true,
+  "includeCosts": true
+}
